@@ -1,7 +1,10 @@
 {
   "name": "metascalp",
   "version": "1.0.0",
-  "description": "Official SDK for MetaScalp API — connect trading bots and scripts to MetaScalp terminal",
+  "description": "Official SDK for MetaScalp API — trade, stream order book and trades via REST and WebSocket",
+  "author": "MetaScalp",
+  "license": "MIT",
+  "homepage": "https://metascalp.io",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
@@ -9,8 +12,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["metascalp", "trading", "api", "websocket", "orderbook", "crypto"],
-  "license": "MIT",
+  "keywords": ["metascalp", "trading", "api", "websocket", "orderbook", "crypto", "trading-bot", "market-data"],
   "devDependencies": {
     "typescript": "^5.4.0"
   },
@@ -19,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/grigoryeghiazaryan/metascalp-sdk.git",
+    "url": "https://github.com/MetaScalp/metascalp-sdk.git",
     "directory": "js"
   }
 }

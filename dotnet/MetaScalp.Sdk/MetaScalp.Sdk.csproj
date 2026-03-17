@@ -6,10 +6,20 @@
     <Nullable>enable</Nullable>
     <PackageId>MetaScalp.Sdk</PackageId>
     <Version>1.0.0</Version>
-    <Description>Official SDK for MetaScalp API — connect trading bots and scripts to MetaScalp terminal</Description>
-    <RepositoryUrl>https://github.com/grigoryeghiazaryan/metascalp-sdk</RepositoryUrl>
-    <License>MIT</License>
+    <Authors>MetaScalp</Authors>
+    <Company>Fincraft</Company>
+    <Description>Official SDK for MetaScalp API — trade, stream order book and trades via REST and WebSocket</Description>
+    <PackageTags>metascalp;trading;api;websocket;orderbook;crypto;market-data</PackageTags>
+    <PackageProjectUrl>https://metascalp.io</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MetaScalp/metascalp-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
