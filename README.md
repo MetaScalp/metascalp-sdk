@@ -36,10 +36,13 @@ await client.placeOrder(conn.id, {
 // WebSocket — stream real-time updates
 const socket = await MetaScalpSocket.discover();
 
+// Connection-level: orders, positions, balances for ALL tickers on this connection
 socket.subscribe(conn.id);
 socket.on('order_update', (data) => console.log('Order:', data));
+socket.on('position_update', (data) => console.log('Position:', data));
 socket.on('balance_update', (data) => console.log('Balance:', data));
 
+// Market data: trades and order book for a SPECIFIC ticker (independent from subscribe)
 socket.subscribeTrades(conn.id, 'BTCUSDT');
 socket.on('trade_update', (data) => console.log('Trade:', data));
 
@@ -66,6 +69,16 @@ async def main():
     # WebSocket
     socket = await MetaScalpSocket.discover()
 
+    # Connection-level events (from subscribe) — all tickers
+    @socket.on('order_update')
+    def on_order(data):
+        print(f"Order: {data['ticker']} {data['side']} {data['status']}")
+
+    @socket.on('balance_update')
+    def on_balance(data):
+        print(f"Balance: {data}")
+
+    # Market data events (from subscribe_trades / subscribe_order_book) — specific ticker
     @socket.on('trade_update')
     def on_trade(data):
         print(f"Trade: {data}")
@@ -74,7 +87,10 @@ async def main():
     def on_snapshot(data):
         print(f"Snapshot: {len(data['asks'])} asks, {len(data['bids'])} bids")
 
+    # Connection-level: orders, positions, balances for ALL tickers
     socket.subscribe(conn['id'])
+
+    # Market data: trades and order book for a SPECIFIC ticker (independent from subscribe)
     socket.subscribe_trades(conn['id'], 'BTCUSDT')
     socket.subscribe_order_book(conn['id'], 'BTCUSDT')
 
@@ -105,11 +121,18 @@ await client.PlaceOrderAsync(conn.Id, new PlaceOrderRequest
 // WebSocket
 var socket = await MetaScalpSocket.DiscoverAsync();
 
-socket.OnOrderUpdate += (data) => Console.WriteLine($"Order: {data}");
-socket.OnTradeUpdate += (data) => Console.WriteLine($"Trade: {data}");
-socket.OnOrderBookSnapshot += (data) => Console.WriteLine($"OB: {data.Asks.Count} asks");
+// Connection-level events (from Subscribe) — all tickers
+socket.OnOrderUpdate += (data) => Console.WriteLine($"Order: {data.Ticker} {data.Side} {data.Status}");
+socket.OnBalanceUpdate += (data) => Console.WriteLine($"Balance updated");
 
+// Market data events (from SubscribeTrades / SubscribeOrderBook) — specific ticker
+socket.OnTradeUpdate += (data) => Console.WriteLine($"Trade: {data.Ticker} {data.Trades.Count} trades");
+socket.OnOrderBookSnapshot += (data) => Console.WriteLine($"OB: {data.Asks.Count} asks, {data.Bids.Count} bids");
+
+// Connection-level: orders, positions, balances for ALL tickers
 socket.Subscribe(conn.Id);
+
+// Market data: trades and order book for a SPECIFIC ticker (independent from Subscribe)
 socket.SubscribeTrades(conn.Id, "BTCUSDT");
 socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 ```
