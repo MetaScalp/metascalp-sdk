@@ -87,9 +87,21 @@ class MetaScalpSocket:
         self._connected = False
 
     # ---- Connection-level subscriptions ----
+    # Use these to receive order, position, balance, and finres updates
+    # for ALL tickers on a connection.
+    # Events: 'order_update', 'position_update', 'balance_update', 'finres_update'
 
     def subscribe(self, connection_id: int) -> None:
-        """Subscribe to order, position, balance, and finres updates."""
+        """Subscribe to order, position, balance, and finres updates for a connection.
+
+        This covers ALL tickers on the connection.
+
+        Events you'll receive:
+        - 'order_update' — order created/modified/filled/cancelled
+        - 'position_update' — position opened/changed/closed
+        - 'balance_update' — account balances changed
+        - 'finres_update' — financial results recalculated
+        """
         self._send("subscribe", {"connectionId": connection_id})
 
     def unsubscribe(self, connection_id: int) -> None:
@@ -97,21 +109,35 @@ class MetaScalpSocket:
         self._send("unsubscribe", {"connectionId": connection_id})
 
     # ---- Market data subscriptions ----
+    # Use these to receive real-time market data for a SPECIFIC ticker on a connection.
+    # These are independent from subscribe() — you can use one without the other.
+    # Events: 'trade_update', 'orderbook_snapshot', 'orderbook_update'
 
     def subscribe_trades(self, connection_id: int, ticker: str) -> None:
-        """Subscribe to real-time trade updates for a specific ticker."""
+        """Subscribe to real-time trade updates for a specific ticker.
+
+        Independent from subscribe() — only sends trade data for this exact ticker.
+
+        Event: 'trade_update'
+        """
         self._send("trade_subscribe", {"connectionId": connection_id, "ticker": ticker})
 
     def unsubscribe_trades(self, connection_id: int, ticker: str) -> None:
-        """Unsubscribe from trade updates."""
+        """Unsubscribe from trade updates for a specific ticker."""
         self._send("trade_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
     def subscribe_order_book(self, connection_id: int, ticker: str) -> None:
-        """Subscribe to order book updates (snapshot + incremental)."""
+        """Subscribe to order book updates for a specific ticker.
+
+        You will receive one 'orderbook_snapshot' followed by 'orderbook_update' events.
+        Independent from subscribe() — only sends order book data for this exact ticker.
+
+        Events: 'orderbook_snapshot' (once), then 'orderbook_update' (continuous)
+        """
         self._send("orderbook_subscribe", {"connectionId": connection_id, "ticker": ticker})
 
     def unsubscribe_order_book(self, connection_id: int, ticker: str) -> None:
-        """Unsubscribe from order book updates."""
+        """Unsubscribe from order book updates for a specific ticker."""
         self._send("orderbook_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
     # ---- Event handling ----

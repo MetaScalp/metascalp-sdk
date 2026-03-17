@@ -31,13 +31,29 @@ public class MetaScalpSocket : IDisposable
 
     // ---- Events ----
 
+    // Connection-level events — fired after calling Subscribe(connectionId).
+    // These cover all tickers on the subscribed connection.
+
+    /// <summary>Fired when an order is created, modified, filled, or cancelled. Requires Subscribe().</summary>
     public event Action<OrderUpdateData>? OnOrderUpdate;
+    /// <summary>Fired when a position is opened, changed, or closed. Requires Subscribe().</summary>
     public event Action<PositionUpdateData>? OnPositionUpdate;
+    /// <summary>Fired when account balances change. Requires Subscribe().</summary>
     public event Action<BalanceUpdateData>? OnBalanceUpdate;
+    /// <summary>Fired when financial results are recalculated. Requires Subscribe().</summary>
     public event Action<FinresUpdateData>? OnFinresUpdate;
+
+    // Market data events — fired after calling SubscribeTrades() or SubscribeOrderBook().
+    // These are scoped to a specific (connectionId, ticker) pair.
+
+    /// <summary>Fired when trades occur for a subscribed ticker. Requires SubscribeTrades().</summary>
     public event Action<TradeUpdateData>? OnTradeUpdate;
+    /// <summary>Fired once with the full order book state after SubscribeOrderBook().</summary>
     public event Action<OrderBookSnapshotData>? OnOrderBookSnapshot;
+    /// <summary>Fired with incremental order book changes after the initial snapshot. Requires SubscribeOrderBook().</summary>
     public event Action<OrderBookUpdateData>? OnOrderBookUpdate;
+
+    // Connection lifecycle events
     public event Action<string>? OnError;
     public event Action? OnConnected;
     public event Action? OnDisconnected;
@@ -108,24 +124,51 @@ public class MetaScalpSocket : IDisposable
     }
 
     // ---- Connection-level subscriptions ----
+    // Use these to receive order, position, balance, and finres updates
+    // for ALL tickers on a connection. Events: OnOrderUpdate, OnPositionUpdate,
+    // OnBalanceUpdate, OnFinresUpdate.
 
+    /// <summary>
+    /// Subscribe to order, position, balance, and finres updates for a connection.
+    /// Events: OnOrderUpdate, OnPositionUpdate, OnBalanceUpdate, OnFinresUpdate.
+    /// </summary>
     public void Subscribe(long connectionId)
         => Send("subscribe", new { connectionId });
 
+    /// <summary>
+    /// Unsubscribe from connection-level updates.
+    /// </summary>
     public void Unsubscribe(long connectionId)
         => Send("unsubscribe", new { connectionId });
 
     // ---- Market data subscriptions ----
+    // Use these to receive real-time market data for a SPECIFIC ticker on a connection.
+    // These are independent from Subscribe() — you can use one without the other.
+    // Events: OnTradeUpdate, OnOrderBookSnapshot, OnOrderBookUpdate.
 
+    /// <summary>
+    /// Subscribe to real-time trade updates for a specific ticker.
+    /// Event: OnTradeUpdate.
+    /// </summary>
     public void SubscribeTrades(long connectionId, string ticker)
         => Send("trade_subscribe", new { connectionId, ticker });
 
+    /// <summary>
+    /// Unsubscribe from trade updates for a specific ticker.
+    /// </summary>
     public void UnsubscribeTrades(long connectionId, string ticker)
         => Send("trade_unsubscribe", new { connectionId, ticker });
 
+    /// <summary>
+    /// Subscribe to order book updates for a specific ticker.
+    /// You will receive one OnOrderBookSnapshot followed by OnOrderBookUpdate events.
+    /// </summary>
     public void SubscribeOrderBook(long connectionId, string ticker)
         => Send("orderbook_subscribe", new { connectionId, ticker });
 
+    /// <summary>
+    /// Unsubscribe from order book updates for a specific ticker.
+    /// </summary>
     public void UnsubscribeOrderBook(long connectionId, string ticker)
         => Send("orderbook_unsubscribe", new { connectionId, ticker });
 

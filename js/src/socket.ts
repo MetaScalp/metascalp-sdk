@@ -103,9 +103,19 @@ export class MetaScalpSocket {
   }
 
   // ---- Connection-level subscriptions ----
+  // Use these to receive order, position, balance, and finres updates
+  // for ALL tickers on a connection.
+  // Events: 'order_update', 'position_update', 'balance_update', 'finres_update'
 
   /**
    * Subscribe to order, position, balance, and finres updates for a connection.
+   * This covers ALL tickers on the connection.
+   *
+   * Events you'll receive:
+   * - `order_update` — order created/modified/filled/cancelled
+   * - `position_update` — position opened/changed/closed
+   * - `balance_update` — account balances changed
+   * - `finres_update` — financial results recalculated
    */
   subscribe(connectionId: number): void {
     this.send('subscribe', { connectionId });
@@ -119,9 +129,15 @@ export class MetaScalpSocket {
   }
 
   // ---- Market data subscriptions ----
+  // Use these to receive real-time market data for a SPECIFIC ticker on a connection.
+  // These are independent from subscribe() — you can use one without the other.
+  // Events: 'trade_update', 'orderbook_snapshot', 'orderbook_update'
 
   /**
    * Subscribe to real-time trade updates for a specific ticker.
+   * Independent from subscribe() — only sends trade data for this exact ticker.
+   *
+   * Event: `trade_update`
    */
   subscribeTrades(connectionId: number, ticker: string): void {
     this.send('trade_subscribe', { connectionId, ticker });
@@ -135,7 +151,11 @@ export class MetaScalpSocket {
   }
 
   /**
-   * Subscribe to order book updates (snapshot + incremental) for a specific ticker.
+   * Subscribe to order book updates for a specific ticker.
+   * You will receive one `orderbook_snapshot` followed by `orderbook_update` events.
+   * Independent from subscribe() — only sends order book data for this exact ticker.
+   *
+   * Events: `orderbook_snapshot` (once), then `orderbook_update` (continuous)
    */
   subscribeOrderBook(connectionId: number, ticker: string): void {
     this.send('orderbook_subscribe', { connectionId, ticker });
