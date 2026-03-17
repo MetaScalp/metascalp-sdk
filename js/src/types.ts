@@ -1,0 +1,218 @@
+// ============ REST Types ============
+
+export interface PingResponse {
+  app: string;
+  version: string;
+}
+
+export interface Connection {
+  id: number;
+  name: string;
+  exchange: string;
+  exchangeId: number;
+  market: string;
+  marketType: number;
+  state: number;
+  viewMode: boolean;
+  demoMode: boolean;
+}
+
+export interface ConnectionsResponse {
+  connections: Connection[];
+}
+
+export interface Ticker {
+  name: string;
+  baseAsset: string;
+  quoteAsset: string;
+  isTradingAllowed: boolean;
+  priceIncrement: number;
+  sizeIncrement: number;
+  minSize: number;
+  maxSize: number | null;
+}
+
+export interface TickersResponse {
+  connectionId: number;
+  count: number;
+  tickers: Ticker[];
+}
+
+export interface Order {
+  id: number;
+  ticker: string;
+  clientId: string | null;
+  side: number;
+  price: number;
+  size: number;
+  filledSize: number;
+  remainingSize: number;
+  status: number;
+  type: number;
+  triggerPrice: number | null;
+  createDate: string;
+}
+
+export interface OrdersResponse {
+  connectionId: number;
+  ticker: string;
+  count: number;
+  orders: Order[];
+}
+
+export interface Position {
+  id: number;
+  ticker: string;
+  side: number;
+  size: number;
+  avgPrice: number;
+  marginMode: number;
+}
+
+export interface PositionsResponse {
+  connectionId: number;
+  count: number;
+  positions: Position[];
+}
+
+export interface Balance {
+  coin: string;
+  total: number;
+  free: number;
+  locked: number;
+}
+
+export interface BalanceResponse {
+  connectionId: number;
+  count: number;
+  balances: Balance[];
+}
+
+export interface PlaceOrderRequest {
+  ticker: string;
+  side: number;
+  price: number;
+  size: number;
+  type?: number;
+  reduceOnly?: boolean;
+}
+
+export interface PlaceOrderResponse {
+  status: string;
+  clientId: string;
+  executionTimeMs: number;
+}
+
+export interface CancelOrderRequest {
+  ticker: string;
+  orderId: number;
+  type?: number;
+}
+
+export interface ChangeTickerRequest {
+  tickerPattern?: string;
+  exchange?: number;
+  market?: number;
+  ticker?: string;
+  binding?: string;
+}
+
+export interface ComboRequest {
+  ticker: string;
+}
+
+// ============ Socket Types ============
+
+export interface OrderUpdateData {
+  connectionId: number;
+  orderId: number;
+  ticker: string;
+  side: string;
+  type: string;
+  price: number;
+  size: number;
+  filledSize: number;
+  status: string;
+}
+
+export interface PositionUpdateData {
+  connectionId: number;
+  positionId: number;
+  ticker: string;
+  side: string;
+  size: number;
+  avgPrice: number;
+  status: string;
+}
+
+export interface BalanceUpdateData {
+  connectionId: number;
+  balances: Balance[];
+}
+
+export interface Finres {
+  currency: string;
+  result: number;
+  fee: number;
+  funds: number;
+  available: number;
+  blocked: number;
+}
+
+export interface FinresUpdateData {
+  connectionId: number;
+  finreses: Finres[];
+}
+
+export interface Trade {
+  price: number;
+  size: number;
+  side: string;
+  time: string;
+}
+
+export interface TradeUpdateData {
+  connectionId: number;
+  ticker: string;
+  trades: Trade[];
+}
+
+export interface OrderBookOrder {
+  price: number;
+  size: number;
+  type: string;
+}
+
+export interface OrderBookSnapshotData {
+  connectionId: number;
+  ticker: string;
+  asks: OrderBookOrder[];
+  bids: OrderBookOrder[];
+  bestAsk: OrderBookOrder | null;
+  bestBid: OrderBookOrder | null;
+}
+
+export interface OrderBookUpdateData {
+  connectionId: number;
+  ticker: string;
+  updates: OrderBookOrder[];
+}
+
+export interface SocketEventMap {
+  order_update: OrderUpdateData;
+  position_update: PositionUpdateData;
+  balance_update: BalanceUpdateData;
+  finres_update: FinresUpdateData;
+  trade_update: TradeUpdateData;
+  orderbook_snapshot: OrderBookSnapshotData;
+  orderbook_update: OrderBookUpdateData;
+  subscribed: { connectionId: number };
+  unsubscribed: { connectionId: number };
+  trade_subscribed: { connectionId: number; ticker: string };
+  trade_unsubscribed: { connectionId: number; ticker: string };
+  orderbook_subscribed: { connectionId: number; ticker: string };
+  orderbook_unsubscribed: { connectionId: number; ticker: string };
+  error: { error: string };
+  connected: void;
+  disconnected: void;
+}

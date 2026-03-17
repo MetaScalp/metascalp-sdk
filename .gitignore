@@ -1,0 +1,23 @@
+# Node
+js/node_modules/
+js/dist/
+js/package-lock.json
+
+# Python
+python/__pycache__/
+python/metascalp/__pycache__/
+python/*.egg-info/
+python/dist/
+python/build/
+*.pyc
+
+# .NET
+dotnet/**/bin/
+dotnet/**/obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
