@@ -14,8 +14,8 @@ namespace MetaScalp.Sdk;
 /// </summary>
 public class MetaScalpSocket : IDisposable
 {
-    private const int PortStart = 17856;
-    private const int PortEnd = 17866;
+    private const int PortStart = 17845;
+    private const int PortEnd = 17855;
 
     private static readonly JsonSerializerSettings CamelCaseSettings = new()
     {
@@ -48,7 +48,7 @@ public class MetaScalpSocket : IDisposable
     }
 
     /// <summary>
-    /// Scans ports 17856-17866 to find the MetaScalp WebSocket server.
+    /// Scans ports 17845-17855 to find the MetaScalp WebSocket server.
     /// </summary>
     public static async Task<MetaScalpSocket> DiscoverAsync(int timeoutMs = 1000, CancellationToken ct = default)
     {

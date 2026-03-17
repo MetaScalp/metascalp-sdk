@@ -9,8 +9,8 @@ from typing import Any, Callable, Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
 
-WS_PORT_START = 17856
-WS_PORT_END = 17866
+WS_PORT_START = 17845
+WS_PORT_END = 17855
 
 
 def _normalize(obj: Any) -> Any:
@@ -50,7 +50,7 @@ class MetaScalpSocket:
 
     @classmethod
     async def discover(cls, timeout: float = 1.0) -> MetaScalpSocket:
-        """Scan ports 17856-17866 to find the MetaScalp WebSocket server."""
+        """Scan ports 17845-17855 to find the MetaScalp WebSocket server."""
         for port in range(WS_PORT_START, WS_PORT_END + 1):
             try:
                 ws = await asyncio.wait_for(

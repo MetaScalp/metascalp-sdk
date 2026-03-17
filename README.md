@@ -150,8 +150,8 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 ## Connection Details
 
 - **Host:** `127.0.0.1` (localhost only)
-- **HTTP ports:** `17845`–`17855` (first available)
-- **WebSocket ports:** `17856`–`17866` (first available)
+- **Port range:** `17845`–`17855` (first available, shared by HTTP and WebSocket)
+- Both REST and WebSocket run on the same port — no separate socket port
 - All SDKs include auto-discovery that scans the port range
 
 ## License

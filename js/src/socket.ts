@@ -1,7 +1,7 @@
 import type { SocketEventMap } from './types';
 
-const WS_PORT_START = 17856;
-const WS_PORT_END = 17866;
+const WS_PORT_START = 17845;
+const WS_PORT_END = 17855;
 
 type EventName = keyof SocketEventMap;
 type Listener<K extends EventName> = (data: SocketEventMap[K]) => void;
@@ -22,7 +22,7 @@ export class MetaScalpSocket {
   }
 
   /**
-   * Scans ports 17856–17866 to find the MetaScalp WebSocket server.
+   * Scans ports 17845–17855 to find the MetaScalp WebSocket server.
    * Returns a connected socket or throws if not found.
    */
   static async discover(timeoutMs = 1000): Promise<MetaScalpSocket> {
