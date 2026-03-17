@@ -1,6 +1,6 @@
 # MetaScalp SDK
 
-Official SDK for [MetaScalp](https://metascalp.com) API — connect your trading bots and scripts to the MetaScalp terminal via REST and WebSocket.
+Official SDK for [MetaScalp](https://metascalp.io) API — connect your trading bots and scripts to the MetaScalp terminal via REST and WebSocket.
 
 MetaScalp exposes a local API that lets you query exchange data, execute trades, and stream real-time market data (trades, order book) and account updates (orders, positions, balances).
 
