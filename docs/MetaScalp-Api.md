@@ -890,7 +890,7 @@ This means you can pass symbols in **any case** and with or without common separ
 | Value | Exchange     | Notes |
 |-------|-------------|-------|
 | 2     | Binance     | |
-| 3     | GateIo      | |
+| 3     | Gate        | |
 | 5     | KuCoin      | |
 | 6     | Bybit       | |
 | 7     | Bitget      | |
