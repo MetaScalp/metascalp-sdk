@@ -13,8 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
       - name: Pack
-        run: dotnet pack dotnet/MetaScalp.Sdk/MetaScalp.Sdk.csproj -c Release -o ./nupkg
+        run: dotnet pack dotnet/MetaScalp.Sdk/MetaScalp.Sdk.csproj -c Release -o ./nupkg /p:Version=${{ steps.version.outputs.VERSION }}
       - name: Push to NuGet
         run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 

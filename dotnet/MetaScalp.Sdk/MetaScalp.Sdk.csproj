@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>MetaScalp.Sdk</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>MetaScalp</Authors>
     <Company>Fincraft</Company>
     <Description>Official SDK for MetaScalp API — trade, stream order book and trades via REST and WebSocket</Description>
