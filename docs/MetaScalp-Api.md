@@ -20,7 +20,9 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/combo` | Open a combo layout for a ticker |
 | `GET /api/connections` | List all active exchange connections |
 | `GET /api/connections/{id}/...` | Query tickers, orders, positions, balances for a connection |
-| `POST /api/connections/{id}/orders` | Place or cancel orders on a connection |
+| `POST /api/connections/{id}/orders` | Place an order on a connection |
+| `POST /api/connections/{id}/orders/cancel` | Cancel a single order |
+| `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
 
 ### WebSocket streaming
 
@@ -49,6 +51,7 @@ GET /api/connections/{id}/balance                 → check balances
 GET /api/connections/{id}/orders?Ticker=BTCUSDT   → view open orders
 POST /api/connections/{id}/orders                 → place an order
 POST /api/connections/{id}/orders/cancel          → cancel an order
+POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ticker
 ```
 
 ### Typical WebSocket client flow
@@ -546,6 +549,35 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel \
   -d '{"ticker": "BTCUSDT", "orderId": 123456789, "type": 0}'
 ```
 
+#### Cancel All Orders
+
+Cancels all open orders for a given ticker on the exchange.
+
+```
+POST http://127.0.0.1:{port}/api/connections/{connectionId}/orders/cancel-all
+Content-Type: application/json
+```
+
+**Request body:**
+
+| Field    | Type   | Required | Description |
+|----------|--------|----------|-------------|
+| `ticker` | string | yes      | Trading pair symbol |
+
+**Response `200 OK`:**
+```json
+{ "status": "ok", "cancelledCount": 5 }
+```
+
+Returns `cancelledCount: 0` if there are no open orders for that ticker.
+
+**Example:**
+```bash
+curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel-all \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "BTCUSDT"}'
+```
+
 ---
 
 ### Real-time WebSocket
@@ -618,9 +650,13 @@ These are pushed automatically after subscribing. You only receive updates for c
     "side": "Buy",
     "type": "Limit",
     "price": 65000.0,
+    "filledPrice": 64980.5,
     "size": 0.01,
     "filledSize": 0.0,
-    "status": "New"
+    "fee": 0.0013,
+    "feeCurrency": "USDT",
+    "status": "New",
+    "time": "2025-03-24T14:30:00+00:00"
   }
 }
 ```
@@ -633,9 +669,13 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `side` | string | `"Buy"` or `"Sell"` |
 | `type` | string | `"Limit"`, `"Stop"`, `"StopLoss"`, `"TakeProfit"`, `"Market"` |
 | `price` | decimal | Order price |
+| `filledPrice` | decimal | Average filled price |
 | `size` | decimal | Order size |
 | `filledSize` | decimal | Filled amount so far |
+| `fee` | decimal | Trading fee charged |
+| `feeCurrency` | string | Currency the fee is charged in (e.g. `"USDT"`) |
 | `status` | string | `"New"`, `"Open"`, `"Closed"` |
+| `time` | string | Order creation time (ISO 8601) |
 
 **Position update** — sent when a position is opened, modified, or closed:
 
@@ -649,6 +689,8 @@ These are pushed automatically after subscribing. You only receive updates for c
     "side": "Buy",
     "size": 1.5,
     "avgPrice": 3200.00,
+    "avgPriceFix": 3200.00,
+    "avgPriceDyn": 3195.50,
     "status": "Open"
   }
 }
@@ -661,8 +703,10 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `ticker` | string | Trading pair symbol |
 | `side` | string | `"Buy"` (Long) or `"Sell"` (Short) |
 | `size` | decimal | Position size |
-| `avgPrice` | decimal | Average entry price |
-| `status` | string | `"Open"`, `"Closed"` |
+| `avgPrice` | decimal | Average entry price (same as `avgPriceFix`, kept for backwards compatibility) |
+| `avgPriceFix` | decimal | Fixed average price (weighted average of entry orders only) |
+| `avgPriceDyn` | decimal | Dynamic average price (adjusted by realized exit profit) |
+| `status` | string | `"New"`, `"Open"`, `"Closed"` |
 
 **Balance update** — sent when account balances change (debounced ~500ms):
 
@@ -990,6 +1034,15 @@ async function cancelOrder(port, connectionId, ticker, orderId, type = 0) {
   return r.json();
 }
 
+async function cancelAllOrders(port, connectionId, ticker) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/orders/cancel-all`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker })
+  });
+  return r.json();
+}
+
 async function changeTickerByPattern(port, tickerPattern, binding) {
   const body = { tickerPattern };
   if (binding) body.binding = binding;
@@ -1080,6 +1133,12 @@ def place_order(port, connection_id, ticker, side, price, size, order_type=0, re
 def cancel_order(port, connection_id, ticker, order_id, order_type=0):
     payload = {"ticker": ticker, "orderId": order_id, "type": order_type}
     r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orders/cancel",
+                      json=payload)
+    return r.json()
+
+def cancel_all_orders(port, connection_id, ticker):
+    payload = {"ticker": ticker}
+    r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orders/cancel-all",
                       json=payload)
     return r.json()
 
@@ -1174,11 +1233,11 @@ ws.onmessage = (event) => {
       break;
     case "order_update":
       console.log("Order update:", msg.data);
-      // { connectionId, orderId, ticker, side, type, price, size, filledSize, status }
+      // { connectionId, orderId, ticker, side, type, price, filledPrice, size, filledSize, fee, feeCurrency, status, time }
       break;
     case "position_update":
       console.log("Position update:", msg.data);
-      // { connectionId, positionId, ticker, side, size, avgPrice, status }
+      // { connectionId, positionId, ticker, side, size, avgPriceFix, avgPriceDyn, status }
       break;
     case "balance_update":
       console.log("Balance update:", msg.data);

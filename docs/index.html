@@ -1131,6 +1131,46 @@
     </div>
   </div>
 
+  <!-- /api/connections/{id}/orders/cancel-all -->
+  <div class="endpoint" id="ep-ex-cancel-all">
+    <div class="endpoint-header" onclick="toggle('ep-ex-cancel-all')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders/cancel-all</span>
+      <span class="endpoint-desc">Cancel all orders</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Cancels all open orders for a given ticker on the exchange.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+        </table>
+        <p>Returns <code>cancelledCount: 0</code> if there are no open orders for that ticker.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-cancel-all-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-cancel-all-ticker" value="BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCancelAllOrders()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ex-cancel-all">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ex-cancel-all-status"></span>
+          <span class="response-time" id="resp-ex-cancel-all-time"></span>
+        </div>
+        <div class="response-body" id="resp-ex-cancel-all-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Real-time WebSocket -->
   <div class="section-label">Real-time WebSocket</div>
 
@@ -1184,8 +1224,8 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Connection-level updates:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>order_update</code></td><td>Order created/changed/filled/cancelled</td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>size</code>, <code>filledSize</code>, <code>status</code></td></tr>
-          <tr><td><code>position_update</code></td><td>Position opened/changed/closed</td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>status</code></td></tr>
+          <tr><td><code>order_update</code></td><td>Order created/changed/filled/cancelled</td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>filledPrice</code>, <code>size</code>, <code>filledSize</code>, <code>fee</code>, <code>feeCurrency</code>, <code>status</code>, <code>time</code></td></tr>
+          <tr><td><code>position_update</code></td><td>Position opened/changed/closed</td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>avgPriceFix</code>, <code>avgPriceDyn</code>, <code>status</code></td></tr>
           <tr><td><code>balance_update</code></td><td>Account balance changed</td><td><code>connectionId</code>, <code>balances[]</code> with <code>coin</code>, <code>total</code>, <code>free</code>, <code>locked</code></td></tr>
           <tr><td><code>finres_update</code></td><td>Financial results updated</td><td><code>connectionId</code>, <code>finreses[]</code> with <code>currency</code>, <code>result</code>, <code>fee</code>, <code>funds</code>, <code>available</code>, <code>blocked</code></td></tr>
         </table>
@@ -1228,9 +1268,13 @@
     "side": "Buy",
     "type": "Limit",
     "price": 65000.0,
+    "filledPrice": 64980.5,
     "size": 0.01,
     "filledSize": 0.0,
-    "status": "New"
+    "fee": 0.0013,
+    "feeCurrency": "USDT",
+    "status": "New",
+    "time": "2025-03-24T14:30:00+00:00"
   }
 }
 
@@ -1244,6 +1288,8 @@
     "side": "Buy",
     "size": 1.5,
     "avgPrice": 3200.00,
+    "avgPriceFix": 3200.00,
+    "avgPriceDyn": 3195.50,
     "status": "Open"
   }
 }
@@ -1483,6 +1529,7 @@
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Size &lt;= 0</td><td>400</td><td><code>Size must be greater than zero</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Price &lt;= 0 (non-market)</td><td>400</td><td><code>Price must be greater than zero for non-market orders</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. 'ticker' and 'orderId' are required.</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orders/cancel-all</code></td><td>Missing ticker</td><td>400</td><td><code>Invalid request body. 'ticker' is required.</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>
     </table>
@@ -1527,7 +1574,9 @@
         <tr><td><code>POST /api/combo</code></td><td>Open a combo layout for a ticker</td></tr>
         <tr><td><code>GET /api/connections</code></td><td>List all active exchange connections</td></tr>
         <tr><td><code>GET /api/connections/{id}/...</code></td><td>Query tickers, orders, positions, balances for a connection</td></tr>
-        <tr><td><code>POST /api/connections/{id}/orders</code></td><td>Place or cancel orders on a connection</td></tr>
+        <tr><td><code>POST /api/connections/{id}/orders</code></td><td>Place an order on a connection</td></tr>
+        <tr><td><code>POST /api/connections/{id}/orders/cancel</code></td><td>Cancel a single order</td></tr>
+        <tr><td><code>POST /api/connections/{id}/orders/cancel-all</code></td><td>Cancel all orders for a ticker</td></tr>
       </table>
 
       <h3>WebSocket streaming</h3>
@@ -1553,7 +1602,8 @@ GET /api/connections/{id}/tickers                 &rarr; get available tickers
 GET /api/connections/{id}/balance                 &rarr; check balances
 GET /api/connections/{id}/orders?Ticker=BTCUSDT   &rarr; view open orders
 POST /api/connections/{id}/orders                 &rarr; place an order
-POST /api/connections/{id}/orders/cancel          &rarr; cancel an order</code></pre>
+POST /api/connections/{id}/orders/cancel          &rarr; cancel an order
+POST /api/connections/{id}/orders/cancel-all      &rarr; cancel all orders for a ticker</code></pre>
 
       <h3>Typical WebSocket client flow</h3>
       <pre><code><span style="color:var(--text-muted);">1. Connect</span>
@@ -1606,8 +1656,8 @@ ws.send('{"type":"unsubscribe","data":{"connectionId":1}}')
         <tr><td><code>trade_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
         <tr><td><code>orderbook_subscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
         <tr><td><code>orderbook_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
-        <tr><td><code>order_update</code></td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>size</code>, <code>filledSize</code>, <code>status</code></td></tr>
-        <tr><td><code>position_update</code></td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>status</code></td></tr>
+        <tr><td><code>order_update</code></td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>filledPrice</code>, <code>size</code>, <code>filledSize</code>, <code>fee</code>, <code>feeCurrency</code>, <code>status</code>, <code>time</code></td></tr>
+        <tr><td><code>position_update</code></td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>avgPriceFix</code>, <code>avgPriceDyn</code>, <code>status</code></td></tr>
         <tr><td><code>balance_update</code></td><td><code>connectionId</code>, <code>balances[]</code>: <code>coin</code>, <code>total</code>, <code>free</code>, <code>locked</code></td></tr>
         <tr><td><code>finres_update</code></td><td><code>connectionId</code>, <code>finreses[]</code>: <code>currency</code>, <code>result</code>, <code>fee</code>, <code>funds</code>, <code>available</code>, <code>blocked</code></td></tr>
         <tr><td><code>trade_update</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>trades[]</code>: <code>price</code>, <code>size</code>, <code>side</code>, <code>time</code></td></tr>
@@ -1833,6 +1883,19 @@ ws.send('{"type":"unsubscribe","data":{"connectionId":1}}')
       showResponse('ex-cancel-order', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('ex-cancel-order', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCancelAllOrders() {
+    const id = document.getElementById('f-cancel-all-conn').value;
+    const payload = {
+      ticker: document.getElementById('f-cancel-all-ticker').value.trim()
+    };
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/connections/${id}/orders/cancel-all`, payload);
+      showResponse('ex-cancel-all', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ex-cancel-all', 'ERR', 'status-net', e.message, 0);
     }
   }
 

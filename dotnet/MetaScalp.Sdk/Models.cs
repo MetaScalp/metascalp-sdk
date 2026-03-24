@@ -137,9 +137,13 @@ public class OrderUpdateData
     [JsonProperty("side")] public string Side { get; set; } = "";
     [JsonProperty("type")] public string Type { get; set; } = "";
     [JsonProperty("price")] public decimal Price { get; set; }
+    [JsonProperty("filledPrice")] public decimal FilledPrice { get; set; }
     [JsonProperty("size")] public decimal Size { get; set; }
     [JsonProperty("filledSize")] public decimal FilledSize { get; set; }
+    [JsonProperty("fee")] public decimal Fee { get; set; }
+    [JsonProperty("feeCurrency")] public string? FeeCurrency { get; set; }
     [JsonProperty("status")] public string Status { get; set; } = "";
+    [JsonProperty("time")] public DateTimeOffset Time { get; set; }
 }
 
 public class PositionUpdateData
@@ -150,6 +154,8 @@ public class PositionUpdateData
     [JsonProperty("side")] public string Side { get; set; } = "";
     [JsonProperty("size")] public decimal Size { get; set; }
     [JsonProperty("avgPrice")] public decimal AvgPrice { get; set; }
+    [JsonProperty("avgPriceFix")] public decimal AvgPriceFix { get; set; }
+    [JsonProperty("avgPriceDyn")] public decimal AvgPriceDyn { get; set; }
     [JsonProperty("status")] public string Status { get; set; } = "";
 }
 

@@ -35,7 +35,7 @@ socket.OnOrderUpdate += data =>
     Console.WriteLine($"  Order: {data.Ticker} {data.Side} {data.Price} x {data.Size} [{data.Status}]");
 
 socket.OnPositionUpdate += data =>
-    Console.WriteLine($"  Position: {data.Ticker} {data.Side} {data.Size} @ {data.AvgPrice}");
+    Console.WriteLine($"  Position: {data.Ticker} {data.Side} {data.Size} @ Fix={data.AvgPriceFix} Dyn={data.AvgPriceDyn}");
 
 socket.OnBalanceUpdate += data =>
     Console.WriteLine($"  Balance: {string.Join(", ", data.Balances.Select(b => $"{b.Coin}={b.Total}"))}");

@@ -130,9 +130,13 @@ export interface OrderUpdateData {
   side: string;
   type: string;
   price: number;
+  filledPrice: number;
   size: number;
   filledSize: number;
+  fee: number;
+  feeCurrency: string;
   status: string;
+  time: string;
 }
 
 export interface PositionUpdateData {
@@ -142,6 +146,8 @@ export interface PositionUpdateData {
   side: string;
   size: number;
   avgPrice: number;
+  avgPriceFix: number;
+  avgPriceDyn: number;
   status: string;
 }
 
