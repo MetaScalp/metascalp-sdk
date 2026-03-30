@@ -56,6 +56,7 @@ public class OrderDto
     [JsonProperty("price")] public decimal Price { get; set; }
     [JsonProperty("size")] public decimal Size { get; set; }
     [JsonProperty("filledSize")] public decimal FilledSize { get; set; }
+    [JsonProperty("filledPrice")] public decimal FilledPrice { get; set; }
     [JsonProperty("remainingSize")] public decimal RemainingSize { get; set; }
     [JsonProperty("status")] public int Status { get; set; }
     [JsonProperty("type")] public int Type { get; set; }

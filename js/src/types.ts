@@ -46,6 +46,7 @@ export interface Order {
   price: number;
   size: number;
   filledSize: number;
+  filledPrice: number;
   remainingSize: number;
   status: number;
   type: number;

@@ -378,6 +378,7 @@ GET http://127.0.0.1:{port}/api/connections/{connectionId}/orders?Ticker=BTCUSDT
       "price": 65000.00,
       "size": 0.01,
       "filledSize": 0.0,
+      "filledPrice": 0.0,
       "remainingSize": 0.01,
       "status": 1,
       "type": 0,
@@ -399,6 +400,7 @@ Order fields:
 | `price`         | decimal      | Order price |
 | `size`          | decimal      | Order size |
 | `filledSize`    | decimal      | Filled amount |
+| `filledPrice`   | decimal      | Execution price (0 if not yet filled) |
 | `remainingSize` | decimal      | Remaining amount |
 | `status`        | integer      | `0` New, `1` Open, `2` Closed |
 | `type`          | integer      | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
