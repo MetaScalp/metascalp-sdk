@@ -61,31 +61,31 @@ POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ti
    ws = new WebSocket("ws://127.0.0.1:17845/")
 
 2. Subscribe to a connection (orders, positions, balances, finres)
-   → {"type":"subscribe","data":{"connectionId":1}}
-   ← {"type":"subscribed","data":{"connectionId":1}}
+   → {"Type":"subscribe","Data":{"ConnectionId":1}}
+   ← {"Type":"subscribed","Data":{"ConnectionId":1}}
 
 3. Subscribe to market data for a specific ticker
-   → {"type":"trade_subscribe","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   ← {"type":"trade_subscribed","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   → {"type":"orderbook_subscribe","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   ← {"type":"orderbook_subscribed","data":{"connectionId":1,"ticker":"BTCUSDT"}}
+   → {"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   ← {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 
 4. Receive real-time updates
-   ← {"type":"order_update","data":{"connectionId":1,"orderId":123,...}}
-   ← {"type":"position_update","data":{"connectionId":1,...}}
-   ← {"type":"balance_update","data":{"connectionId":1,"balances":[...]}}
-   ← {"type":"finres_update","data":{"connectionId":1,"finreses":[...]}}
-   ← {"type":"trade_update","data":{"connectionId":1,"ticker":"BTCUSDT","trades":[...]}}
-   ← {"type":"orderbook_snapshot","data":{"connectionId":1,"ticker":"BTCUSDT","asks":[...],"bids":[...],...}}
-   ← {"type":"orderbook_update","data":{"connectionId":1,"ticker":"BTCUSDT","updates":[...]}}
+   ← {"Type":"order_update","Data":{"ConnectionId":1,"OrderId":123,...}}
+   ← {"Type":"position_update","Data":{"ConnectionId":1,...}}
+   ← {"Type":"balance_update","Data":{"ConnectionId":1,"Balances":[...]}}
+   ← {"Type":"finres_update","Data":{"ConnectionId":1,"Finreses":[...]}}
+   ← {"Type":"trade_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Trades":[...]}}
+   ← {"Type":"orderbook_snapshot","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Asks":[...],"Bids":[...],...}}
+   ← {"Type":"orderbook_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Updates":[...]}}
 
 5. Unsubscribe when done
-   → {"type":"trade_unsubscribe","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   ← {"type":"trade_unsubscribed","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   → {"type":"orderbook_unsubscribe","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   ← {"type":"orderbook_unsubscribed","data":{"connectionId":1,"ticker":"BTCUSDT"}}
-   → {"type":"unsubscribe","data":{"connectionId":1}}
-   ← {"type":"unsubscribed","data":{"connectionId":1}}
+   → {"Type":"trade_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   ← {"Type":"trade_unsubscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   → {"Type":"orderbook_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   ← {"Type":"orderbook_unsubscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   → {"Type":"unsubscribe","Data":{"ConnectionId":1}}
+   ← {"Type":"unsubscribed","Data":{"ConnectionId":1}}
 ```
 
 ---
@@ -102,7 +102,7 @@ GET http://127.0.0.1:{port}/ping
 
 **Response `200 OK`:**
 ```json
-{ "app": "MetaScalp", "version": "0.0.9" }
+{ "App": "MetaScalp", "Version": "0.0.9" }
 ```
 
 ---
@@ -120,29 +120,29 @@ Content-Type: application/json
 
 **Request body**
 
-The endpoint accepts two request formats. Include **either** `tickerPattern` **or** the `exchange` + `market` + `ticker` fields.
+The endpoint accepts two request formats. Include **either** `TickerPattern` **or** the `Exchange` + `Market` + `Ticker` fields.
 
 **Option A — Ticker pattern**
 
 | Field           | Type   | Required | Description                                                                 |
 |-----------------|--------|----------|-----------------------------------------------------------------------------|
-| `tickerPattern` | string | yes      | Pattern string (see [Ticker pattern format](#ticker-pattern-format) below). |
-| `binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `TickerPattern` | string | yes      | Pattern string (see [Ticker pattern format](#ticker-pattern-format) below). |
+| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
 
 **Option B — Explicit fields**
 
 | Field      | Type    | Required | Description                                       |
 |------------|---------|----------|---------------------------------------------------|
-| `exchange` | integer | yes      | Exchange identifier (see [Exchange values](#exchange-values))   |
-| `market`   | integer | yes      | Market type identifier (see [MarketType values](#markettype-values)) |
-| `ticker`   | string  | yes      | Trading pair symbol, e.g. `"BTCUSDT"`             |
-| `binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Exchange` | integer | yes      | Exchange identifier (see [Exchange values](#exchange-values))   |
+| `Market`   | integer | yes      | Market type identifier (see [MarketType values](#markettype-values)) |
+| `Ticker`   | string  | yes      | Trading pair symbol, e.g. `"BTCUSDT"`             |
+| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
 
 **Bindings**
 
 A **binding** is a named group of linked panels inside MetaScalp (e.g. a chart, order book, and trade feed that should all show the same ticker). Bindings are numbered `"001"` through `"500"` and are configured by the user inside the MetaScalp UI. When you send a binding name with a request, all panels assigned to that binding will switch to the new ticker.
 
-| `binding` value        | Active window notified | Named binding notified |
+| `Binding` value        | Active window notified | Named binding notified |
 |------------------------|:----------------------:|:----------------------:|
 | omitted / empty / null | yes                    | —                      |
 | `"001"` … `"500"`      | yes                    | yes                    |
@@ -151,19 +151,19 @@ A **binding** is a named group of linked panels inside MetaScalp (e.g. a chart, 
 
 **`200 OK`** — ticker changed successfully:
 ```json
-{ "status": "ok" }
+{ "Status": "ok" }
 ```
 
 **`400 Bad Request`** — validation error:
 ```json
-{ "error": "..." }
+{ "Error": "..." }
 ```
 
 Possible error messages:
 
 | Condition                          | Error message                                                         |
 |------------------------------------|-----------------------------------------------------------------------|
-| Missing fields                     | `Invalid request body. Provide 'tickerPattern' or 'exchange'+'market'+'ticker'.` |
+| Missing fields                     | `Invalid request body. Provide 'TickerPattern' or 'exchange'+'market'+'ticker'.` |
 | Invalid pattern format             | `Invalid ticker pattern: '{pattern}'`                                 |
 | Binding name not found             | `Binding '{name}' not found. Available: {list}`                       |
 | No connection for exchange + market | `No connection found for exchange {exchange} and market {market}`    |
@@ -175,14 +175,14 @@ Using ticker pattern:
 ```bash
 curl -X POST http://127.0.0.1:17845/api/change-ticker \
   -H "Content-Type: application/json" \
-  -d '{"tickerPattern": "BINANCE:BTCUSDT.p", "binding": "001"}'
+  -d '{"TickerPattern": "BINANCE:BTCUSDT.p", "Binding": "001"}'
 ```
 
 Using explicit fields:
 ```bash
 curl -X POST http://127.0.0.1:17845/api/change-ticker \
   -H "Content-Type: application/json" \
-  -d '{"exchange": 2, "market": 2, "ticker": "BTCUSDT", "binding": "001"}'
+  -d '{"Exchange": 2, "Market": 2, "Ticker": "BTCUSDT", "Binding": "001"}'
 ```
 
 ---
@@ -202,27 +202,27 @@ Content-Type: application/json
 
 | Field    | Type   | Required | Description                           |
 |----------|--------|----------|---------------------------------------|
-| `ticker` | string | yes      | Trading pair symbol (not a pattern), e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
+| `Ticker` | string | yes      | Trading pair symbol (not a pattern), e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
 
 **Response**
 
 **`200 OK`:**
 ```json
-{ "status": "ok" }
+{ "Status": "ok" }
 ```
 
 **`400 Bad Request`:**
 
 | Condition              | Error message                                    |
 |------------------------|--------------------------------------------------|
-| Missing or empty `ticker` | `Invalid request body. 'ticker' is required.` |
+| Missing or empty `Ticker` | `Invalid request body. 'ticker' is required.` |
 
 **Example**
 
 ```bash
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "BTCUSDT"}'
+  -d '{"Ticker": "BTCUSDT"}'
 ```
 
 ---
@@ -231,7 +231,7 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 
 #### List Connections
 
-Returns all currently active exchange connections. Use the `id` from the response to query orders, positions, balances, or to subscribe via WebSocket.
+Returns all currently active exchange connections. Use the `Id` from the response to query orders, positions, balances, or to subscribe via WebSocket.
 
 ```
 GET http://127.0.0.1:{port}/api/connections
@@ -240,28 +240,28 @@ GET http://127.0.0.1:{port}/api/connections
 **Response `200 OK`:**
 ```json
 {
-  "connections": [
+  "Connections": [
     {
-      "id": 1,
-      "name": "Binance Futures",
-      "exchange": "Binance",
-      "exchangeId": 2,
-      "market": "USDT Futures",
-      "marketType": 2,
-      "state": 2,
-      "viewMode": false,
-      "demoMode": false
+      "Id": 1,
+      "Name": "Binance Futures",
+      "Exchange": "Binance",
+      "ExchangeId": 2,
+      "Market": "USDT Futures",
+      "MarketType": 2,
+      "State": 2,
+      "ViewMode": false,
+      "DemoMode": false
     },
     {
-      "id": 3,
-      "name": "Bybit Spot",
-      "exchange": "Bybit",
-      "exchangeId": 6,
-      "market": "Spot",
-      "marketType": 0,
-      "state": 2,
-      "viewMode": false,
-      "demoMode": false
+      "Id": 3,
+      "Name": "Bybit Spot",
+      "Exchange": "Bybit",
+      "ExchangeId": 6,
+      "Market": "Spot",
+      "MarketType": 0,
+      "State": 2,
+      "ViewMode": false,
+      "DemoMode": false
     }
   ]
 }
@@ -271,36 +271,36 @@ Connection fields:
 
 | Field        | Type    | Description |
 |--------------|---------|-------------|
-| `id`         | integer | Connection ID — use this for all exchange operations |
-| `name`       | string  | User-defined connection name |
-| `exchange`   | string  | Exchange name (e.g. `"Binance"`, `"Bybit"`) |
-| `exchangeId` | integer | Exchange identifier (see [Exchange values](#exchange-values)) |
-| `market`     | string  | Market display name |
-| `marketType` | integer | Market type (see [MarketType values](#markettype-values)) |
-| `state`      | integer | Connection state: `0` Disconnected, `1` Connecting, `2` Connected, `3` Reconnecting, `4` Resetting |
-| `viewMode`   | boolean | `true` = read-only, trading disabled |
-| `demoMode`   | boolean | `true` = paper trading mode |
+| `Id`         | integer | Connection ID — use this for all exchange operations |
+| `Name`       | string  | User-defined connection name |
+| `Exchange`   | string  | Exchange name (e.g. `"Binance"`, `"Bybit"`) |
+| `ExchangeId` | integer | Exchange identifier (see [Exchange values](#exchange-values)) |
+| `Market`     | string  | Market display name |
+| `MarketType` | integer | Market type (see [MarketType values](#markettype-values)) |
+| `State`      | integer | Connection state: `0` Disconnected, `1` Connecting, `2` Connected, `3` Reconnecting, `4` Resetting |
+| `ViewMode`   | boolean | `true` = read-only, trading disabled |
+| `DemoMode`   | boolean | `true` = paper trading mode |
 
 #### Get Connection
 
 Returns details for a single connection.
 
 ```
-GET http://127.0.0.1:{port}/api/connections/{connectionId}
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}
 ```
 
 **Response `200 OK`:** Same object as in the list above (single connection, not wrapped in array).
 
 **`404 Not Found`:**
 ```json
-{ "error": "Connection {connectionId} not found" }
+{ "Error": "Connection {ConnectionId} not found" }
 ```
 
 ---
 
 ### Trading Operations
 
-All trading endpoints require a valid `{connectionId}` in the URL path. If the connection is not found or not active, the API returns an error before executing the operation.
+All trading endpoints require a valid `{ConnectionId}` in the URL path. If the connection is not found or not active, the API returns an error before executing the operation.
 
 Common errors for all exchange endpoints:
 
@@ -315,24 +315,24 @@ Common errors for all exchange endpoints:
 Returns all available trading pairs on a connection.
 
 ```
-GET http://127.0.0.1:{port}/api/connections/{connectionId}/tickers
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/tickers
 ```
 
 **Response `200 OK`:**
 ```json
 {
-  "connectionId": 1,
-  "count": 354,
-  "tickers": [
+  "ConnectionId": 1,
+  "Count": 354,
+  "Tickers": [
     {
-      "name": "BTCUSDT",
-      "baseAsset": "BTC",
-      "quoteAsset": "USDT",
-      "isTradingAllowed": true,
-      "priceIncrement": 0.01,
-      "sizeIncrement": 0.001,
-      "minSize": 0.001,
-      "maxSize": 1000.0
+      "Name": "BTCUSDT",
+      "BaseAsset": "BTC",
+      "QuoteAsset": "USDT",
+      "IsTradingAllowed": true,
+      "PriceIncrement": 0.01,
+      "SizeIncrement": 0.001,
+      "MinSize": 0.001,
+      "MaxSize": 1000.0
     }
   ]
 }
@@ -342,21 +342,21 @@ Ticker fields:
 
 | Field              | Type    | Description |
 |--------------------|---------|-------------|
-| `name`             | string  | Trading pair symbol |
-| `baseAsset`        | string  | Base asset (e.g. `"BTC"`) |
-| `quoteAsset`       | string  | Quote asset (e.g. `"USDT"`) |
-| `isTradingAllowed` | boolean | Whether trading is enabled for this pair |
-| `priceIncrement`   | decimal | Minimum price step |
-| `sizeIncrement`    | decimal | Minimum size step |
-| `minSize`          | decimal | Minimum order size |
-| `maxSize`          | decimal? | Maximum order size (null if unlimited) |
+| `Name`             | string  | Trading pair symbol |
+| `BaseAsset`        | string  | Base asset (e.g. `"BTC"`) |
+| `QuoteAsset`       | string  | Quote asset (e.g. `"USDT"`) |
+| `IsTradingAllowed` | boolean | Whether trading is enabled for this pair |
+| `PriceIncrement`   | decimal | Minimum price step |
+| `SizeIncrement`    | decimal | Minimum size step |
+| `MinSize`          | decimal | Minimum order size |
+| `MaxSize`          | decimal? | Maximum order size (null if unlimited) |
 
 #### Get Open Orders
 
 Returns open orders for a specific ticker on a connection.
 
 ```
-GET http://127.0.0.1:{port}/api/connections/{connectionId}/orders?Ticker=BTCUSDT
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders?Ticker=BTCUSDT
 ```
 
 | Query Parameter | Type   | Required | Description |
@@ -366,24 +366,24 @@ GET http://127.0.0.1:{port}/api/connections/{connectionId}/orders?Ticker=BTCUSDT
 **Response `200 OK`:**
 ```json
 {
-  "connectionId": 1,
-  "ticker": "BTCUSDT",
-  "count": 2,
-  "orders": [
+  "ConnectionId": 1,
+  "Ticker": "BTCUSDT",
+  "Count": 2,
+  "Orders": [
     {
-      "id": 123456789,
-      "ticker": "BTCUSDT",
-      "clientId": "ms_limit_1234",
-      "side": 1,
-      "price": 65000.00,
-      "size": 0.01,
-      "filledSize": 0.0,
-      "filledPrice": 0.0,
-      "remainingSize": 0.01,
-      "status": 1,
-      "type": 0,
-      "triggerPrice": null,
-      "createDate": "2026-03-13T10:30:00+00:00"
+      "Id": 123456789,
+      "Ticker": "BTCUSDT",
+      "ClientId": "ms_limit_1234",
+      "Side": 1,
+      "Price": 65000.00,
+      "Size": 0.01,
+      "FilledSize": 0.0,
+      "FilledPrice": 0.0,
+      "RemainingSize": 0.01,
+      "Status": 1,
+      "Type": 0,
+      "TriggerPrice": null,
+      "CreateDate": "2026-03-13T10:30:00+00:00"
     }
   ]
 }
@@ -393,41 +393,41 @@ Order fields:
 
 | Field           | Type         | Description |
 |-----------------|--------------|-------------|
-| `id`            | integer      | Exchange order ID |
-| `ticker`        | string       | Trading pair |
-| `clientId`      | string?      | Client-generated order ID |
-| `side`          | integer      | `0` None, `1` Buy, `2` Sell |
-| `price`         | decimal      | Order price |
-| `size`          | decimal      | Order size |
-| `filledSize`    | decimal      | Filled amount |
-| `filledPrice`   | decimal      | Execution price (0 if not yet filled) |
-| `remainingSize` | decimal      | Remaining amount |
-| `status`        | integer      | `0` New, `1` Open, `2` Closed |
-| `type`          | integer      | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
-| `triggerPrice`  | decimal?     | Trigger price for stop/conditional orders |
-| `createDate`    | string (ISO) | Order creation timestamp |
+| `Id`            | integer      | Exchange order ID |
+| `Ticker`        | string       | Trading pair |
+| `ClientId`      | string?      | Client-generated order ID |
+| `Side`          | integer      | `0` None, `1` Buy, `2` Sell |
+| `Price`         | decimal      | Order price |
+| `Size`          | decimal      | Order size |
+| `FilledSize`    | decimal      | Filled amount |
+| `FilledPrice`   | decimal      | Execution price (0 if not yet filled) |
+| `RemainingSize` | decimal      | Remaining amount |
+| `Status`        | integer      | `0` New, `1` Open, `2` Closed |
+| `Type`          | integer      | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
+| `TriggerPrice`  | decimal?     | Trigger price for stop/conditional orders |
+| `CreateDate`    | string (ISO) | Order creation timestamp |
 
 #### Get Open Positions
 
 Returns all open positions on a connection (futures/margin markets).
 
 ```
-GET http://127.0.0.1:{port}/api/connections/{connectionId}/positions
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/positions
 ```
 
 **Response `200 OK`:**
 ```json
 {
-  "connectionId": 1,
-  "count": 1,
-  "positions": [
+  "ConnectionId": 1,
+  "Count": 1,
+  "Positions": [
     {
-      "id": 1,
-      "ticker": "BTCUSDT",
-      "side": 1,
-      "size": 0.05,
-      "avgPrice": 64500.00,
-      "marginMode": 0
+      "Id": 1,
+      "Ticker": "BTCUSDT",
+      "Side": 1,
+      "Size": 0.05,
+      "AvgPrice": 64500.00,
+      "MarginMode": 0
     }
   ]
 }
@@ -437,32 +437,32 @@ Position fields:
 
 | Field        | Type    | Description |
 |--------------|---------|-------------|
-| `id`         | integer | Position ID |
-| `ticker`     | string  | Trading pair |
-| `side`       | integer | `1` Buy (Long), `2` Sell (Short) |
-| `size`       | decimal | Position size |
-| `avgPrice`   | decimal | Average entry price |
-| `marginMode` | integer | `0` Cross, `1` Isolated |
+| `Id`         | integer | Position ID |
+| `Ticker`     | string  | Trading pair |
+| `Side`       | integer | `1` Buy (Long), `2` Sell (Short) |
+| `Size`       | decimal | Position size |
+| `AvgPrice`   | decimal | Average entry price |
+| `MarginMode` | integer | `0` Cross, `1` Isolated |
 
 #### Get Balance
 
 Returns account balances for all assets on a connection.
 
 ```
-GET http://127.0.0.1:{port}/api/connections/{connectionId}/balance
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/balance
 ```
 
 **Response `200 OK`:**
 ```json
 {
-  "connectionId": 1,
-  "count": 3,
-  "balances": [
+  "ConnectionId": 1,
+  "Count": 3,
+  "Balances": [
     {
-      "coin": "USDT",
-      "total": 10000.00,
-      "free": 8500.00,
-      "locked": 1500.00
+      "Coin": "USDT",
+      "Total": 10000.00,
+      "Free": 8500.00,
+      "Locked": 1500.00
     }
   ]
 }
@@ -472,17 +472,17 @@ Balance fields:
 
 | Field    | Type    | Description |
 |----------|---------|-------------|
-| `coin`   | string  | Asset symbol |
-| `total`  | decimal | Total balance |
-| `free`   | decimal | Available balance |
-| `locked` | decimal | Locked in open orders/positions |
+| `Coin`   | string  | Asset symbol |
+| `Total`  | decimal | Total balance |
+| `Free`   | decimal | Available balance |
+| `Locked` | decimal | Locked in open orders/positions |
 
 #### Place Order
 
 Places a new order on the exchange through a connection.
 
 ```
-POST http://127.0.0.1:{port}/api/connections/{connectionId}/orders
+POST http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders
 Content-Type: application/json
 ```
 
@@ -490,19 +490,19 @@ Content-Type: application/json
 
 | Field        | Type    | Required | Default | Description |
 |--------------|---------|----------|---------|-------------|
-| `ticker`     | string  | yes      |         | Trading pair symbol |
-| `side`       | integer | yes      |         | `1` Buy, `2` Sell |
-| `price`      | decimal | yes*     |         | Order price (*required for non-market orders) |
-| `size`       | decimal | yes      |         | Order size (must be > 0) |
-| `type`       | integer | no       | `0`     | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
-| `reduceOnly` | boolean | no       | `false` | Close position only, do not open new |
+| `Ticker`     | string  | yes      |         | Trading pair symbol |
+| `Side`       | integer | yes      |         | `1` Buy, `2` Sell |
+| `Price`      | decimal | yes*     |         | Order price (*required for non-market orders) |
+| `Size`       | decimal | yes      |         | Order size (must be > 0) |
+| `Type`       | integer | no       | `0`     | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
+| `ReduceOnly` | boolean | no       | `false` | Close position only, do not open new |
 
 **Response `200 OK`:**
 ```json
-{ "status": "ok", "clientId": "ms_limit_1234", "executionTimeMs": 123.45 }
+{ "Status": "ok", "ClientId": "ms_limit_1234", "ExecutionTimeMs": 123.45 }
 ```
 
-The `clientId` is auto-generated by MetaScalp and can be used to track the order. The `executionTimeMs` field indicates how long the exchange request took to execute, in milliseconds.
+The `ClientId` is auto-generated by MetaScalp and can be used to track the order. The `ExecutionTimeMs` field indicates how long the exchange request took to execute, in milliseconds.
 
 **`400 Bad Request`:**
 
@@ -513,13 +513,13 @@ The `clientId` is auto-generated by MetaScalp and can be used to track the order
 | Price <= 0 (non-market) | `Price must be greater than zero for non-market orders` |
 | Exchange rejected   | *(exchange-specific error message)* |
 
-> **Note:** Error responses from exchange rejection also include `executionTimeMs`.
+> **Note:** Error responses from exchange rejection also include `ExecutionTimeMs`.
 
 **Example:**
 ```bash
 curl -X POST http://127.0.0.1:17845/api/connections/1/orders \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "BTCUSDT", "side": 1, "price": 65000.00, "size": 0.01, "type": 0}'
+  -d '{"Ticker": "BTCUSDT", "Side": 1, "Price": 65000.00, "Size": 0.01, "Type": 0}'
 ```
 
 #### Cancel Order
@@ -527,7 +527,7 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders \
 Cancels an existing order on the exchange.
 
 ```
-POST http://127.0.0.1:{port}/api/connections/{connectionId}/orders/cancel
+POST http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders/cancel
 Content-Type: application/json
 ```
 
@@ -535,20 +535,20 @@ Content-Type: application/json
 
 | Field     | Type    | Required | Default | Description |
 |-----------|---------|----------|---------|-------------|
-| `ticker`  | string  | yes      |         | Trading pair symbol |
-| `orderId` | integer | yes      |         | Exchange order ID to cancel |
-| `type`    | integer | no       | `0`     | Order type: `0` Limit, `1` Stop, etc. |
+| `Ticker`  | string  | yes      |         | Trading pair symbol |
+| `OrderId` | integer | yes      |         | Exchange order ID to cancel |
+| `Type`    | integer | no       | `0`     | Order type: `0` Limit, `1` Stop, etc. |
 
 **Response `200 OK`:**
 ```json
-{ "status": "ok" }
+{ "Status": "ok" }
 ```
 
 **Example:**
 ```bash
 curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "BTCUSDT", "orderId": 123456789, "type": 0}'
+  -d '{"Ticker": "BTCUSDT", "OrderId": 123456789, "Type": 0}'
 ```
 
 #### Cancel All Orders
@@ -556,7 +556,7 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel \
 Cancels all open orders for a given ticker on the exchange.
 
 ```
-POST http://127.0.0.1:{port}/api/connections/{connectionId}/orders/cancel-all
+POST http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders/cancel-all
 Content-Type: application/json
 ```
 
@@ -564,20 +564,20 @@ Content-Type: application/json
 
 | Field    | Type   | Required | Description |
 |----------|--------|----------|-------------|
-| `ticker` | string | yes      | Trading pair symbol |
+| `Ticker` | string | yes      | Trading pair symbol |
 
 **Response `200 OK`:**
 ```json
-{ "status": "ok", "cancelledCount": 5 }
+{ "Status": "ok", "CancelledCount": 5 }
 ```
 
-Returns `cancelledCount: 0` if there are no open orders for that ticker.
+Returns `CancelledCount: 0` if there are no open orders for that ticker.
 
 **Example:**
 ```bash
 curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel-all \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "BTCUSDT"}'
+  -d '{"Ticker": "BTCUSDT"}'
 ```
 
 ---
@@ -601,7 +601,7 @@ Non-WebSocket HTTP requests to this port receive HTTP `400`.
 All messages (inbound and outbound) are JSON with this envelope:
 
 ```json
-{ "type": "message_type", "data": { ... } }
+{ "Type": "message_type", "Data": { ... } }
 ```
 
 #### Messages you send
@@ -610,17 +610,17 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `subscribe` | `{ "connectionId": 123 }` | Subscribe to updates for a connection. Connection must be active in MetaScalp. Idempotent — re-subscribing is a no-op. |
-| `unsubscribe` | `{ "connectionId": 123 }` | Stop receiving updates for a connection. Idempotent. |
+| `subscribe` | `{ "ConnectionId": 123 }` | Subscribe to updates for a connection. Connection must be active in MetaScalp. Idempotent — re-subscribing is a no-op. |
+| `unsubscribe` | `{ "ConnectionId": 123 }` | Stop receiving updates for a connection. Idempotent. |
 
 **Market data subscriptions** — subscribe by connection ID + ticker to receive trade or order book updates for a specific symbol:
 
 | Type | Data | Description |
 |---|---|---|
-| `trade_subscribe` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to real-time trade updates for a specific ticker on a connection. Connection must be active. Idempotent. |
-| `trade_unsubscribe` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
-| `orderbook_subscribe` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. Connection must be active. Idempotent. |
-| `orderbook_unsubscribe` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
+| `trade_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to real-time trade updates for a specific ticker on a connection. Connection must be active. Idempotent. |
+| `trade_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
+| `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. Connection must be active. Idempotent. |
+| `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
 
 #### Messages you receive
 
@@ -628,13 +628,13 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | When |
 |---|---|---|
-| `subscribed` | `{ "connectionId": 123 }` | After successful connection subscribe |
-| `unsubscribed` | `{ "connectionId": 123 }` | After successful connection unsubscribe |
-| `trade_subscribed` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | After successful trade subscribe |
-| `trade_unsubscribed` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | After successful trade unsubscribe |
-| `orderbook_subscribed` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | After successful order book subscribe |
-| `orderbook_unsubscribed` | `{ "connectionId": 123, "ticker": "BTCUSDT" }` | After successful order book unsubscribe |
-| `error` | `{ "error": "..." }` | Invalid message, unknown type, bad connection ID, or missing ticker |
+| `subscribed` | `{ "ConnectionId": 123 }` | After successful connection subscribe |
+| `unsubscribed` | `{ "ConnectionId": 123 }` | After successful connection unsubscribe |
+| `trade_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade subscribe |
+| `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
+| `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book subscribe |
+| `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
+| `error` | `{ "Error": "..." }` | Invalid message, unknown type, bad connection ID, or missing ticker |
 
 ##### Real-time updates
 
@@ -644,82 +644,82 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 ```json
 {
-  "type": "order_update",
-  "data": {
-    "connectionId": 1,
-    "orderId": 98765,
-    "ticker": "BTCUSDT",
-    "side": "Buy",
-    "type": "Limit",
-    "price": 65000.0,
-    "filledPrice": 64980.5,
-    "size": 0.01,
-    "filledSize": 0.0,
-    "fee": 0.0013,
-    "feeCurrency": "USDT",
-    "status": "New",
-    "time": "2025-03-24T14:30:00+00:00"
+  "Type": "order_update",
+  "Data": {
+    "ConnectionId": 1,
+    "OrderId": 98765,
+    "Ticker": "BTCUSDT",
+    "Side": "Buy",
+    "Type": "Limit",
+    "Price": 65000.0,
+    "FilledPrice": 64980.5,
+    "Size": 0.01,
+    "FilledSize": 0.0,
+    "Fee": 0.0013,
+    "FeeCurrency": "USDT",
+    "Status": "New",
+    "Time": "2025-03-24T14:30:00+00:00"
   }
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this order belongs to |
-| `orderId` | integer | Exchange order ID |
-| `ticker` | string | Trading pair symbol |
-| `side` | string | `"Buy"` or `"Sell"` |
-| `type` | string | `"Limit"`, `"Stop"`, `"StopLoss"`, `"TakeProfit"`, `"Market"` |
-| `price` | decimal | Order price |
-| `filledPrice` | decimal | Average filled price |
-| `size` | decimal | Order size |
-| `filledSize` | decimal | Filled amount so far |
-| `fee` | decimal | Trading fee charged |
-| `feeCurrency` | string | Currency the fee is charged in (e.g. `"USDT"`) |
-| `status` | string | `"New"`, `"Open"`, `"Closed"` |
-| `time` | string | Order creation time (ISO 8601) |
+| `ConnectionId` | integer | Connection this order belongs to |
+| `OrderId` | integer | Exchange order ID |
+| `Ticker` | string | Trading pair symbol |
+| `Side` | string | `"Buy"` or `"Sell"` |
+| `Type` | string | `"Limit"`, `"Stop"`, `"StopLoss"`, `"TakeProfit"`, `"Market"` |
+| `Price` | decimal | Order price |
+| `FilledPrice` | decimal | Average filled price |
+| `Size` | decimal | Order size |
+| `FilledSize` | decimal | Filled amount so far |
+| `Fee` | decimal | Trading fee charged |
+| `FeeCurrency` | string | Currency the fee is charged in (e.g. `"USDT"`) |
+| `Status` | string | `"New"`, `"Open"`, `"Closed"` |
+| `Time` | string | Order creation time (ISO 8601) |
 
 **Position update** — sent when a position is opened, modified, or closed:
 
 ```json
 {
-  "type": "position_update",
-  "data": {
-    "connectionId": 1,
-    "positionId": 4321,
-    "ticker": "ETHUSDT",
-    "side": "Buy",
-    "size": 1.5,
-    "avgPrice": 3200.00,
-    "avgPriceFix": 3200.00,
-    "avgPriceDyn": 3195.50,
-    "status": "Open"
+  "Type": "position_update",
+  "Data": {
+    "ConnectionId": 1,
+    "PositionId": 4321,
+    "Ticker": "ETHUSDT",
+    "Side": "Buy",
+    "Size": 1.5,
+    "AvgPrice": 3200.00,
+    "AvgPriceFix": 3200.00,
+    "AvgPriceDyn": 3195.50,
+    "Status": "Open"
   }
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this position belongs to |
-| `positionId` | integer | Position ID |
-| `ticker` | string | Trading pair symbol |
-| `side` | string | `"Buy"` (Long) or `"Sell"` (Short) |
-| `size` | decimal | Position size |
-| `avgPrice` | decimal | Average entry price (same as `avgPriceFix`, kept for backwards compatibility) |
-| `avgPriceFix` | decimal | Fixed average price (weighted average of entry orders only) |
-| `avgPriceDyn` | decimal | Dynamic average price (adjusted by realized exit profit) |
-| `status` | string | `"New"`, `"Open"`, `"Closed"` |
+| `ConnectionId` | integer | Connection this position belongs to |
+| `PositionId` | integer | Position ID |
+| `Ticker` | string | Trading pair symbol |
+| `Side` | string | `"Buy"` (Long) or `"Sell"` (Short) |
+| `Size` | decimal | Position size |
+| `AvgPrice` | decimal | Average entry price (same as `AvgPriceFix`, kept for backwards compatibility) |
+| `AvgPriceFix` | decimal | Fixed average price (weighted average of entry orders only) |
+| `AvgPriceDyn` | decimal | Dynamic average price (adjusted by realized exit profit) |
+| `Status` | string | `"New"`, `"Open"`, `"Closed"` |
 
 **Balance update** — sent when account balances change (debounced ~500ms):
 
 ```json
 {
-  "type": "balance_update",
-  "data": {
-    "connectionId": 1,
-    "balances": [
-      { "coin": "USDT", "total": 10000.0, "free": 8500.0, "locked": 1500.0 },
-      { "coin": "BTC", "total": 0.5, "free": 0.5, "locked": 0.0 }
+  "Type": "balance_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Balances": [
+      { "Coin": "USDT", "Total": 10000.0, "Free": 8500.0, "Locked": 1500.0 },
+      { "Coin": "BTC", "Total": 0.5, "Free": 0.5, "Locked": 0.0 }
     ]
   }
 }
@@ -727,23 +727,23 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this balance belongs to |
-| `balances` | array | Array of asset balances |
-| `balances[].coin` | string | Asset symbol |
-| `balances[].total` | decimal | Total balance |
-| `balances[].free` | decimal | Available balance |
-| `balances[].locked` | decimal | Locked in open orders/positions |
+| `ConnectionId` | integer | Connection this balance belongs to |
+| `Balances` | array | Array of asset balances |
+| `Balances[].Coin` | string | Asset symbol |
+| `Balances[].Total` | decimal | Total balance |
+| `Balances[].Free` | decimal | Available balance |
+| `Balances[].Locked` | decimal | Locked in open orders/positions |
 
 **FinRes update** — sent when financial results are recalculated (after balance or order changes):
 
 ```json
 {
-  "type": "finres_update",
-  "data": {
-    "connectionId": 1,
-    "finreses": [
-      { "currency": "USDT", "result": 250.50, "fee": 12.30, "funds": 10000.0, "available": 8500.0, "blocked": 1500.0 },
-      { "currency": "BTC", "result": 0.005, "fee": 0.0001, "funds": 0.5, "available": 0.5, "blocked": 0.0 }
+  "Type": "finres_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Finreses": [
+      { "Currency": "USDT", "Result": 250.50, "Fee": 12.30, "Funds": 10000.0, "Available": 8500.0, "Blocked": 1500.0 },
+      { "Currency": "BTC", "Result": 0.005, "Fee": 0.0001, "Funds": 0.5, "Available": 0.5, "Blocked": 0.0 }
     ]
   }
 }
@@ -751,26 +751,26 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this FinRes belongs to |
-| `finreses` | array | Array of per-currency financial results |
-| `finreses[].currency` | string | Asset symbol (e.g. `"USDT"`, `"BTC"`) |
-| `finreses[].result` | decimal | Profit/loss since connection was initialized |
-| `finreses[].fee` | decimal | Accumulated trading fees |
-| `finreses[].funds` | decimal | Total balance |
-| `finreses[].available` | decimal | Available (free) balance |
-| `finreses[].blocked` | decimal | Locked in open orders/positions |
+| `ConnectionId` | integer | Connection this FinRes belongs to |
+| `Finreses` | array | Array of per-currency financial results |
+| `Finreses[].Currency` | string | Asset symbol (e.g. `"USDT"`, `"BTC"`) |
+| `Finreses[].Result` | decimal | Profit/loss since connection was initialized |
+| `Finreses[].Fee` | decimal | Accumulated trading fees |
+| `Finreses[].Funds` | decimal | Total balance |
+| `Finreses[].Available` | decimal | Available (free) balance |
+| `Finreses[].Blocked` | decimal | Locked in open orders/positions |
 
 **Trade update** — sent when trades occur for a subscribed ticker:
 
 ```json
 {
-  "type": "trade_update",
-  "data": {
-    "connectionId": 1,
-    "ticker": "BTCUSDT",
-    "trades": [
-      { "price": 65123.50, "size": 0.15, "side": "Buy", "time": "2026-03-16T12:00:01.234+00:00" },
-      { "price": 65123.00, "size": 0.03, "side": "Sell", "time": "2026-03-16T12:00:01.235+00:00" }
+  "Type": "trade_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "Trades": [
+      { "Price": 65123.50, "Size": 0.15, "Side": "Buy", "Time": "2026-03-16T12:00:01.234+00:00" },
+      { "Price": 65123.00, "Size": 0.03, "Side": "Sell", "Time": "2026-03-16T12:00:01.235+00:00" }
     ]
   }
 }
@@ -778,60 +778,60 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this trade data belongs to |
-| `ticker` | string | Trading pair symbol |
-| `trades` | array | Array of trades in this update |
-| `trades[].price` | decimal | Trade price |
-| `trades[].size` | decimal | Trade size |
-| `trades[].side` | string | `"Buy"` or `"Sell"` |
-| `trades[].time` | string (ISO) | Trade timestamp |
+| `ConnectionId` | integer | Connection this trade data belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `Trades` | array | Array of trades in this update |
+| `Trades[].Price` | decimal | Trade price |
+| `Trades[].Size` | decimal | Trade size |
+| `Trades[].Side` | string | `"Buy"` or `"Sell"` |
+| `Trades[].Time` | string (ISO) | Trade timestamp |
 
 **Order book snapshot** — sent once after subscribing, contains the full current order book state:
 
 ```json
 {
-  "type": "orderbook_snapshot",
-  "data": {
-    "connectionId": 1,
-    "ticker": "BTCUSDT",
-    "asks": [
-      { "price": 65124.00, "size": 1.20, "type": "Ask" },
-      { "price": 65125.00, "size": 0.85, "type": "Ask" }
+  "Type": "orderbook_snapshot",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "Asks": [
+      { "Price": 65124.00, "Size": 1.20, "Type": "Ask" },
+      { "Price": 65125.00, "Size": 0.85, "Type": "Ask" }
     ],
-    "bids": [
-      { "price": 65123.00, "size": 2.50, "type": "Bid" },
-      { "price": 65122.00, "size": 1.10, "type": "Bid" }
+    "Bids": [
+      { "Price": 65123.00, "Size": 2.50, "Type": "Bid" },
+      { "Price": 65122.00, "Size": 1.10, "Type": "Bid" }
     ],
-    "bestAsk": { "price": 65124.00, "size": 1.20, "type": "BestAsk" },
-    "bestBid": { "price": 65123.00, "size": 2.50, "type": "BestBid" }
+    "BestAsk": { "Price": 65124.00, "Size": 1.20, "Type": "BestAsk" },
+    "BestBid": { "Price": 65123.00, "Size": 2.50, "Type": "BestBid" }
   }
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this order book belongs to |
-| `ticker` | string | Trading pair symbol |
-| `asks` | array | Ask (sell) side of the order book, sorted by price ascending |
-| `bids` | array | Bid (buy) side of the order book, sorted by price descending |
-| `bestAsk` | object | Best (lowest) ask price level |
-| `bestBid` | object | Best (highest) bid price level |
-| `asks[]/bids[].price` | decimal | Price level |
-| `asks[]/bids[].size` | decimal | Total size at this price level |
-| `asks[]/bids[].type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
+| `ConnectionId` | integer | Connection this order book belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `Asks` | array | Ask (sell) side of the order book, sorted by price ascending |
+| `Bids` | array | Bid (buy) side of the order book, sorted by price descending |
+| `BestAsk` | object | Best (lowest) ask price level |
+| `BestBid` | object | Best (highest) bid price level |
+| `Asks[]/Bids[].Price` | decimal | Price level |
+| `Asks[]/Bids[].Size` | decimal | Total size at this price level |
+| `Asks[]/Bids[].Type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
 
 **Order book update** — sent after the snapshot, contains incremental changes to the order book:
 
 ```json
 {
-  "type": "orderbook_update",
-  "data": {
-    "connectionId": 1,
-    "ticker": "BTCUSDT",
-    "updates": [
-      { "price": 65124.00, "size": 0.90, "type": "Ask" },
-      { "price": 65126.00, "size": 0.50, "type": "Ask" },
-      { "price": 65123.00, "size": 2.80, "type": "Bid" }
+  "Type": "orderbook_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "Updates": [
+      { "Price": 65124.00, "Size": 0.90, "Type": "Ask" },
+      { "Price": 65126.00, "Size": 0.50, "Type": "Ask" },
+      { "Price": 65123.00, "Size": 2.80, "Type": "Bid" }
     ]
   }
 }
@@ -839,12 +839,12 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 | Field | Type | Description |
 |---|---|---|
-| `connectionId` | integer | Connection this update belongs to |
-| `ticker` | string | Trading pair symbol |
-| `updates` | array | Changed price levels. A size of `0` means the level was removed. |
-| `updates[].price` | decimal | Price level |
-| `updates[].size` | decimal | New total size at this level (0 = removed) |
-| `updates[].type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
+| `ConnectionId` | integer | Connection this update belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `Updates` | array | Changed price levels. A size of `0` means the level was removed. |
+| `Updates[].Price` | decimal | Price level |
+| `Updates[].Size` | decimal | New total size at this level (0 = removed) |
+| `Updates[].Type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
 
 #### Lifecycle
 
@@ -878,7 +878,7 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 ## Ticker pattern format
 
-The `tickerPattern` string follows the **TradingView-style** format:
+The `TickerPattern` string follows the **TradingView-style** format:
 
 ```
 EXCHANGE:SYMBOL.suffix
@@ -969,7 +969,7 @@ This means you can pass symbols in **any case** and with or without common separ
 | 8     | Options        | Options contracts |
 | 9     | Stock          | Stock / equity markets |
 
-**Which market type should I use?** If you are unsure, use the `tickerPattern` approach (Option A) instead — the `.p` suffix automatically resolves to the correct futures type for the given exchange. If you must use explicit fields, the most common choice for perpetual futures is `2` (UsdtFutures).
+**Which market type should I use?** If you are unsure, use the `TickerPattern` approach (Option A) instead — the `.p` suffix automatically resolves to the correct futures type for the given exchange. If you must use explicit fields, the most common choice for perpetual futures is `2` (UsdtFutures).
 
 > **Note:** When the requested market type is not Spot and no exact connection match is found, MetaScalp falls back to any non-Spot connection on the same exchange.
 
@@ -986,7 +986,7 @@ async function discoverMetaScalp() {
       const r = await fetch(`http://127.0.0.1:${port}/ping`);
       if (r.ok) {
         const data = await r.json();
-        if (data.app === "MetaScalp") return port;
+        if (data.App === "MetaScalp") return port;
       }
     } catch {}
   }
@@ -998,28 +998,28 @@ async function getConnections(port) {
   return r.json();
 }
 
-async function getTickers(port, connectionId) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/tickers`);
+async function getTickers(port, ConnectionId) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/tickers`);
   return r.json();
 }
 
-async function getBalance(port, connectionId) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/balance`);
+async function getBalance(port, ConnectionId) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/balance`);
   return r.json();
 }
 
-async function getOpenOrders(port, connectionId, ticker) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/orders?Ticker=${ticker}`);
+async function getOpenOrders(port, ConnectionId, ticker) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orders?Ticker=${ticker}`);
   return r.json();
 }
 
-async function getPositions(port, connectionId) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/positions`);
+async function getPositions(port, ConnectionId) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/positions`);
   return r.json();
 }
 
-async function placeOrder(port, connectionId, order) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/orders`, {
+async function placeOrder(port, ConnectionId, order) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(order)
@@ -1027,27 +1027,27 @@ async function placeOrder(port, connectionId, order) {
   return r.json();
 }
 
-async function cancelOrder(port, connectionId, ticker, orderId, type = 0) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/orders/cancel`, {
+async function cancelOrder(port, ConnectionId, ticker, OrderId, type = 0) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orders/cancel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticker, orderId, type })
+    body: JSON.stringify({ Ticker: ticker, OrderId, Type: type })
   });
   return r.json();
 }
 
-async function cancelAllOrders(port, connectionId, ticker) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${connectionId}/orders/cancel-all`, {
+async function cancelAllOrders(port, ConnectionId, ticker) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orders/cancel-all`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticker })
+    body: JSON.stringify({ Ticker: ticker })
   });
   return r.json();
 }
 
-async function changeTickerByPattern(port, tickerPattern, binding) {
-  const body = { tickerPattern };
-  if (binding) body.binding = binding;
+async function changeTickerByPattern(port, TickerPattern, binding) {
+  const body = { TickerPattern };
+  if (binding) body.Binding = binding;
   const r = await fetch(`http://127.0.0.1:${port}/api/change-ticker`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1060,22 +1060,22 @@ async function changeTickerByPattern(port, tickerPattern, binding) {
 const port = await discoverMetaScalp();
 if (port) {
   // Discover connections
-  const { connections } = await getConnections(port);
-  const conn = connections[0]; // pick first connection
+  const { Connections } = await getConnections(port);
+  const conn = Connections[0]; // pick first connection
 
   // Query data
-  const tickers = await getTickers(port, conn.id);
-  const balance = await getBalance(port, conn.id);
-  const orders = await getOpenOrders(port, conn.id, "BTCUSDT");
-  const positions = await getPositions(port, conn.id);
+  const tickers = await getTickers(port, conn.Id);
+  const balance = await getBalance(port, conn.Id);
+  const orders = await getOpenOrders(port, conn.Id, "BTCUSDT");
+  const positions = await getPositions(port, conn.Id);
 
   // Place a limit buy order
-  const result = await placeOrder(port, conn.id, {
-    ticker: "BTCUSDT",
-    side: 1,
-    price: 65000.00,
-    size: 0.01,
-    type: 0
+  const result = await placeOrder(port, conn.Id, {
+    Ticker: "BTCUSDT",
+    Side: 1,
+    Price: 65000.00,
+    Size: 0.01,
+    Type: 0
   });
 
   // Switch ticker in UI
@@ -1092,7 +1092,7 @@ def discover_metascalp():
     for port in range(17845, 17856):
         try:
             r = requests.get(f"http://127.0.0.1:{port}/ping", timeout=0.5)
-            if r.ok and r.json().get("app") == "MetaScalp":
+            if r.ok and r.json().get("App") == "MetaScalp":
                 return port
         except requests.ConnectionError:
             continue
@@ -1121,38 +1121,38 @@ def get_positions(port, connection_id):
 
 def place_order(port, connection_id, ticker, side, price, size, order_type=0, reduce_only=False):
     payload = {
-        "ticker": ticker,
-        "side": side,
-        "price": price,
-        "size": size,
-        "type": order_type,
-        "reduceOnly": reduce_only
+        "Ticker": ticker,
+        "Side": side,
+        "Price": price,
+        "Size": size,
+        "Type": order_type,
+        "ReduceOnly": reduce_only
     }
     r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orders",
                       json=payload)
     return r.json()
 
 def cancel_order(port, connection_id, ticker, order_id, order_type=0):
-    payload = {"ticker": ticker, "orderId": order_id, "type": order_type}
+    payload = {"Ticker": ticker, "OrderId": order_id, "Type": order_type}
     r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orders/cancel",
                       json=payload)
     return r.json()
 
 def cancel_all_orders(port, connection_id, ticker):
-    payload = {"ticker": ticker}
+    payload = {"Ticker": ticker}
     r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orders/cancel-all",
                       json=payload)
     return r.json()
 
 def change_ticker_by_pattern(port, ticker_pattern, binding=None):
-    payload = {"tickerPattern": ticker_pattern}
+    payload = {"TickerPattern": ticker_pattern}
     if binding:
-        payload["binding"] = binding
+        payload["Binding"] = binding
     r = requests.post(f"http://127.0.0.1:{port}/api/change-ticker", json=payload)
     return r.json()
 
 def open_combo(port, ticker):
-    r = requests.post(f"http://127.0.0.1:{port}/api/combo", json={"ticker": ticker})
+    r = requests.post(f"http://127.0.0.1:{port}/api/combo", json={"Ticker": ticker})
     return r.json()
 
 # Usage
@@ -1160,16 +1160,16 @@ port = discover_metascalp()
 if port:
     # Discover connections
     data = get_connections(port)
-    conn = data["connections"][0]  # pick first connection
+    conn = data["Connections"][0]  # pick first connection
 
     # Query data
-    tickers = get_tickers(port, conn["id"])
-    balance = get_balance(port, conn["id"])
-    orders = get_open_orders(port, conn["id"], "BTCUSDT")
-    positions = get_positions(port, conn["id"])
+    tickers = get_tickers(port, conn["Id"])
+    balance = get_balance(port, conn["Id"])
+    orders = get_open_orders(port, conn["Id"], "BTCUSDT")
+    positions = get_positions(port, conn["Id"])
 
     # Place a limit buy order
-    result = place_order(port, conn["id"], "BTCUSDT", side=1, price=65000.00, size=0.01)
+    result = place_order(port, conn["Id"], "BTCUSDT", side=1, price=65000.00, size=0.01)
 
     # Switch ticker in UI
     change_ticker_by_pattern(port, "BINANCE:BTCUSDT.p", binding="001")
@@ -1203,66 +1203,66 @@ ws.onopen = () => {
 
   // Subscribe to connection ID 1 (orders, positions, balances, finres)
   ws.send(JSON.stringify({
-    type: "subscribe",
-    data: { connectionId: 1 }
+    Type: "subscribe",
+    Data: { ConnectionId: 1 }
   }));
 
   // Subscribe to trades for BTCUSDT on connection 1
   ws.send(JSON.stringify({
-    type: "trade_subscribe",
-    data: { connectionId: 1, ticker: "BTCUSDT" }
+    Type: "trade_subscribe",
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
   }));
 
   // Subscribe to order book for BTCUSDT on connection 1
   ws.send(JSON.stringify({
-    type: "orderbook_subscribe",
-    data: { connectionId: 1, ticker: "BTCUSDT" }
+    Type: "orderbook_subscribe",
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
   }));
 };
 
 ws.onmessage = (event) => {
   const msg = JSON.parse(event.data);
 
-  switch (msg.type) {
+  switch (msg.Type) {
     case "subscribed":
-      console.log(`Subscribed to connection ${msg.data.connectionId}`);
+      console.log(`Subscribed to connection ${msg.Data.ConnectionId}`);
       break;
     case "trade_subscribed":
-      console.log(`Subscribed to trades for ${msg.data.ticker} on connection ${msg.data.connectionId}`);
+      console.log(`Subscribed to trades for ${msg.Data.Ticker} on connection ${msg.Data.ConnectionId}`);
       break;
     case "orderbook_subscribed":
-      console.log(`Subscribed to order book for ${msg.data.ticker} on connection ${msg.data.connectionId}`);
+      console.log(`Subscribed to order book for ${msg.Data.Ticker} on connection ${msg.Data.ConnectionId}`);
       break;
     case "order_update":
-      console.log("Order update:", msg.data);
-      // { connectionId, orderId, ticker, side, type, price, filledPrice, size, filledSize, fee, feeCurrency, status, time }
+      console.log("Order update:", msg.Data);
+      // { ConnectionId, OrderId, Ticker, Side, Type, Price, FilledPrice, Size, FilledSize, Fee, FeeCurrency, Status, Time }
       break;
     case "position_update":
-      console.log("Position update:", msg.data);
-      // { connectionId, positionId, ticker, side, size, avgPriceFix, avgPriceDyn, status }
+      console.log("Position update:", msg.Data);
+      // { ConnectionId, PositionId, Ticker, Side, Size, AvgPriceFix, AvgPriceDyn, Status }
       break;
     case "balance_update":
-      console.log("Balance update:", msg.data);
-      // { connectionId, balances: [{ coin, total, free, locked }] }
+      console.log("Balance update:", msg.Data);
+      // { ConnectionId, Balances: [{ Coin, Total, Free, Locked }] }
       break;
     case "finres_update":
-      console.log("FinRes update:", msg.data);
-      // { connectionId, finreses: [{ currency, result, fee, funds, available, blocked }] }
+      console.log("FinRes update:", msg.Data);
+      // { ConnectionId, Finreses: [{ Currency, Result, Fee, Funds, Available, Blocked }] }
       break;
     case "trade_update":
-      console.log("Trade update:", msg.data);
-      // { connectionId, ticker, trades: [{ price, size, side, time }] }
+      console.log("Trade update:", msg.Data);
+      // { ConnectionId, Ticker, Trades: [{ Price, Size, Side, Time }] }
       break;
     case "orderbook_snapshot":
-      console.log("Order book snapshot:", msg.data);
-      // { connectionId, ticker, asks: [...], bids: [...], bestAsk, bestBid }
+      console.log("Order book snapshot:", msg.Data);
+      // { ConnectionId, Ticker, Asks: [...], Bids: [...], BestAsk, BestBid }
       break;
     case "orderbook_update":
-      console.log("Order book update:", msg.data);
-      // { connectionId, ticker, updates: [{ price, size, type }] }
+      console.log("Order book update:", msg.Data);
+      // { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
       break;
     case "error":
-      console.error("Socket error:", msg.data.error);
+      console.error("Socket error:", msg.Data.Error);
       break;
   }
 };
@@ -1271,18 +1271,18 @@ ws.onclose = () => console.log("Disconnected");
 
 // Later: unsubscribe from market data
 ws.send(JSON.stringify({
-  type: "trade_unsubscribe",
-  data: { connectionId: 1, ticker: "BTCUSDT" }
+  Type: "trade_unsubscribe",
+  Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
 }));
 ws.send(JSON.stringify({
-  type: "orderbook_unsubscribe",
-  data: { connectionId: 1, ticker: "BTCUSDT" }
+  Type: "orderbook_unsubscribe",
+  Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
 }));
 
 // Unsubscribe from connection updates
 ws.send(JSON.stringify({
-  type: "unsubscribe",
-  data: { connectionId: 1 }
+  Type: "unsubscribe",
+  Data: { ConnectionId: 1 }
 }));
 ```
 
@@ -1312,52 +1312,52 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
     async with websockets.connect(f"ws://127.0.0.1:{port}/") as ws:
         # Subscribe to connection-level updates (orders, positions, balances, finres)
         await ws.send(json.dumps({
-            "type": "subscribe",
-            "data": {"connectionId": connection_id}
+            "Type": "subscribe",
+            "Data": {"ConnectionId": connection_id}
         }))
 
         # Subscribe to trades for a specific ticker
         await ws.send(json.dumps({
-            "type": "trade_subscribe",
-            "data": {"connectionId": connection_id, "ticker": ticker}
+            "Type": "trade_subscribe",
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
         }))
 
         # Subscribe to order book for the same ticker
         await ws.send(json.dumps({
-            "type": "orderbook_subscribe",
-            "data": {"connectionId": connection_id, "ticker": ticker}
+            "Type": "orderbook_subscribe",
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
         }))
 
         # Listen for updates
         async for raw in ws:
             msg = json.loads(raw)
-            msg_type = msg["type"]
+            msg_type = msg["Type"]
 
             if msg_type == "subscribed":
-                print(f"Subscribed to connection {msg['data']['connectionId']}")
+                print(f"Subscribed to connection {msg['Data']['ConnectionId']}")
             elif msg_type == "trade_subscribed":
-                print(f"Subscribed to trades for {msg['data']['ticker']}")
+                print(f"Subscribed to trades for {msg['Data']['Ticker']}")
             elif msg_type == "orderbook_subscribed":
-                print(f"Subscribed to order book for {msg['data']['ticker']}")
+                print(f"Subscribed to order book for {msg['Data']['Ticker']}")
             elif msg_type == "order_update":
-                print(f"Order: {msg['data']}")
+                print(f"Order: {msg['Data']}")
             elif msg_type == "position_update":
-                print(f"Position: {msg['data']}")
+                print(f"Position: {msg['Data']}")
             elif msg_type == "balance_update":
-                print(f"Balance: {msg['data']}")
+                print(f"Balance: {msg['Data']}")
             elif msg_type == "finres_update":
-                print(f"FinRes: {msg['data']}")
+                print(f"FinRes: {msg['Data']}")
             elif msg_type == "trade_update":
-                print(f"Trades: {msg['data']}")
-                # { connectionId, ticker, trades: [{ price, size, side, time }] }
+                print(f"Trades: {msg['Data']}")
+                # { ConnectionId, Ticker, Trades: [{ Price, Size, Side, Time }] }
             elif msg_type == "orderbook_snapshot":
-                print(f"Order book snapshot: {len(msg['data'].get('asks', []))} asks, {len(msg['data'].get('bids', []))} bids")
-                # { connectionId, ticker, asks, bids, bestAsk, bestBid }
+                print(f"Order book snapshot: {len(msg['Data'].get('Asks', []))} asks, {len(msg['Data'].get('Bids', []))} bids")
+                # { ConnectionId, Ticker, Asks, Bids, BestAsk, BestBid }
             elif msg_type == "orderbook_update":
-                print(f"Order book update: {len(msg['data'].get('updates', []))} levels changed")
-                # { connectionId, ticker, updates: [{ price, size, type }] }
+                print(f"Order book update: {len(msg['Data'].get('Updates', []))} levels changed")
+                # { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
             elif msg_type == "error":
-                print(f"Error: {msg['data']['error']}")
+                print(f"Error: {msg['Data']['Error']}")
 
 asyncio.run(listen_updates(connection_id=1, ticker="BTCUSDT"))
 ```

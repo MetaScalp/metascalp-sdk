@@ -3,7 +3,6 @@ using System.Net.WebSockets;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 
 namespace MetaScalp.Sdk;
 
@@ -16,11 +15,6 @@ public class MetaScalpSocket : IDisposable
 {
     private const int PortStart = 17845;
     private const int PortEnd = 17855;
-
-    private static readonly JsonSerializerSettings CamelCaseSettings = new()
-    {
-        ContractResolver = new CamelCasePropertyNamesContractResolver()
-    };
 
     private ClientWebSocket? _ws;
     private CancellationTokenSource _cts = new();
@@ -133,13 +127,13 @@ public class MetaScalpSocket : IDisposable
     /// Events: OnOrderUpdate, OnPositionUpdate, OnBalanceUpdate, OnFinresUpdate.
     /// </summary>
     public void Subscribe(long connectionId)
-        => Send("subscribe", new { connectionId });
+        => Send("subscribe", new { ConnectionId = connectionId });
 
     /// <summary>
     /// Unsubscribe from connection-level updates.
     /// </summary>
     public void Unsubscribe(long connectionId)
-        => Send("unsubscribe", new { connectionId });
+        => Send("unsubscribe", new { ConnectionId = connectionId });
 
     // ---- Market data subscriptions ----
     // Use these to receive real-time market data for a SPECIFIC ticker on a connection.
@@ -151,26 +145,26 @@ public class MetaScalpSocket : IDisposable
     /// Event: OnTradeUpdate.
     /// </summary>
     public void SubscribeTrades(long connectionId, string ticker)
-        => Send("trade_subscribe", new { connectionId, ticker });
+        => Send("trade_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
     /// <summary>
     /// Unsubscribe from trade updates for a specific ticker.
     /// </summary>
     public void UnsubscribeTrades(long connectionId, string ticker)
-        => Send("trade_unsubscribe", new { connectionId, ticker });
+        => Send("trade_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
     /// <summary>
     /// Subscribe to order book updates for a specific ticker.
     /// You will receive one OnOrderBookSnapshot followed by OnOrderBookUpdate events.
     /// </summary>
     public void SubscribeOrderBook(long connectionId, string ticker)
-        => Send("orderbook_subscribe", new { connectionId, ticker });
+        => Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
     /// <summary>
     /// Unsubscribe from order book updates for a specific ticker.
     /// </summary>
     public void UnsubscribeOrderBook(long connectionId, string ticker)
-        => Send("orderbook_unsubscribe", new { connectionId, ticker });
+        => Send("orderbook_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
     // ---- Internals ----
 
@@ -179,7 +173,7 @@ public class MetaScalpSocket : IDisposable
         if (_ws?.State != WebSocketState.Open)
             throw new InvalidOperationException("Not connected");
 
-        var json = JsonConvert.SerializeObject(new { type, data });
+        var json = JsonConvert.SerializeObject(new { Type = type, Data = data });
         var buffer = Encoding.UTF8.GetBytes(json);
         _ = _ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
     }
@@ -250,7 +244,7 @@ public class MetaScalpSocket : IDisposable
                     OnOrderBookUpdate?.Invoke(data.ToObject<OrderBookUpdateData>()!);
                     break;
                 case "error":
-                    OnError?.Invoke(data["error"]?.ToString() ?? json);
+                    OnError?.Invoke(data["Error"]?.ToString() ?? json);
                     break;
             }
         }

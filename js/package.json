@@ -1,6 +1,6 @@
 {
   "name": "metascalp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Official SDK for MetaScalp API — trade, stream order book and trades via REST and WebSocket",
   "author": "MetaScalp",
   "license": "MIT",
