@@ -1187,6 +1187,68 @@
     </div>
   </div>
 
+  <!-- Market Data -->
+  <div class="section-label">Market Data</div>
+
+  <!-- /api/connections/{id}/cluster-snapshot -->
+  <div class="endpoint" id="ep-cluster-snapshot">
+    <div class="endpoint-header" onclick="toggle('ep-cluster-snapshot')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{ConnectionId}/cluster-snapshot</span>
+      <span class="endpoint-desc">Cluster snapshot</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.</p>
+        <table>
+          <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
+          <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, D1</td></tr>
+          <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
+        </table>
+        <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-cluster-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-cluster-ticker" value="BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>TimeFrame</label>
+          <select id="f-cluster-timeframe">
+            <option value="S30">30 seconds</option>
+            <option value="M1">1 minute</option>
+            <option value="M5" selected>5 minutes</option>
+            <option value="M10">10 minutes</option>
+            <option value="M15">15 minutes</option>
+            <option value="M30">30 minutes</option>
+            <option value="H1">1 hour</option>
+            <option value="D1">1 day</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ZoomIndex</label>
+          <input type="number" id="f-cluster-zoom" value="1" min="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendClusterSnapshot()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-cluster-snapshot">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-cluster-snapshot-status"></span>
+          <span class="response-time" id="resp-cluster-snapshot-time"></span>
+        </div>
+        <div class="response-body" id="resp-cluster-snapshot-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Real-time WebSocket -->
   <div class="section-label">Real-time WebSocket</div>
 
@@ -1219,7 +1281,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Market data</strong> &mdash; subscribe by connection ID + ticker for trade or order book updates:</p>
         <table>
           <tr><th>Type</th><th>Data</th><th>Description</th></tr>
-          <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to real-time trade updates for a specific ticker. Idempotent.</td></tr>
+          <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Subscribe to real-time trade updates. When <code>ZoomIndex</code> &gt; 1, trades are aggregated by zoomed price level. Re-subscribing updates ZoomIndex.</td></tr>
           <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker. Idempotent.</td></tr>
           <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to order book updates (snapshot + incremental). Idempotent.</td></tr>
           <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker. Idempotent.</td></tr>
@@ -1267,7 +1329,8 @@
           <tr><td>Multiple connections</td><td>A single client can subscribe to multiple connection IDs and multiple tickers simultaneously.</td></tr>
         </table>
 
-        <h3>Example payloads</h3>
+        <details>
+        <summary style="cursor:pointer;font-size:15px;font-weight:600;margin:8px 0;color:var(--text);">Example payloads</summary>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code><span style="color:var(--text-muted);">// Subscribe</span>
 { "Type": "subscribe", "Data": { "ConnectionId": 1 } }
 
@@ -1335,10 +1398,10 @@
 }
 
 <span style="color:var(--text-muted);">// Subscribe to trades for a specific ticker</span>
-{ "Type": "trade_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "trade_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 1 } }
 
 <span style="color:var(--text-muted);">// Server confirms trade subscription</span>
-{ "Type": "trade_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "trade_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 1 } }
 
 <span style="color:var(--text-muted);">// Trade update pushed by server</span>
 {
@@ -1401,6 +1464,7 @@
 
 <span style="color:var(--text-muted);">// Error (invalid connection)</span>
 { "Type": "error", "Data": { "Error": "Connection 999 not found or not active" } }</code></pre>
+        </details>
       </div>
 
       <hr class="divider">
@@ -1416,28 +1480,37 @@
           </div>
         </div>
 
-        <div class="form-grid">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
           <div class="form-group">
             <label>Connection ID</label>
             <input type="number" id="f-ws-conn" value="1" min="1">
           </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;">
-            <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
-            <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
+          <div class="form-group">
+            <label>Ticker</label>
+            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
           </div>
         </div>
 
-        <div class="form-grid" style="margin-top:8px;">
+        <div style="display:flex;flex-direction:row;gap:8px;align-items:center;margin-top:8px;">
+          <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
+          <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
+          <span style="color:var(--text-muted);font-size:11px;">(order_update, position_update, finres_update, balance_update)</span>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
           <div class="form-group">
-            <label>Ticker <span class="optional">(for market data)</span></label>
-            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
+            <label>ZoomIndex</label>
+            <input type="number" id="f-ws-zoom" value="1" min="0">
           </div>
           <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="wsSendMarketData('trade_subscribe')" id="ws-trade-sub-btn" disabled>Trade Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Trade Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>OB Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>OB Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendTradeSubscribe()" id="ws-trade-sub-btn" disabled>Subscribe Trades</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Unsubscribe Trades</button>
           </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>Subscribe Orderbook</button>
+          <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>Unsubscribe Orderbook</button>
         </div>
 
         <div class="form-grid single" style="margin-top:8px;">
@@ -1546,6 +1619,8 @@
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Price &lt;= 0 (non-market)</td><td>400</td><td><code>Price must be greater than zero for non-market orders</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. 'ticker' and 'OrderId' are required.</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders/cancel-all</code></td><td>Missing ticker</td><td>400</td><td><code>Invalid request body. 'ticker' is required.</code></td></tr>
+      <tr><td><code>/api/connections/{id}/cluster-snapshot</code></td><td>Missing ticker or timeframe</td><td>400</td><td><code>Query parameter 'Ticker' is required</code></td></tr>
+      <tr><td><code>/api/connections/{id}/cluster-snapshot</code></td><td>Ticker not found</td><td>404</td><td><code>Ticker 'XYZ' not found</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>
     </table>
@@ -1593,6 +1668,7 @@
         <tr><td><code>POST /api/connections/{id}/orders</code></td><td>Place an order on a connection</td></tr>
         <tr><td><code>POST /api/connections/{id}/orders/cancel</code></td><td>Cancel a single order</td></tr>
         <tr><td><code>POST /api/connections/{id}/orders/cancel-all</code></td><td>Cancel all orders for a ticker</td></tr>
+        <tr><td><code>GET /api/connections/{id}/cluster-snapshot</code></td><td>Get cluster (volume profile) snapshot data</td></tr>
       </table>
 
       <h3>WebSocket streaming</h3>
@@ -1619,7 +1695,8 @@ GET /api/connections/{id}/balance                 &rarr; check balances
 GET /api/connections/{id}/orders?Ticker=BTCUSDT   &rarr; view open orders
 POST /api/connections/{id}/orders                 &rarr; place an order
 POST /api/connections/{id}/orders/cancel          &rarr; cancel an order
-POST /api/connections/{id}/orders/cancel-all      &rarr; cancel all orders for a ticker</code></pre>
+POST /api/connections/{id}/orders/cancel-all      &rarr; cancel all orders for a ticker
+GET  /api/connections/{id}/cluster-snapshot        &rarr; get cluster snapshot data</code></pre>
 
       <h3>Typical WebSocket client flow</h3>
       <pre><code><span style="color:var(--text-muted);">1. Connect</span>
@@ -1630,8 +1707,8 @@ ws.send('{"Type":"subscribe","Data":{"ConnectionId":1}}')
 &larr; {"Type":"subscribed","Data":{"ConnectionId":1}}
 
 <span style="color:var(--text-muted);">3. Subscribe to market data for a specific ticker</span>
-ws.send('{"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-&larr; {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+ws.send('{"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}')
+&larr; {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
 ws.send('{"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
 &larr; {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 
@@ -1657,7 +1734,7 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><th>Type</th><th>Data</th><th>Description</th></tr>
         <tr><td><code>subscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Start receiving order, position, balance, finres updates for a connection.</td></tr>
         <tr><td><code>unsubscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Stop receiving connection-level updates.</td></tr>
-        <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving trade updates for a specific ticker.</td></tr>
+        <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Start receiving trade updates. ZoomIndex &gt; 1 aggregates by zoomed price.</td></tr>
         <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
         <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving order book snapshot + incremental updates for a specific ticker.</td></tr>
         <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
@@ -1915,6 +1992,20 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
     }
   }
 
+  async function sendClusterSnapshot() {
+    const id = document.getElementById('f-cluster-conn').value;
+    const ticker = document.getElementById('f-cluster-ticker').value.trim();
+    const timeFrame = document.getElementById('f-cluster-timeframe').value;
+    const zoomIndex = document.getElementById('f-cluster-zoom').value;
+    const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/cluster-snapshot?${params}`);
+      showResponse('cluster-snapshot', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('cluster-snapshot', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
   // --- WebSocket ---
   let ws = null;
   let wsPort = null;
@@ -2114,6 +2205,17 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       return;
     }
     wsSend({ type: type, data: { ConnectionId: connId, ticker: ticker } });
+  }
+
+  function wsSendTradeSubscribe() {
+    const connId = parseInt(document.getElementById('f-ws-conn').value);
+    const ticker = document.getElementById('f-ws-ticker').value.trim();
+    const zoomIndex = parseInt(document.getElementById('f-ws-zoom').value) || 0;
+    if (!ticker) {
+      wsLog('Ticker is required for trade subscription', 'log-err');
+      return;
+    }
+    wsSend({ type: 'trade_subscribe', data: { ConnectionId: connId, ticker: ticker, ZoomIndex: zoomIndex } });
   }
 
   function wsSendRaw() {

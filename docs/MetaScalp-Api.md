@@ -23,6 +23,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
 | `POST /api/connections/{id}/orders/cancel` | Cancel a single order |
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
+| `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
 
 ### WebSocket streaming
 
@@ -52,6 +53,7 @@ GET /api/connections/{id}/orders?Ticker=BTCUSDT   → view open orders
 POST /api/connections/{id}/orders                 → place an order
 POST /api/connections/{id}/orders/cancel          → cancel an order
 POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ticker
+GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
 ```
 
 ### Typical WebSocket client flow
@@ -65,8 +67,8 @@ POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ti
    ← {"Type":"subscribed","Data":{"ConnectionId":1}}
 
 3. Subscribe to market data for a specific ticker
-   → {"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
-   ← {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   → {"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
+   ← {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
    → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
    ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 
@@ -582,6 +584,73 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel-all \
 
 ---
 
+### Market data
+
+#### Cluster snapshot
+
+Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&ZoomIndex=1
+```
+
+**Query parameters:**
+
+| Parameter   | Type   | Required | Default | Description |
+|-------------|--------|----------|---------|-------------|
+| `Ticker`    | string | yes      |         | Trading pair symbol |
+| `TimeFrame` | string | yes      |         | Cluster timeframe — see [ClusterTimeFrame values](#clustertimeframe-values) |
+| `ZoomIndex` | int    | no       | `1`     | Price aggregation factor. `1` = no aggregation (raw price levels). Higher values group price levels into buckets of `ZoomIndex * PriceIncrement`. |
+
+**Response `200 OK`:**
+
+```json
+{
+  "Ticker": "BTCUSDT",
+  "TimeFrame": "M5",
+  "ZoomIndex": 1,
+  "PriceIncrement": 0.01,
+  "Columns": [
+    {
+      "StartTime": "2026-04-13T10:00:00+00:00",
+      "AsksSum": 123.45,
+      "BidsSum": 678.90,
+      "Items": [
+        { "Price": 65000.02, "AskSize": 0.8, "BidSize": 1.1 },
+        { "Price": 65000.01, "AskSize": 1.5, "BidSize": 2.3 },
+        { "Price": 65000.00, "AskSize": 0.3, "BidSize": 0.9 }
+      ]
+    }
+  ]
+}
+```
+
+- `Columns` — up to 10 time-period columns (rolling window), ordered chronologically
+- `Items` — price levels within each column, ordered by price descending (highest first)
+- `AsksSum` / `BidsSum` — total ask/bid volume for the column
+- `AskSize` / `BidSize` — volume at each price level (ask = seller-initiated, bid = buyer-initiated)
+- `PriceIncrement` — the ticker's minimum price step (useful for interpreting ZoomIndex)
+
+When `ZoomIndex > 1`, prices are grouped into buckets of `ZoomIndex * PriceIncrement` and volumes are summed within each bucket.
+
+**Errors:**
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Missing `Ticker` or `TimeFrame`, invalid connection ID |
+| `404`  | Connection or ticker not found |
+
+**Example:**
+```bash
+# Get 5-minute clusters for BTCUSDT with default zoom
+curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5"
+
+# Get 1-hour clusters with 5x price aggregation
+curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"
+```
+
+---
+
 ### Real-time WebSocket
 
 Connect via WebSocket to receive live updates. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.
@@ -617,7 +686,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `trade_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to real-time trade updates for a specific ticker on a connection. Connection must be active. Idempotent. |
+| `trade_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | Subscribe to real-time trade updates. When `ZoomIndex` > 1, trades are aggregated by zoomed price level before sending. Re-subscribing updates ZoomIndex. Connection and ticker must be valid. |
 | `trade_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
 | `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. Connection must be active. Idempotent. |
 | `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
@@ -630,7 +699,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 |---|---|---|
 | `subscribed` | `{ "ConnectionId": 123 }` | After successful connection subscribe |
 | `unsubscribed` | `{ "ConnectionId": 123 }` | After successful connection unsubscribe |
-| `trade_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade subscribe |
+| `trade_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | After successful trade subscribe |
 | `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
 | `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book subscribe |
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
@@ -973,6 +1042,21 @@ This means you can pass symbols in **any case** and with or without common separ
 
 > **Note:** When the requested market type is not Spot and no exact connection match is found, MetaScalp falls back to any non-Spot connection on the same exchange.
 
+## ClusterTimeFrame values
+
+| Value | Period     |
+|-------|------------|
+| `S30` | 30 seconds |
+| `M1`  | 1 minute   |
+| `M5`  | 5 minutes  |
+| `M10` | 10 minutes |
+| `M15` | 15 minutes |
+| `M30` | 30 minutes |
+| `H1`  | 1 hour     |
+| `D1`  | 1 day      |
+
+Pass the string value (e.g. `M5`) as the `TimeFrame` query parameter.
+
 ---
 
 ## Integration examples
@@ -1045,6 +1129,12 @@ async function cancelAllOrders(port, ConnectionId, ticker) {
   return r.json();
 }
 
+async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomIndex = 1) {
+  const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/cluster-snapshot?${params}`);
+  return r.json();
+}
+
 async function changeTickerByPattern(port, TickerPattern, binding) {
   const body = { TickerPattern };
   if (binding) body.Binding = binding;
@@ -1077,6 +1167,9 @@ if (port) {
     Size: 0.01,
     Type: 0
   });
+
+  // Get cluster snapshot (5-minute timeframe, 2x zoom)
+  const clusters = await getClusterSnapshot(port, conn.Id, "BTCUSDT", "M5", 2);
 
   // Switch ticker in UI
   await changeTickerByPattern(port, "BINANCE:BTCUSDT.p", "001");
@@ -1144,6 +1237,11 @@ def cancel_all_orders(port, connection_id, ticker):
                       json=payload)
     return r.json()
 
+def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1):
+    r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/cluster-snapshot",
+                     params={"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index})
+    return r.json()
+
 def change_ticker_by_pattern(port, ticker_pattern, binding=None):
     payload = {"TickerPattern": ticker_pattern}
     if binding:
@@ -1170,6 +1268,9 @@ if port:
 
     # Place a limit buy order
     result = place_order(port, conn["Id"], "BTCUSDT", side=1, price=65000.00, size=0.01)
+
+    # Get cluster snapshot (5-minute timeframe, 2x zoom)
+    clusters = get_cluster_snapshot(port, conn["Id"], "BTCUSDT", "M5", zoom_index=2)
 
     # Switch ticker in UI
     change_ticker_by_pattern(port, "BINANCE:BTCUSDT.p", binding="001")
@@ -1210,7 +1311,7 @@ ws.onopen = () => {
   // Subscribe to trades for BTCUSDT on connection 1
   ws.send(JSON.stringify({
     Type: "trade_subscribe",
-    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT", ZoomIndex: 1 }
   }));
 
   // Subscribe to order book for BTCUSDT on connection 1
@@ -1319,7 +1420,7 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
         # Subscribe to trades for a specific ticker
         await ws.send(json.dumps({
             "Type": "trade_subscribe",
-            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker, "ZoomIndex": 1}
         }))
 
         # Subscribe to order book for the same ticker
