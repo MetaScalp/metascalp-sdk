@@ -55,6 +55,16 @@ public class MetaScalpSocket : IDisposable
     /// <summary>Fired when new notifications arrive (~1 second batches). Requires SubscribeNotifications().</summary>
     public event Action<NotificationUpdateData>? OnNotificationUpdate;
 
+    // Signal level events — fired after calling SubscribeSignalLevels().
+    // App-wide (not scoped to a connection).
+
+    public event Action<SignalLevelsSnapshotData>? OnSignalLevelsSnapshot;
+    public event Action<SignalLevelPlacedData>? OnSignalLevelPlaced;
+    public event Action<SignalLevelTriggeredData>? OnSignalLevelTriggered;
+    public event Action<SignalLevelRemovedData>? OnSignalLevelRemoved;
+    public event Action? OnSignalLevelsRemovedAll;
+    public event Action? OnSignalLevelsRemovedTriggered;
+
     // Connection lifecycle events
     public event Action<string>? OnError;
     public event Action? OnConnected;
@@ -192,6 +202,14 @@ public class MetaScalpSocket : IDisposable
     public void UnsubscribeNotifications()
         => Send("notification_unsubscribe", new { });
 
+    // ---- Signal level subscriptions ----
+
+    public void SubscribeSignalLevels()
+        => Send("signal_level_subscribe", new { });
+
+    public void UnsubscribeSignalLevels()
+        => Send("signal_level_unsubscribe", new { });
+
     // ---- Internals ----
 
     private void Send(string type, object data)
@@ -274,6 +292,24 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "notification_update":
                     OnNotificationUpdate?.Invoke(data.ToObject<NotificationUpdateData>()!);
+                    break;
+                case "signal_levels_snapshot":
+                    OnSignalLevelsSnapshot?.Invoke(data.ToObject<SignalLevelsSnapshotData>()!);
+                    break;
+                case "signal_level_placed":
+                    OnSignalLevelPlaced?.Invoke(data.ToObject<SignalLevelPlacedData>()!);
+                    break;
+                case "signal_level_triggered":
+                    OnSignalLevelTriggered?.Invoke(data.ToObject<SignalLevelTriggeredData>()!);
+                    break;
+                case "signal_level_removed":
+                    OnSignalLevelRemoved?.Invoke(data.ToObject<SignalLevelRemovedData>()!);
+                    break;
+                case "signal_levels_removed_all":
+                    OnSignalLevelsRemovedAll?.Invoke();
+                    break;
+                case "signal_levels_removed_triggered":
+                    OnSignalLevelsRemovedTriggered?.Invoke();
                     break;
                 case "error":
                     OnError?.Invoke(data["Error"]?.ToString() ?? json);

@@ -82,11 +82,37 @@ public class MetaScalpClient : IDisposable
     public async Task CancelOrderAsync(long connectionId, CancelOrderRequest request, CancellationToken ct = default)
         => await PostAsync<object>($"/api/connections/{connectionId}/orders/cancel", request, ct);
 
+    // ---- Signal Levels ----
+
+    public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)
+        => GetAsync<SignalLevelsResponse>($"/api/connections/{connectionId}/signal-levels?Ticker={Uri.EscapeDataString(ticker)}", ct);
+
+    public Task PlaceSignalLevelAsync(long connectionId, PlaceSignalLevelRequest request, CancellationToken ct = default)
+        => PostAsync<object>($"/api/connections/{connectionId}/signal-levels", request, ct);
+
+    public Task RemoveSignalLevelAsync(long connectionId, long signalLevelId, CancellationToken ct = default)
+        => DeleteAsync<object>($"/api/connections/{connectionId}/signal-levels/{signalLevelId}", ct);
+
+    public Task RemoveAllSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)
+        => DeleteAsync<object>($"/api/connections/{connectionId}/signal-levels?Ticker={Uri.EscapeDataString(ticker)}", ct);
+
+    public Task RemoveTriggeredSignalLevelsAsync(CancellationToken ct = default)
+        => DeleteAsync<object>("/api/signal-levels/triggered", ct);
+
     // ---- HTTP Helpers ----
 
     private async Task<T> GetAsync<T>(string path, CancellationToken ct)
     {
         var res = await _http.GetAsync(path, ct);
+        var json = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw new MetaScalpApiException((int)res.StatusCode, json, path);
+        return JsonConvert.DeserializeObject<T>(json)!;
+    }
+
+    private async Task<T> DeleteAsync<T>(string path, CancellationToken ct = default)
+    {
+        var res = await _http.DeleteAsync(path, ct);
         var json = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
             throw new MetaScalpApiException((int)res.StatusCode, json, path);

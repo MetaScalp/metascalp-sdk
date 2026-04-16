@@ -244,3 +244,57 @@ public class NotificationUpdateData
 {
     public List<NotificationDto> Notifications { get; set; } = new();
 }
+
+public class SignalLevelDto
+{
+    public long Id { get; set; }
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+    public bool IsTriggered { get; set; }
+    public DateTimeOffset? TriggerTime { get; set; }
+    public string TriggerRule { get; set; } = "";
+}
+
+public class SignalLevelsResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public int Count { get; set; }
+    public List<SignalLevelDto> SignalLevels { get; set; } = new();
+}
+
+public class PlaceSignalLevelRequest
+{
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+}
+
+// ============ Signal Level Socket Models ============
+
+public class SignalLevelsSnapshotData
+{
+    public List<SignalLevelDto> SignalLevels { get; set; } = new();
+}
+
+public class SignalLevelPlacedData
+{
+    public long Id { get; set; }
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+    public bool IsTriggered { get; set; }
+    public DateTimeOffset? TriggerTime { get; set; }
+    public string TriggerRule { get; set; } = "";
+}
+
+public class SignalLevelTriggeredData
+{
+    public long Id { get; set; }
+    public DateTimeOffset TriggerTime { get; set; }
+}
+
+public class SignalLevelRemovedData
+{
+    public long Id { get; set; }
+}

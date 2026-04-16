@@ -205,6 +205,51 @@ export interface OrderBookUpdateData {
   updates: OrderBookOrder[];
 }
 
+export interface SignalLevel {
+  id: number;
+  connectionId: number;
+  ticker: string;
+  price: number;
+  isTriggered: boolean;
+  triggerTime: string | null;
+  triggerRule: string;
+}
+
+export interface SignalLevelsResponse {
+  connectionId: number;
+  ticker: string;
+  count: number;
+  signalLevels: SignalLevel[];
+}
+
+export interface PlaceSignalLevelRequest {
+  ticker: string;
+  price: number;
+}
+
+export interface SignalLevelsSnapshotData {
+  signalLevels: SignalLevel[];
+}
+
+export interface SignalLevelPlacedData {
+  id: number;
+  connectionId: number;
+  ticker: string;
+  price: number;
+  isTriggered: boolean;
+  triggerTime: string | null;
+  triggerRule: string;
+}
+
+export interface SignalLevelTriggeredData {
+  id: number;
+  triggerTime: string;
+}
+
+export interface SignalLevelRemovedData {
+  id: number;
+}
+
 export interface Notification {
   type: string;
   exchange: string;
@@ -246,6 +291,14 @@ export interface SocketEventMap {
   notification_unsubscribed: Record<string, never>;
   notification_snapshot: NotificationSnapshotData;
   notification_update: NotificationUpdateData;
+  signal_level_subscribed: Record<string, never>;
+  signal_level_unsubscribed: Record<string, never>;
+  signal_levels_snapshot: SignalLevelsSnapshotData;
+  signal_level_placed: SignalLevelPlacedData;
+  signal_level_triggered: SignalLevelTriggeredData;
+  signal_level_removed: SignalLevelRemovedData;
+  signal_levels_removed_all: Record<string, never>;
+  signal_levels_removed_triggered: Record<string, never>;
   error: { error: string };
   connected: void;
   disconnected: void;

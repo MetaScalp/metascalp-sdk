@@ -24,6 +24,11 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders/cancel` | Cancel a single order |
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
+| `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
+| `POST /api/connections/{id}/signal-levels` | Place a signal level |
+| `DELETE /api/connections/{id}/signal-levels/{slId}` | Remove a single signal level |
+| `DELETE /api/connections/{id}/signal-levels?Ticker=` | Remove all signal levels for a ticker |
+| `DELETE /api/signal-levels/triggered` | Remove all triggered signal levels |
 
 ### WebSocket streaming
 
@@ -33,6 +38,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **Connection-level subscriptions:** Send a `subscribe` message with a connection ID to receive order, position, balance, and finres updates
 - **Market data subscriptions:** Send `trade_subscribe` or `orderbook_subscribe` with a connection ID + ticker to receive trade or order book updates for a specific symbol
 - **Notification subscriptions:** Send `notification_subscribe` to receive app-wide notification events (no connection ID required)
+- **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required)
 - You can subscribe to multiple connections and tickers simultaneously
 - All subscriptions are automatically cleaned up when you disconnect
 
@@ -55,6 +61,9 @@ POST /api/connections/{id}/orders                 → place an order
 POST /api/connections/{id}/orders/cancel          → cancel an order
 POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ticker
 GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
+GET  /api/connections/{id}/signal-levels?Ticker=   → list signal levels
+POST /api/connections/{id}/signal-levels           → place a signal level
+DELETE /api/connections/{id}/signal-levels/{slId}  → remove a signal level
 ```
 
 ### Typical WebSocket client flow
@@ -78,7 +87,12 @@ GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
    ← {"Type":"notification_subscribed","Data":{}}
    ← {"Type":"notification_snapshot","Data":{"Notifications":[...]}}
 
-5. Receive real-time updates
+5. Subscribe to signal levels
+   → {"Type":"signal_level_subscribe","Data":{}}
+   ← {"Type":"signal_level_subscribed","Data":{}}
+   ← {"Type":"signal_levels_snapshot","Data":{"SignalLevels":[...]}}
+
+6. Receive real-time updates
    ← {"Type":"order_update","Data":{"ConnectionId":1,"OrderId":123,...}}
    ← {"Type":"position_update","Data":{"ConnectionId":1,...}}
    ← {"Type":"balance_update","Data":{"ConnectionId":1,"Balances":[...]}}
@@ -87,8 +101,12 @@ GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
    ← {"Type":"orderbook_snapshot","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Asks":[...],"Bids":[...],...}}
    ← {"Type":"orderbook_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Updates":[...]}}
    ← {"Type":"notification_update","Data":{"Notifications":[...]}}
+   ← {"Type":"signal_level_placed","Data":{"Id":1,"ConnectionId":1,"Ticker":"BTCUSDT","Price":95000,...}}
+   ← {"Type":"signal_level_triggered","Data":{"Id":1,"TriggerTime":"2026-04-13T..."}}
 
-6. Unsubscribe when done
+7. Unsubscribe when done
+   → {"Type":"signal_level_unsubscribe","Data":{}}
+   ← {"Type":"signal_level_unsubscribed","Data":{}}
    → {"Type":"notification_unsubscribe","Data":{}}
    ← {"Type":"notification_unsubscribed","Data":{}}
    → {"Type":"trade_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
@@ -660,6 +678,139 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 
 ---
 
+### Signal Levels
+
+Signal levels are price alerts that trigger automatically when the market price crosses the specified threshold. Once triggered, the signal level is marked as triggered (not removed) and a notification is sent. Signal level updates are also pushed via WebSocket to subscribed clients.
+
+All signal level endpoints (except "Remove all triggered") require a valid `{ConnectionId}` in the URL path, subject to the same [connection validation errors](#trading-operations) as trading endpoints.
+
+#### Get Signal Levels
+
+Returns all signal levels for a specific ticker on a connection.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/signal-levels?Ticker=BTCUSDT
+```
+
+| Query Parameter | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| `Ticker`        | string | yes      | Trading pair symbol |
+
+**Response `200 OK`:**
+```json
+{
+  "ConnectionId": 1,
+  "Ticker": "BTCUSDT",
+  "Count": 2,
+  "SignalLevels": [
+    {
+      "Id": 1,
+      "ConnectionId": 1,
+      "Ticker": "BTCUSDT",
+      "Price": 95000.00,
+      "IsTriggered": false,
+      "TriggerTime": null,
+      "TriggerRule": "GreaterThanEqual"
+    },
+    {
+      "Id": 2,
+      "ConnectionId": 1,
+      "Ticker": "BTCUSDT",
+      "Price": 90000.00,
+      "IsTriggered": true,
+      "TriggerTime": "2026-04-13T10:30:00+00:00",
+      "TriggerRule": "LessThanEqual"
+    }
+  ]
+}
+```
+
+Signal level fields:
+
+| Field         | Type         | Description |
+|---------------|--------------|-------------|
+| `Id`          | integer      | Signal level ID |
+| `ConnectionId`| integer      | Connection this signal level belongs to |
+| `Ticker`      | string       | Trading pair symbol |
+| `Price`       | decimal      | Price threshold |
+| `IsTriggered` | boolean      | Whether the signal has been triggered |
+| `TriggerTime` | string (ISO)?| When the signal was triggered (null if not triggered) |
+| `TriggerRule` | string       | `"LessThanEqual"` or `"GreaterThanEqual"` |
+
+#### Place Signal Level
+
+Places a new signal level at a specific price. The trigger rule is determined automatically from the current order book best ask. The order book must be active for this ticker — if no market data is available, the request will fail.
+
+```
+POST http://127.0.0.1:{port}/api/connections/{ConnectionId}/signal-levels
+Content-Type: application/json
+```
+
+**Request body:**
+
+| Field     | Type    | Required | Description |
+|-----------|---------|----------|-------------|
+| `Ticker`  | string  | yes      | Trading pair symbol |
+| `Price`   | decimal | yes      | Price threshold (must be > 0) |
+
+**Response `200 OK`:**
+```json
+{ "Status": "ok" }
+```
+
+**`400 Bad Request`** — if no order book data is available for the ticker:
+```json
+{ "Error": "No market data for 'BTCUSDT'. Subscribe to order book data for this ticker first." }
+```
+
+**Example:**
+```bash
+curl -X POST http://127.0.0.1:17845/api/connections/1/signal-levels \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Price": 95000.00}'
+```
+
+#### Remove Signal Level
+
+Removes a single signal level by ID.
+
+```
+DELETE http://127.0.0.1:{port}/api/connections/{ConnectionId}/signal-levels/{Id}
+```
+
+**Response `200 OK`:**
+```json
+{ "Status": "ok" }
+```
+
+#### Remove All Signal Levels (by ticker)
+
+Removes all signal levels for a specific ticker on a connection.
+
+```
+DELETE http://127.0.0.1:{port}/api/connections/{ConnectionId}/signal-levels?Ticker=BTCUSDT
+```
+
+**Response `200 OK`:**
+```json
+{ "Status": "ok" }
+```
+
+#### Remove All Triggered Signal Levels
+
+Removes all triggered signal levels across all connections and tickers.
+
+```
+DELETE http://127.0.0.1:{port}/api/signal-levels/triggered
+```
+
+**Response `200 OK`:**
+```json
+{ "Status": "ok" }
+```
+
+---
+
 ### Real-time WebSocket
 
 Connect via WebSocket to receive live updates. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.
@@ -707,6 +858,13 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `notification_subscribe` | `{}` | Subscribe to notifications. Receives an initial snapshot of recent notifications, then live updates. Idempotent. |
 | `notification_unsubscribe` | `{}` | Stop receiving notification updates. Idempotent. |
 
+**Signal level subscriptions** — subscribe to receive signal level events (placed, triggered, removed):
+
+| Type | Data | Description |
+|---|---|---|
+| `signal_level_subscribe` | `{}` | Subscribe to signal level updates. Receives an initial snapshot of all signal levels, then live events. Idempotent. |
+| `signal_level_unsubscribe` | `{}` | Stop receiving signal level updates. Idempotent. |
+
 #### Messages you receive
 
 ##### Acknowledgements
@@ -721,6 +879,8 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
 | `notification_subscribed` | `{}` | After successful notification subscribe |
 | `notification_unsubscribed` | `{}` | After successful notification unsubscribe |
+| `signal_level_subscribed` | `{}` | After successful signal level subscribe |
+| `signal_level_unsubscribed` | `{}` | After successful signal level unsubscribe |
 | `error` | `{ "Error": "..." }` | Invalid message, unknown type, bad connection ID, or missing ticker |
 
 ##### Real-time updates
@@ -996,6 +1156,105 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `Color` | string | Connection color |
 | `Date` | string (ISO) | When the event occurred |
 
+**Signal levels snapshot** — sent once after `signal_level_subscribe`, contains all signal levels:
+
+```json
+{
+  "Type": "signal_levels_snapshot",
+  "Data": {
+    "SignalLevels": [
+      {
+        "Id": 1,
+        "ConnectionId": 1,
+        "Ticker": "BTCUSDT",
+        "Price": 95000.00,
+        "IsTriggered": false,
+        "TriggerTime": null,
+        "TriggerRule": "GreaterThanEqual"
+      }
+    ]
+  }
+}
+```
+
+**Signal level placed** — pushed when a new signal level is created:
+
+```json
+{
+  "Type": "signal_level_placed",
+  "Data": {
+    "Id": 1,
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "Price": 95000.00,
+    "IsTriggered": false,
+    "TriggerTime": null,
+    "TriggerRule": "GreaterThanEqual"
+  }
+}
+```
+
+**Signal level triggered** — pushed when a signal level is triggered by market price:
+
+```json
+{
+  "Type": "signal_level_triggered",
+  "Data": {
+    "Id": 1,
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "Price": 95000.00,
+    "IsTriggered": true,
+    "TriggerTime": "2026-04-13T10:30:00+00:00",
+    "TriggerRule": "GreaterThanEqual"
+  }
+}
+```
+
+**Signal level removed** — pushed when a single signal level is removed:
+
+```json
+{
+  "Type": "signal_level_removed",
+  "Data": {
+    "Id": 1,
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT"
+  }
+}
+```
+
+**Signal levels removed all** — pushed when all signal levels for a ticker are cleared:
+
+```json
+{
+  "Type": "signal_levels_removed_all",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT"
+  }
+}
+```
+
+**Signal levels removed triggered** — pushed when all triggered signal levels are cleared:
+
+```json
+{
+  "Type": "signal_levels_removed_triggered",
+  "Data": {}
+}
+```
+
+| Signal Level Field | Type | Description |
+|---|---|---|
+| `Id` | integer | Signal level ID |
+| `ConnectionId` | integer | Connection this signal level belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `Price` | decimal | Price threshold |
+| `IsTriggered` | boolean | Whether the signal has been triggered |
+| `TriggerTime` | string (ISO)? | When triggered (null if not triggered) |
+| `TriggerRule` | string | `"LessThanEqual"` or `"GreaterThanEqual"` |
+
 #### Lifecycle
 
 | Event | Behavior |
@@ -1011,7 +1270,9 @@ These are pushed automatically after subscribing. You only receive updates for c
 | Trade/orderbook unsubscribe | Server responds `trade_unsubscribed` / `orderbook_unsubscribed`. Market data stops for that connection + ticker. |
 | Notification subscribe | Server responds `notification_subscribed`. Sends snapshot of recent notifications, then live updates. |
 | Notification unsubscribe | Server responds `notification_unsubscribed`. Notification updates stop. |
-| Client disconnects | All subscriptions (connection-level, market data, notifications) are cleaned up automatically. Exchange market data subscriptions are released when no more clients need them. |
+| Signal level subscribe | Server responds `signal_level_subscribed`. Sends snapshot of all signal levels, then live events (placed, triggered, removed). |
+| Signal level unsubscribe | Server responds `signal_level_unsubscribed`. Signal level updates stop. |
+| Client disconnects | All subscriptions (connection-level, market data, notifications, signal levels) are cleaned up automatically. Exchange market data subscriptions are released when no more clients need them. |
 | Multiple connections | A single client can subscribe to multiple connection IDs simultaneously. |
 | Multiple tickers | A single client can subscribe to trades/order book for multiple tickers on the same or different connections. |
 | Multiple clients | Multiple clients can subscribe to the same connection ID or ticker. Each receives its own copy of events. |
@@ -1218,6 +1479,27 @@ async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomInd
   return r.json();
 }
 
+async function getSignalLevels(port, ConnectionId, ticker) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/signal-levels?Ticker=${ticker}`);
+  return r.json();
+}
+
+async function placeSignalLevel(port, ConnectionId, ticker, price) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/signal-levels`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ Ticker: ticker, Price: price })
+  });
+  return r.json();
+}
+
+async function removeSignalLevel(port, ConnectionId, signalLevelId) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/signal-levels/${signalLevelId}`, {
+    method: "DELETE"
+  });
+  return r.json();
+}
+
 async function changeTickerByPattern(port, TickerPattern, binding) {
   const body = { TickerPattern };
   if (binding) body.Binding = binding;
@@ -1253,6 +1535,11 @@ if (port) {
 
   // Get cluster snapshot (5-minute timeframe, 2x zoom)
   const clusters = await getClusterSnapshot(port, conn.Id, "BTCUSDT", "M5", 2);
+
+  // Signal levels
+  const levels = await getSignalLevels(port, conn.Id, "BTCUSDT");
+  await placeSignalLevel(port, conn.Id, "BTCUSDT", 95000.00);
+  await removeSignalLevel(port, conn.Id, 1);
 
   // Switch ticker in UI
   await changeTickerByPattern(port, "BINANCE:BTCUSDT.p", "001");
@@ -1325,6 +1612,21 @@ def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1):
                      params={"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index})
     return r.json()
 
+def get_signal_levels(port, connection_id, ticker):
+    r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/signal-levels",
+                     params={"Ticker": ticker})
+    return r.json()
+
+def place_signal_level(port, connection_id, ticker, price):
+    payload = {"Ticker": ticker, "Price": price}
+    r = requests.post(f"http://127.0.0.1:{port}/api/connections/{connection_id}/signal-levels",
+                      json=payload)
+    return r.json()
+
+def remove_signal_level(port, connection_id, signal_level_id):
+    r = requests.delete(f"http://127.0.0.1:{port}/api/connections/{connection_id}/signal-levels/{signal_level_id}")
+    return r.json()
+
 def change_ticker_by_pattern(port, ticker_pattern, binding=None):
     payload = {"TickerPattern": ticker_pattern}
     if binding:
@@ -1354,6 +1656,11 @@ if port:
 
     # Get cluster snapshot (5-minute timeframe, 2x zoom)
     clusters = get_cluster_snapshot(port, conn["Id"], "BTCUSDT", "M5", zoom_index=2)
+
+    # Signal levels
+    levels = get_signal_levels(port, conn["Id"], "BTCUSDT")
+    place_signal_level(port, conn["Id"], "BTCUSDT", price=95000.00)
+    remove_signal_level(port, conn["Id"], signal_level_id=1)
 
     # Switch ticker in UI
     change_ticker_by_pattern(port, "BINANCE:BTCUSDT.p", binding="001")
@@ -1452,6 +1759,19 @@ ws.onmessage = (event) => {
     case "notification_update":
       console.log("New notifications:", msg.Data);
       // { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
+      break;
+    case "signal_levels_snapshot":
+      console.log("Signal levels snapshot:", msg.Data);
+      // { SignalLevels: [{ Id, ConnectionId, Ticker, Price, IsTriggered, TriggerTime, TriggerRule }] }
+      break;
+    case "signal_level_placed":
+      console.log("Signal level placed:", msg.Data);
+      break;
+    case "signal_level_triggered":
+      console.log("Signal level triggered:", msg.Data);
+      break;
+    case "signal_level_removed":
+      console.log("Signal level removed:", msg.Data);
       break;
     case "error":
       console.error("Socket error:", msg.Data.Error);
@@ -1554,6 +1874,15 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
             elif msg_type == "notification_update":
                 print(f"New notifications: {len(msg['Data'].get('Notifications', []))} items")
                 # { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
+            elif msg_type == "signal_levels_snapshot":
+                print(f"Signal levels snapshot: {len(msg['Data'].get('SignalLevels', []))} levels")
+                # { SignalLevels: [{ Id, ConnectionId, Ticker, Price, IsTriggered, TriggerTime, TriggerRule }] }
+            elif msg_type == "signal_level_placed":
+                print(f"Signal level placed: {msg['Data']}")
+            elif msg_type == "signal_level_triggered":
+                print(f"Signal level triggered: {msg['Data']}")
+            elif msg_type == "signal_level_removed":
+                print(f"Signal level removed: {msg['Data']}")
             elif msg_type == "error":
                 print(f"Error: {msg['Data']['Error']}")
 

@@ -159,6 +159,16 @@ class MetaScalpSocket:
         """Unsubscribe from notification updates."""
         self._send("notification_unsubscribe", {})
 
+    # ---- Signal level subscriptions ----
+
+    def subscribe_signal_levels(self) -> None:
+        """Subscribe to signal level events."""
+        self._send("signal_level_subscribe", {})
+
+    def unsubscribe_signal_levels(self) -> None:
+        """Unsubscribe from signal level events."""
+        self._send("signal_level_unsubscribe", {})
+
     # ---- Event handling ----
 
     def on(self, event: str) -> Callable:

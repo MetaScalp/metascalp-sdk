@@ -78,6 +78,14 @@ class MetaScalpClient:
                 raise MetaScalpApiError(resp.status, data.get("error", ""), path)
             return data
 
+    async def _delete(self, path: str) -> Any:
+        session = await self._ensure_session()
+        async with session.delete(f"{self.base_url}{path}") as resp:
+            data = await resp.json()
+            if resp.status >= 400:
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+            return data
+
     # ---- Discovery ----
 
     async def ping(self) -> dict:
@@ -184,3 +192,34 @@ class MetaScalpClient:
     async def open_combo(self, ticker: str) -> dict:
         """Open a combo layout for a ticker."""
         return await self._post("/api/combo", {"ticker": ticker})
+
+    # ---- Signal Levels ----
+
+    async def get_signal_levels(self, connection_id: int, ticker: str) -> dict:
+        """Get signal levels for a ticker on a connection."""
+        return await self._get(
+            f"/api/connections/{connection_id}/signal-levels?Ticker={ticker}"
+        )
+
+    async def place_signal_level(self, connection_id: int, *, ticker: str, price: float) -> dict:
+        """Place a signal level on a connection."""
+        return await self._post(
+            f"/api/connections/{connection_id}/signal-levels",
+            {"Ticker": ticker, "Price": price},
+        )
+
+    async def remove_signal_level(self, connection_id: int, signal_level_id: int) -> dict:
+        """Remove a signal level by ID."""
+        return await self._delete(
+            f"/api/connections/{connection_id}/signal-levels/{signal_level_id}"
+        )
+
+    async def remove_all_signal_levels(self, connection_id: int, ticker: str) -> dict:
+        """Remove all signal levels for a ticker on a connection."""
+        return await self._delete(
+            f"/api/connections/{connection_id}/signal-levels?Ticker={ticker}"
+        )
+
+    async def remove_triggered_signal_levels(self) -> dict:
+        """Remove all triggered signal levels."""
+        return await self._delete("/api/signal-levels/triggered")

@@ -190,6 +190,16 @@ export class MetaScalpSocket {
     this.send('notification_unsubscribe', {});
   }
 
+  // ---- Signal level subscriptions ----
+
+  subscribeSignalLevels(): void {
+    this.send('signal_level_subscribe', {});
+  }
+
+  unsubscribeSignalLevels(): void {
+    this.send('signal_level_unsubscribe', {});
+  }
+
   // ---- Event handling ----
 
   /**

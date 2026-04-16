@@ -11,6 +11,8 @@ import type {
   CancelOrderRequest,
   ChangeTickerRequest,
   ComboRequest,
+  SignalLevelsResponse,
+  PlaceSignalLevelRequest,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -107,10 +109,41 @@ export class MetaScalpClient {
     return this.post('/api/combo', request);
   }
 
+  // ---- Signal Levels ----
+
+  async getSignalLevels(connectionId: number, ticker: string): Promise<SignalLevelsResponse> {
+    return this.get(`/api/connections/${connectionId}/signal-levels?Ticker=${encodeURIComponent(ticker)}`);
+  }
+
+  async placeSignalLevel(connectionId: number, request: PlaceSignalLevelRequest): Promise<{ status: string }> {
+    return this.post(`/api/connections/${connectionId}/signal-levels`, request);
+  }
+
+  async removeSignalLevel(connectionId: number, signalLevelId: number): Promise<{ status: string }> {
+    return this.delete(`/api/connections/${connectionId}/signal-levels/${signalLevelId}`);
+  }
+
+  async removeAllSignalLevels(connectionId: number, ticker: string): Promise<{ status: string }> {
+    return this.delete(`/api/connections/${connectionId}/signal-levels?Ticker=${encodeURIComponent(ticker)}`);
+  }
+
+  async removeTriggeredSignalLevels(): Promise<{ status: string }> {
+    return this.delete('/api/signal-levels/triggered');
+  }
+
   // ---- HTTP helpers ----
 
   private async get<T>(path: string): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new MetaScalpApiError(res.status, (body as any)?.error || res.statusText, path);
+    }
+    return res.json() as Promise<T>;
+  }
+
+  private async delete<T>(path: string): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, { method: 'DELETE' });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new MetaScalpApiError(res.status, (body as any)?.error || res.statusText, path);
