@@ -71,8 +71,8 @@ export class MetaScalpClient {
 
   // ---- Market Data Queries ----
 
-  async getTickers(connectionId: number): Promise<TickersResponse> {
-    return this.get(`/api/connections/${connectionId}/tickers`);
+  async getTickers(connectionId: number, refresh = false): Promise<TickersResponse> {
+    return this.get(`/api/connections/${connectionId}/tickers${refresh ? '?Refresh=true' : ''}`);
   }
 
   // ---- Trading Data ----

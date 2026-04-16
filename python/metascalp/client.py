@@ -104,9 +104,10 @@ class MetaScalpClient:
 
     # ---- Market Data Queries ----
 
-    async def get_tickers(self, connection_id: int) -> dict:
-        """List available tickers on a connection."""
-        return await self._get(f"/api/connections/{connection_id}/tickers")
+    async def get_tickers(self, connection_id: int, refresh: bool = False) -> dict:
+        """List available tickers on a connection. Set refresh=True to fetch fresh data from exchange."""
+        qs = "?Refresh=true" if refresh else ""
+        return await self._get(f"/api/connections/{connection_id}/tickers{qs}")
 
     # ---- Trading Data ----
 

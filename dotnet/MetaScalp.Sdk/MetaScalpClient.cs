@@ -60,8 +60,8 @@ public class MetaScalpClient : IDisposable
 
     // ---- Market Data Queries ----
 
-    public async Task<TickersResponse> GetTickersAsync(long connectionId, CancellationToken ct = default)
-        => await GetAsync<TickersResponse>($"/api/connections/{connectionId}/tickers", ct);
+    public async Task<TickersResponse> GetTickersAsync(long connectionId, bool refresh = false, CancellationToken ct = default)
+        => await GetAsync<TickersResponse>($"/api/connections/{connectionId}/tickers{(refresh ? "?Refresh=true" : "")}", ct);
 
     // ---- Trading Data ----
 

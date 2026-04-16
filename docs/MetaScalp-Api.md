@@ -341,11 +341,16 @@ Common errors for all exchange endpoints:
 
 #### Get Tickers
 
-Returns all available trading pairs on a connection.
+Returns all available trading pairs on a connection. By default returns cached data. Set `Refresh=true` to fetch fresh ticker data from the exchange.
 
 ```
 GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/tickers
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/tickers?Refresh=true
 ```
+
+| Query Parameter | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| `Refresh`       | boolean | no      | When `true`, fetches fresh data from the exchange instead of cache. Default: `false`. |
 
 **Response `200 OK`:**
 ```json
@@ -1426,8 +1431,9 @@ async function getConnections(port) {
   return r.json();
 }
 
-async function getTickers(port, ConnectionId) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/tickers`);
+async function getTickers(port, ConnectionId, refresh = false) {
+  const qs = refresh ? '?Refresh=true' : '';
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/tickers${qs}`);
   return r.json();
 }
 
@@ -1565,8 +1571,9 @@ def get_connections(port):
     r = requests.get(f"http://127.0.0.1:{port}/api/connections")
     return r.json()
 
-def get_tickers(port, connection_id):
-    r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/tickers")
+def get_tickers(port, connection_id, refresh=False):
+    params = {"Refresh": "true"} if refresh else {}
+    r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/tickers", params=params)
     return r.json()
 
 def get_balance(port, connection_id):
