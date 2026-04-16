@@ -140,6 +140,25 @@ class MetaScalpSocket:
         """Unsubscribe from order book updates for a specific ticker."""
         self._send("orderbook_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
+    # ---- Notification subscriptions ----
+    # App-wide notifications (trades, signal levels, large amounts, screener).
+    # Independent from subscribe() — no connectionId required.
+    # Events: 'notification_snapshot', 'notification_update'
+
+    def subscribe_notifications(self) -> None:
+        """Subscribe to app-wide notifications.
+
+        Receives a snapshot of recent notifications, then live updates.
+        Independent from subscribe() — no connectionId required.
+
+        Events: 'notification_snapshot' (once), then 'notification_update' (continuous)
+        """
+        self._send("notification_subscribe", {})
+
+    def unsubscribe_notifications(self) -> None:
+        """Unsubscribe from notification updates."""
+        self._send("notification_unsubscribe", {})
+
     # ---- Event handling ----
 
     def on(self, event: str) -> Callable:

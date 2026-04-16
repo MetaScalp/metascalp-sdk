@@ -168,6 +168,28 @@ export class MetaScalpSocket {
     this.send('orderbook_unsubscribe', { connectionId, ticker });
   }
 
+  // ---- Notification subscriptions ----
+  // App-wide notifications (trades, signal levels, large amounts, screener).
+  // Independent from subscribe() — no connectionId required.
+  // Events: 'notification_snapshot', 'notification_update'
+
+  /**
+   * Subscribe to app-wide notifications. Receives a snapshot of recent notifications, then live updates.
+   * Independent from subscribe() — no connectionId required.
+   *
+   * Events: `notification_snapshot` (once), then `notification_update` (continuous)
+   */
+  subscribeNotifications(): void {
+    this.send('notification_subscribe', {});
+  }
+
+  /**
+   * Unsubscribe from notification updates.
+   */
+  unsubscribeNotifications(): void {
+    this.send('notification_unsubscribe', {});
+  }
+
   // ---- Event handling ----
 
   /**

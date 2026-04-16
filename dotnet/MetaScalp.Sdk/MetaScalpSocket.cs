@@ -47,6 +47,14 @@ public class MetaScalpSocket : IDisposable
     /// <summary>Fired with incremental order book changes after the initial snapshot. Requires SubscribeOrderBook().</summary>
     public event Action<OrderBookUpdateData>? OnOrderBookUpdate;
 
+    // Notification events — fired after calling SubscribeNotifications().
+    // These are app-wide (not scoped to a connection).
+
+    /// <summary>Fired once with recent notifications after SubscribeNotifications().</summary>
+    public event Action<NotificationSnapshotData>? OnNotificationSnapshot;
+    /// <summary>Fired when new notifications arrive (~1 second batches). Requires SubscribeNotifications().</summary>
+    public event Action<NotificationUpdateData>? OnNotificationUpdate;
+
     // Connection lifecycle events
     public event Action<string>? OnError;
     public event Action? OnConnected;
@@ -166,6 +174,24 @@ public class MetaScalpSocket : IDisposable
     public void UnsubscribeOrderBook(long connectionId, string ticker)
         => Send("orderbook_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
+    // ---- Notification subscriptions ----
+    // App-wide notifications (trades, signal levels, large amounts, screener).
+    // Independent from Subscribe() — no connectionId required.
+    // Events: OnNotificationSnapshot, OnNotificationUpdate.
+
+    /// <summary>
+    /// Subscribe to app-wide notifications. Receives a snapshot of recent notifications, then live updates.
+    /// Events: OnNotificationSnapshot (once), then OnNotificationUpdate (continuous).
+    /// </summary>
+    public void SubscribeNotifications()
+        => Send("notification_subscribe", new { });
+
+    /// <summary>
+    /// Unsubscribe from notification updates.
+    /// </summary>
+    public void UnsubscribeNotifications()
+        => Send("notification_unsubscribe", new { });
+
     // ---- Internals ----
 
     private void Send(string type, object data)
@@ -242,6 +268,12 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "orderbook_update":
                     OnOrderBookUpdate?.Invoke(data.ToObject<OrderBookUpdateData>()!);
+                    break;
+                case "notification_snapshot":
+                    OnNotificationSnapshot?.Invoke(data.ToObject<NotificationSnapshotData>()!);
+                    break;
+                case "notification_update":
+                    OnNotificationUpdate?.Invoke(data.ToObject<NotificationUpdateData>()!);
                     break;
                 case "error":
                     OnError?.Invoke(data["Error"]?.ToString() ?? json);

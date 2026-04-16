@@ -1261,6 +1261,93 @@
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
+
+      <!-- Interactive testing panel -->
+      <div>
+        <div class="ws-controls">
+          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
+          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
+          <div class="ws-status" id="ws-status">
+            <span class="dot"></span>
+            <span id="ws-status-text">Disconnected</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="wsSendNotification('notification_subscribe')" id="ws-notif-sub-btn" disabled>Subscribe Notifications</button>
+          <button class="btn btn-secondary" onclick="wsSendNotification('notification_unsubscribe')" id="ws-notif-unsub-btn" disabled>Unsubscribe Notifications</button>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="form-group">
+            <label>Connection ID</label>
+            <input type="number" id="f-ws-conn" value="1" min="1">
+          </div>
+          <div class="form-group">
+            <label>Ticker</label>
+            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;align-items:center;margin-top:8px;">
+          <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
+          <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
+          <span style="color:var(--text-muted);font-size:11px;">(order_update, position_update, finres_update, balance_update)</span>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
+          <div class="form-group">
+            <label>ZoomIndex</label>
+            <input type="number" id="f-ws-zoom" value="1" min="0">
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="wsSendTradeSubscribe()" id="ws-trade-sub-btn" disabled>Subscribe Trades</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Unsubscribe Trades</button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>Subscribe Orderbook</button>
+          <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>Unsubscribe Orderbook</button>
+        </div>
+
+        <div class="form-grid single" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Custom message <span class="optional">(raw JSON)</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"ConnectionId":1}}' style="flex:1;">
+              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+          <label>Message Log &amp; Market Data</label>
+          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
+        </div>
+        <div class="ws-panels">
+          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
+          <div class="ob-panel" id="ob-panel">
+            <div class="ob-header">
+              <label>Order Book</label>
+            </div>
+            <div class="ob-tabs" id="ob-tabs"></div>
+            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
+            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
+          </div>
+          <div class="trades-panel" id="trades-panel">
+            <div class="trades-header">
+              <label>Trades</label>
+            </div>
+            <div class="trades-tabs" id="trades-tabs"></div>
+            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
+            <div class="trades-list" id="trades-list" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
       <div class="docs">
         <p>Connect via WebSocket to receive <strong>real-time updates</strong> for your exchange connections. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.</p>
 
@@ -1297,6 +1384,8 @@
           <tr><td><code>trade_unsubscribed</code></td><td>After successful trade unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>orderbook_unsubscribed</code></td><td>After successful order book unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>notification_subscribed</code></td><td>After successful notification subscribe</td><td>&mdash;</td></tr>
+          <tr><td><code>notification_unsubscribed</code></td><td>After successful notification unsubscribe</td><td>&mdash;</td></tr>
           <tr><td><code>Error</code></td><td>Invalid message, bad connection ID, or missing ticker</td><td><code>Error</code> (string)</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Connection-level updates:</strong></p>
@@ -1314,6 +1403,12 @@
           <tr><td><code>orderbook_snapshot</code></td><td>Full order book on subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
           <tr><td><code>orderbook_update</code></td><td>Incremental order book changes</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code> with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
         </table>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Notification updates:</strong></p>
+        <table>
+          <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
+          <tr><td><code>notification_snapshot</code></td><td>On subscribe &mdash; recent notifications (up to 200)</td><td><code>Notifications[]</code> with <code>Type</code>, <code>Exchange</code>, <code>Ticker</code>, <code>Price</code>, <code>Size</code>, <code>Date</code>, ...</td></tr>
+          <tr><td><code>notification_update</code></td><td>New notifications (~1 sec batches)</td><td><code>Notifications[]</code> &mdash; same fields</td></tr>
+        </table>
 
         <h3>Lifecycle</h3>
         <table>
@@ -1325,7 +1420,9 @@
           <tr><td>Trade/orderbook subscribe (valid)</td><td>Server responds with <code>trade_subscribed</code> / <code>orderbook_subscribed</code>. Market data starts flowing for that ticker.</td></tr>
           <tr><td>Trade/orderbook subscribe (invalid)</td><td>Server responds with <code>Error</code> (bad connection ID or missing ticker).</td></tr>
           <tr><td>Unsubscribe</td><td>Server responds with confirmation. Updates stop for that subscription.</td></tr>
-          <tr><td>Client disconnects</td><td>All subscriptions (connection-level and market data) are cleaned up automatically.</td></tr>
+          <tr><td>Notification subscribe</td><td>Server responds <code>notification_subscribed</code>. Sends snapshot, then live updates.</td></tr>
+          <tr><td>Notification unsubscribe</td><td>Server responds <code>notification_unsubscribed</code>. Updates stop.</td></tr>
+          <tr><td>Client disconnects</td><td>All subscriptions (connection-level, market data, notifications) are cleaned up automatically.</td></tr>
           <tr><td>Multiple connections</td><td>A single client can subscribe to multiple connection IDs and multiple tickers simultaneously.</td></tr>
         </table>
 
@@ -1465,87 +1562,6 @@
 <span style="color:var(--text-muted);">// Error (invalid connection)</span>
 { "Type": "error", "Data": { "Error": "Connection 999 not found or not active" } }</code></pre>
         </details>
-      </div>
-
-      <hr class="divider">
-
-      <!-- Interactive testing panel -->
-      <div>
-        <div class="ws-controls">
-          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
-          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
-          <div class="ws-status" id="ws-status">
-            <span class="dot"></span>
-            <span id="ws-status-text">Disconnected</span>
-          </div>
-        </div>
-
-        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-          <div class="form-group">
-            <label>Connection ID</label>
-            <input type="number" id="f-ws-conn" value="1" min="1">
-          </div>
-          <div class="form-group">
-            <label>Ticker</label>
-            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:row;gap:8px;align-items:center;margin-top:8px;">
-          <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
-          <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
-          <span style="color:var(--text-muted);font-size:11px;">(order_update, position_update, finres_update, balance_update)</span>
-        </div>
-
-        <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
-          <div class="form-group">
-            <label>ZoomIndex</label>
-            <input type="number" id="f-ws-zoom" value="1" min="0">
-          </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="wsSendTradeSubscribe()" id="ws-trade-sub-btn" disabled>Subscribe Trades</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Unsubscribe Trades</button>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;">
-          <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>Subscribe Orderbook</button>
-          <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>Unsubscribe Orderbook</button>
-        </div>
-
-        <div class="form-grid single" style="margin-top:8px;">
-          <div class="form-group">
-            <label>Custom message <span class="optional">(raw JSON)</span></label>
-            <div style="display:flex;gap:8px;">
-              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"ConnectionId":1}}' style="flex:1;">
-              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
-          <label>Message Log &amp; Market Data</label>
-          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
-        </div>
-        <div class="ws-panels">
-          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
-          <div class="ob-panel" id="ob-panel">
-            <div class="ob-header">
-              <label>Order Book</label>
-            </div>
-            <div class="ob-tabs" id="ob-tabs"></div>
-            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
-            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
-          </div>
-          <div class="trades-panel" id="trades-panel">
-            <div class="trades-header">
-              <label>Trades</label>
-            </div>
-            <div class="trades-tabs" id="trades-tabs"></div>
-            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
-            <div class="trades-list" id="trades-list" style="display:none;"></div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -1738,6 +1754,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
         <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving order book snapshot + incremental updates for a specific ticker.</td></tr>
         <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
+        <tr><td><code>notification_subscribe</code></td><td><code>{}</code></td><td>Start receiving app-wide notifications.</td></tr>
+        <tr><td><code>notification_unsubscribe</code></td><td><code>{}</code></td><td>Stop receiving notifications.</td></tr>
       </table>
 
       <h3>Messages you receive</h3>
@@ -1756,6 +1774,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>trade_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Trades[]</code>: <code>Price</code>, <code>Size</code>, <code>Side</code>, <code>Time</code></td></tr>
         <tr><td><code>orderbook_snapshot</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
         <tr><td><code>orderbook_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code>: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
+        <tr><td><code>notification_subscribed</code></td><td>&mdash;</td></tr>
+        <tr><td><code>notification_unsubscribed</code></td><td>&mdash;</td></tr>
+        <tr><td><code>notification_snapshot</code></td><td><code>Notifications[]</code>: <code>Type</code>, <code>Exchange</code>, <code>Ticker</code>, <code>Price</code>, <code>Size</code>, <code>Date</code>, ...</td></tr>
+        <tr><td><code>notification_update</code></td><td><code>Notifications[]</code> &mdash; same fields</td></tr>
         <tr><td><code>Error</code></td><td><code>Error</code> (string message)</td></tr>
       </table>
 
@@ -2047,6 +2069,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
     const tradeUnsubBtn = document.getElementById('ws-trade-unsub-btn');
     const obSubBtn = document.getElementById('ws-ob-sub-btn');
     const obUnsubBtn = document.getElementById('ws-ob-unsub-btn');
+    const notifSubBtn = document.getElementById('ws-notif-sub-btn');
+    const notifUnsubBtn = document.getElementById('ws-notif-unsub-btn');
     if (connected) {
       el.classList.add('ws-open');
       txt.textContent = `Connected — port ${wsPort}`;
@@ -2059,6 +2083,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       tradeUnsubBtn.disabled = false;
       obSubBtn.disabled = false;
       obUnsubBtn.disabled = false;
+      notifSubBtn.disabled = false;
+      notifUnsubBtn.disabled = false;
     } else {
       el.classList.remove('ws-open');
       txt.textContent = 'Disconnected';
@@ -2071,6 +2097,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       tradeUnsubBtn.disabled = true;
       obSubBtn.disabled = true;
       obUnsubBtn.disabled = true;
+      notifSubBtn.disabled = true;
+      notifUnsubBtn.disabled = true;
     }
   }
 
@@ -2216,6 +2244,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       return;
     }
     wsSend({ type: 'trade_subscribe', data: { ConnectionId: connId, ticker: ticker, ZoomIndex: zoomIndex } });
+  }
+
+  function wsSendNotification(type) {
+    wsSend({ type: type, data: {} });
   }
 
   function wsSendRaw() {

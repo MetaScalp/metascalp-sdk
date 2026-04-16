@@ -32,6 +32,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - Connect to `ws://127.0.0.1:{port}/` (same port as HTTP — scan ports `17845`–`17855`)
 - **Connection-level subscriptions:** Send a `subscribe` message with a connection ID to receive order, position, balance, and finres updates
 - **Market data subscriptions:** Send `trade_subscribe` or `orderbook_subscribe` with a connection ID + ticker to receive trade or order book updates for a specific symbol
+- **Notification subscriptions:** Send `notification_subscribe` to receive app-wide notification events (no connection ID required)
 - You can subscribe to multiple connections and tickers simultaneously
 - All subscriptions are automatically cleaned up when you disconnect
 
@@ -72,7 +73,12 @@ GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
    → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
    ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 
-4. Receive real-time updates
+4. Subscribe to notifications (app-wide, no connection ID needed)
+   → {"Type":"notification_subscribe","Data":{}}
+   ← {"Type":"notification_subscribed","Data":{}}
+   ← {"Type":"notification_snapshot","Data":{"Notifications":[...]}}
+
+5. Receive real-time updates
    ← {"Type":"order_update","Data":{"ConnectionId":1,"OrderId":123,...}}
    ← {"Type":"position_update","Data":{"ConnectionId":1,...}}
    ← {"Type":"balance_update","Data":{"ConnectionId":1,"Balances":[...]}}
@@ -80,8 +86,11 @@ GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
    ← {"Type":"trade_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Trades":[...]}}
    ← {"Type":"orderbook_snapshot","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Asks":[...],"Bids":[...],...}}
    ← {"Type":"orderbook_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Updates":[...]}}
+   ← {"Type":"notification_update","Data":{"Notifications":[...]}}
 
-5. Unsubscribe when done
+6. Unsubscribe when done
+   → {"Type":"notification_unsubscribe","Data":{}}
+   ← {"Type":"notification_unsubscribed","Data":{}}
    → {"Type":"trade_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
    ← {"Type":"trade_unsubscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
    → {"Type":"orderbook_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
@@ -691,6 +700,13 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. Connection must be active. Idempotent. |
 | `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
 
+**Notification subscriptions** — subscribe to receive app-wide notification events (trades, signal levels, large amounts, screener):
+
+| Type | Data | Description |
+|---|---|---|
+| `notification_subscribe` | `{}` | Subscribe to notifications. Receives an initial snapshot of recent notifications, then live updates. Idempotent. |
+| `notification_unsubscribe` | `{}` | Stop receiving notification updates. Idempotent. |
+
 #### Messages you receive
 
 ##### Acknowledgements
@@ -703,6 +719,8 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
 | `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book subscribe |
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
+| `notification_subscribed` | `{}` | After successful notification subscribe |
+| `notification_unsubscribed` | `{}` | After successful notification unsubscribe |
 | `error` | `{ "Error": "..." }` | Invalid message, unknown type, bad connection ID, or missing ticker |
 
 ##### Real-time updates
@@ -915,6 +933,69 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `Updates[].Size` | decimal | New total size at this level (0 = removed) |
 | `Updates[].Type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
 
+**Notification snapshot** — sent once after `notification_subscribe`, contains recent notifications (up to 200):
+
+```json
+{
+  "Type": "notification_snapshot",
+  "Data": {
+    "Notifications": [
+      {
+        "Type": "Trade",
+        "Exchange": "Binance",
+        "ExchangeId": 2,
+        "ExchangeLogo": "binance.png",
+        "Market": "USDT-M Futures",
+        "MarketType": "UsdtFutures",
+        "Ticker": "BTCUSDT",
+        "Price": 65000.0,
+        "Size": 0.5,
+        "TabName": "Tab 1",
+        "Color": "#FF0000",
+        "Date": "2026-04-13T10:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+**Notification update** — pushed when new notifications arrive (~1 second batches):
+
+```json
+{
+  "Type": "notification_update",
+  "Data": {
+    "Notifications": [
+      { "Type": "Trade", "Exchange": "Bybit", "Ticker": "ETHUSDT", "Price": 3200.0, "Size": 1.0, "Date": "2026-04-13T10:05:00+00:00", ... }
+    ]
+  }
+}
+```
+
+| Notification Type | Description |
+|---|---|
+| `Trade` | Position executed |
+| `SignalLevel` | Signal level triggered |
+| `BigOrderBookAmount` | Large order book amount detected |
+| `BigOrderBookAmount2` | Large order book amount (2) detected |
+| `BigTick` | Large volume tick detected |
+| `ScreenerNewCoin` | New coin detected by screener |
+
+| Notification Field | Type | Description |
+|---|---|---|
+| `Type` | string | Notification type (see table above) |
+| `Exchange` | string | Exchange name |
+| `ExchangeId` | integer | Exchange ID |
+| `ExchangeLogo` | string | Exchange logo filename |
+| `Market` | string | Market name |
+| `MarketType` | string | Market type |
+| `Ticker` | string | Trading pair symbol |
+| `Price` | decimal | Price at the time of the event |
+| `Size` | decimal | Size/amount |
+| `TabName` | string | Tab name where the event originated |
+| `Color` | string | Connection color |
+| `Date` | string (ISO) | When the event occurred |
+
 #### Lifecycle
 
 | Event | Behavior |
@@ -928,7 +1009,9 @@ These are pushed automatically after subscribing. You only receive updates for c
 | Trade/orderbook subscribe (invalid) | Server responds `error`. No subscription created. |
 | Trade/orderbook subscribe (duplicate) | Idempotent — responds with confirmation, no duplicate events. |
 | Trade/orderbook unsubscribe | Server responds `trade_unsubscribed` / `orderbook_unsubscribed`. Market data stops for that connection + ticker. |
-| Client disconnects | All subscriptions (connection-level and market data) are cleaned up automatically. Exchange market data subscriptions are released when no more clients need them. |
+| Notification subscribe | Server responds `notification_subscribed`. Sends snapshot of recent notifications, then live updates. |
+| Notification unsubscribe | Server responds `notification_unsubscribed`. Notification updates stop. |
+| Client disconnects | All subscriptions (connection-level, market data, notifications) are cleaned up automatically. Exchange market data subscriptions are released when no more clients need them. |
 | Multiple connections | A single client can subscribe to multiple connection IDs simultaneously. |
 | Multiple tickers | A single client can subscribe to trades/order book for multiple tickers on the same or different connections. |
 | Multiple clients | Multiple clients can subscribe to the same connection ID or ticker. Each receives its own copy of events. |
@@ -1362,6 +1445,14 @@ ws.onmessage = (event) => {
       console.log("Order book update:", msg.Data);
       // { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
       break;
+    case "notification_snapshot":
+      console.log("Notification snapshot:", msg.Data);
+      // { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
+      break;
+    case "notification_update":
+      console.log("New notifications:", msg.Data);
+      // { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
+      break;
     case "error":
       console.error("Socket error:", msg.Data.Error);
       break;
@@ -1457,6 +1548,12 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
             elif msg_type == "orderbook_update":
                 print(f"Order book update: {len(msg['Data'].get('Updates', []))} levels changed")
                 # { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
+            elif msg_type == "notification_snapshot":
+                print(f"Notification snapshot: {len(msg['Data'].get('Notifications', []))} notifications")
+                # { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
+            elif msg_type == "notification_update":
+                print(f"New notifications: {len(msg['Data'].get('Notifications', []))} items")
+                # { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
             elif msg_type == "error":
                 print(f"Error: {msg['Data']['Error']}")
 

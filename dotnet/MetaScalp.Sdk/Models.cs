@@ -218,3 +218,29 @@ public class OrderBookUpdateData
     public string Ticker { get; set; } = "";
     public List<OrderBookOrderDto> Updates { get; set; } = new();
 }
+
+public class NotificationDto
+{
+    public string Type { get; set; } = "";
+    public string Exchange { get; set; } = "";
+    public long ExchangeId { get; set; }
+    public string ExchangeLogo { get; set; } = "";
+    public string Market { get; set; } = "";
+    public string MarketType { get; set; } = "";
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+    public decimal Size { get; set; }
+    public string TabName { get; set; } = "";
+    public string Color { get; set; } = "";
+    public DateTimeOffset Date { get; set; }
+}
+
+public class NotificationSnapshotData
+{
+    public List<NotificationDto> Notifications { get; set; } = new();
+}
+
+public class NotificationUpdateData
+{
+    public List<NotificationDto> Notifications { get; set; } = new();
+}

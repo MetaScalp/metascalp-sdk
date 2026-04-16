@@ -205,6 +205,29 @@ export interface OrderBookUpdateData {
   updates: OrderBookOrder[];
 }
 
+export interface Notification {
+  type: string;
+  exchange: string;
+  exchangeId: number;
+  exchangeLogo: string;
+  market: string;
+  marketType: string;
+  ticker: string;
+  price: number;
+  size: number;
+  tabName: string;
+  color: string;
+  date: string;
+}
+
+export interface NotificationSnapshotData {
+  notifications: Notification[];
+}
+
+export interface NotificationUpdateData {
+  notifications: Notification[];
+}
+
 export interface SocketEventMap {
   order_update: OrderUpdateData;
   position_update: PositionUpdateData;
@@ -219,6 +242,10 @@ export interface SocketEventMap {
   trade_unsubscribed: { connectionId: number; ticker: string };
   orderbook_subscribed: { connectionId: number; ticker: string };
   orderbook_unsubscribed: { connectionId: number; ticker: string };
+  notification_subscribed: Record<string, never>;
+  notification_unsubscribed: Record<string, never>;
+  notification_snapshot: NotificationSnapshotData;
+  notification_update: NotificationUpdateData;
   error: { error: string };
   connected: void;
   disconnected: void;
