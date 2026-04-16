@@ -126,15 +126,15 @@ class MetaScalpSocket:
         """Unsubscribe from trade updates for a specific ticker."""
         self._send("trade_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
-    def subscribe_order_book(self, connection_id: int, ticker: str) -> None:
+    def subscribe_order_book(self, connection_id: int, ticker: str, zoom_index: int = 0) -> None:
         """Subscribe to order book updates for a specific ticker.
 
-        You will receive one 'orderbook_snapshot' followed by 'orderbook_update' events.
-        Independent from subscribe() — only sends order book data for this exact ticker.
+        When zoom_index is 0 (default), receives full order book + incremental updates.
+        When zoom_index > 1, price levels are aggregated into zoomed buckets.
 
         Events: 'orderbook_snapshot' (once), then 'orderbook_update' (continuous)
         """
-        self._send("orderbook_subscribe", {"connectionId": connection_id, "ticker": ticker})
+        self._send("orderbook_subscribe", {"connectionId": connection_id, "ticker": ticker, "zoomIndex": zoom_index})
 
     def unsubscribe_order_book(self, connection_id: int, ticker: str) -> None:
         """Unsubscribe from order book updates for a specific ticker."""

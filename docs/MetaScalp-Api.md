@@ -79,8 +79,8 @@ DELETE /api/connections/{id}/signal-levels/{slId}  → remove a signal level
 3. Subscribe to market data for a specific ticker
    → {"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
    ← {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
-   → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
-   ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+   → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
+   ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
 
 4. Subscribe to notifications (app-wide, no connection ID needed)
    → {"Type":"notification_subscribe","Data":{}}
@@ -848,7 +848,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 |---|---|---|
 | `trade_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | Subscribe to real-time trade updates. When `ZoomIndex` > 1, trades are aggregated by zoomed price level before sending. Re-subscribing updates ZoomIndex. Connection and ticker must be valid. |
 | `trade_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
-| `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. Connection must be active. Idempotent. |
+| `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. When `ZoomIndex` > 1, price levels are aggregated into zoomed buckets. Re-subscribing updates ZoomIndex. Connection must be active. Idempotent. |
 | `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
 
 **Notification subscriptions** — subscribe to receive app-wide notification events (trades, signal levels, large amounts, screener):
@@ -875,7 +875,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `unsubscribed` | `{ "ConnectionId": 123 }` | After successful connection unsubscribe |
 | `trade_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | After successful trade subscribe |
 | `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
-| `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book subscribe |
+| `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | After successful order book subscribe |
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
 | `notification_subscribed` | `{}` | After successful notification subscribe |
 | `notification_unsubscribed` | `{}` | After successful notification unsubscribe |

@@ -152,13 +152,13 @@ export class MetaScalpSocket {
 
   /**
    * Subscribe to order book updates for a specific ticker.
-   * You will receive one `orderbook_snapshot` followed by `orderbook_update` events.
-   * Independent from subscribe() — only sends order book data for this exact ticker.
+   * When zoomIndex is 0 (default), you receive the full order book + incremental updates.
+   * When zoomIndex > 1, price levels are aggregated into zoomed buckets.
    *
    * Events: `orderbook_snapshot` (once), then `orderbook_update` (continuous)
    */
-  subscribeOrderBook(connectionId: number, ticker: string): void {
-    this.send('orderbook_subscribe', { connectionId, ticker });
+  subscribeOrderBook(connectionId: number, ticker: string, zoomIndex = 0): void {
+    this.send('orderbook_subscribe', { connectionId, ticker, zoomIndex });
   }
 
   /**

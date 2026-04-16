@@ -173,10 +173,11 @@ public class MetaScalpSocket : IDisposable
 
     /// <summary>
     /// Subscribe to order book updates for a specific ticker.
-    /// You will receive one OnOrderBookSnapshot followed by OnOrderBookUpdate events.
+    /// When zoomIndex is 0 (default), you receive the full order book snapshot + incremental updates.
+    /// When zoomIndex > 1, price levels are aggregated into zoomed buckets (same as trades).
     /// </summary>
-    public void SubscribeOrderBook(long connectionId, string ticker)
-        => Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
+    public void SubscribeOrderBook(long connectionId, string ticker, int zoomIndex = 0)
+        => Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex });
 
     /// <summary>
     /// Unsubscribe from order book updates for a specific ticker.
