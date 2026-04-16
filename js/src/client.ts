@@ -13,6 +13,8 @@ import type {
   ComboRequest,
   SignalLevelsResponse,
   PlaceSignalLevelRequest,
+  OrderBookSettingsResponse,
+  OrderBookSettings,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -109,6 +111,16 @@ export class MetaScalpClient {
     return this.post('/api/combo', request);
   }
 
+  // ---- Order Book Settings ----
+
+  async getOrderBookSettings(connectionId: number, ticker: string): Promise<OrderBookSettingsResponse> {
+    return this.get(`/api/connections/${connectionId}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`);
+  }
+
+  async updateOrderBookSettings(connectionId: number, ticker: string, settings: Partial<OrderBookSettings>): Promise<OrderBookSettingsResponse> {
+    return this.put(`/api/connections/${connectionId}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`, settings);
+  }
+
   // ---- Signal Levels ----
 
   async getSignalLevels(connectionId: number, ticker: string): Promise<SignalLevelsResponse> {
@@ -154,6 +166,19 @@ export class MetaScalpClient {
   private async post<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new MetaScalpApiError(res.status, (data as any)?.error || res.statusText, path);
+    }
+    return res.json() as Promise<T>;
+  }
+
+  private async put<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });

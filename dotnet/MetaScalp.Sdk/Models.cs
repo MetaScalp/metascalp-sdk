@@ -270,6 +270,63 @@ public class PlaceSignalLevelRequest
     public decimal Price { get; set; }
 }
 
+public class OrderBookSettingsDto
+{
+    // Trading
+    public bool? NotificationTradeHasBeenMade { get; set; }
+    public int? OrderTypeDefault { get; set; }
+    public decimal? DefaultOrderCoin { get; set; }
+    public decimal? DefaultOrderUsd { get; set; }
+    public decimal? OrderSlippageCoin { get; set; }
+    public decimal? OrderSlippageUsd { get; set; }
+    public bool? CloseByMarket { get; set; }
+
+    // OrderBook
+    public decimal? AmountBarFilledAt { get; set; }
+    public decimal? LargeAmount { get; set; }
+    public decimal? LargeAmount2 { get; set; }
+    public decimal? AmountBarFilter { get; set; }
+    public decimal? AmountBarFilledAtUsd { get; set; }
+    public decimal? LargeAmountUsd { get; set; }
+    public decimal? LargeAmountUsd2 { get; set; }
+    public decimal? AmountBarFilterUsd { get; set; }
+    public bool? NotificationLargeAmountDetected { get; set; }
+    public bool? NotificationLargeAmount2Detected { get; set; }
+    public bool? UseLargeAmountDetectionArea { get; set; }
+    public decimal? LargeAmountDetectionMinValue { get; set; }
+    public decimal? LargeAmountDetectionMaxValue { get; set; }
+    public string? ShowRuler { get; set; }
+    public string? ZoomType { get; set; }
+    public bool? AutoZoom { get; set; }
+    public decimal? ZoomPercent { get; set; }
+    public decimal? RowHeight { get; set; }
+    public decimal? SlimLevelsFactor { get; set; }
+    public decimal? BasicLevelsFactor { get; set; }
+    public bool? NotificationSignalLevelTriggered { get; set; }
+    public bool? Autoscroll { get; set; }
+    public bool? FullDepth { get; set; }
+
+    // Ticks
+    public decimal? TicksLargeAmount { get; set; }
+    public decimal? TicksLargeAmountUsd { get; set; }
+    public string? SizeType { get; set; }
+    public bool? NotificationTradeHasBeenMadeTicks { get; set; }
+
+    // Clusters
+    public bool? ShowClusters { get; set; }
+    public string? ClusterTimeFrame { get; set; }
+
+    // General
+    public bool? SoundNotification { get; set; }
+}
+
+public class OrderBookSettingsResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public OrderBookSettingsDto Settings { get; set; } = new();
+}
+
 // ============ Signal Level Socket Models ============
 
 public class SignalLevelsSnapshotData

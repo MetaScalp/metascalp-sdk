@@ -82,6 +82,14 @@ public class MetaScalpClient : IDisposable
     public async Task CancelOrderAsync(long connectionId, CancelOrderRequest request, CancellationToken ct = default)
         => await PostAsync<object>($"/api/connections/{connectionId}/orders/cancel", request, ct);
 
+    // ---- Order Book Settings ----
+
+    public Task<OrderBookSettingsResponse> GetOrderBookSettingsAsync(long connectionId, string ticker, CancellationToken ct = default)
+        => GetAsync<OrderBookSettingsResponse>($"/api/connections/{connectionId}/orderbook-settings?Ticker={Uri.EscapeDataString(ticker)}", ct);
+
+    public Task<OrderBookSettingsResponse> UpdateOrderBookSettingsAsync(long connectionId, string ticker, OrderBookSettingsDto settings, CancellationToken ct = default)
+        => PutAsync<OrderBookSettingsResponse>($"/api/connections/{connectionId}/orderbook-settings?Ticker={Uri.EscapeDataString(ticker)}", settings, ct);
+
     // ---- Signal Levels ----
 
     public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)
@@ -123,6 +131,16 @@ public class MetaScalpClient : IDisposable
     {
         var content = new StringContent(JsonConvert.SerializeObject(body), System.Text.Encoding.UTF8, "application/json");
         var res = await _http.PostAsync(path, content, ct);
+        var json = await res.Content.ReadAsStringAsync(ct);
+        if (!res.IsSuccessStatusCode)
+            throw new MetaScalpApiException((int)res.StatusCode, json, path);
+        return JsonConvert.DeserializeObject<T>(json)!;
+    }
+
+    private async Task<T> PutAsync<T>(string path, object body, CancellationToken ct = default)
+    {
+        var content = new StringContent(JsonConvert.SerializeObject(body), System.Text.Encoding.UTF8, "application/json");
+        var res = await _http.PutAsync(path, content, ct);
         var json = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
             throw new MetaScalpApiException((int)res.StatusCode, json, path);

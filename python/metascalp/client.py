@@ -78,6 +78,14 @@ class MetaScalpClient:
                 raise MetaScalpApiError(resp.status, data.get("error", ""), path)
             return data
 
+    async def _put(self, path: str, body: dict) -> Any:
+        session = await self._ensure_session()
+        async with session.put(f"{self.base_url}{path}", json=body) as resp:
+            data = await resp.json()
+            if resp.status >= 400:
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+            return data
+
     async def _delete(self, path: str) -> Any:
         session = await self._ensure_session()
         async with session.delete(f"{self.base_url}{path}") as resp:
@@ -224,3 +232,18 @@ class MetaScalpClient:
     async def remove_triggered_signal_levels(self) -> dict:
         """Remove all triggered signal levels."""
         return await self._delete("/api/signal-levels/triggered")
+
+    # ---- Order Book Settings ----
+
+    async def get_orderbook_settings(self, connection_id: int, ticker: str) -> dict:
+        """Get order book settings for a ticker on a connection."""
+        return await self._get(
+            f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}"
+        )
+
+    async def update_orderbook_settings(self, connection_id: int, ticker: str, **settings) -> dict:
+        """Update order book settings (partial update). Only provided fields are changed."""
+        return await self._put(
+            f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",
+            settings,
+        )

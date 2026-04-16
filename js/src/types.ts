@@ -273,6 +273,61 @@ export interface NotificationUpdateData {
   notifications: Notification[];
 }
 
+export interface OrderBookSettings {
+    // Trading
+    notificationTradeHasBeenMade?: boolean;
+    orderTypeDefault?: number;
+    defaultOrderCoin?: number;
+    defaultOrderUsd?: number;
+    orderSlippageCoin?: number;
+    orderSlippageUsd?: number;
+    closeByMarket?: boolean;
+
+    // OrderBook
+    amountBarFilledAt?: number;
+    largeAmount?: number;
+    largeAmount2?: number;
+    amountBarFilter?: number;
+    amountBarFilledAtUsd?: number;
+    largeAmountUsd?: number;
+    largeAmountUsd2?: number;
+    amountBarFilterUsd?: number;
+    notificationLargeAmountDetected?: boolean;
+    notificationLargeAmount2Detected?: boolean;
+    useLargeAmountDetectionArea?: boolean;
+    largeAmountDetectionMinValue?: number;
+    largeAmountDetectionMaxValue?: number;
+    showRuler?: string;
+    zoomType?: string;
+    autoZoom?: boolean;
+    zoomPercent?: number;
+    rowHeight?: number;
+    slimLevelsFactor?: number;
+    basicLevelsFactor?: number;
+    notificationSignalLevelTriggered?: boolean;
+    autoscroll?: boolean;
+    fullDepth?: boolean;
+
+    // Ticks
+    ticksLargeAmount?: number;
+    ticksLargeAmountUsd?: number;
+    sizeType?: string;
+    notificationTradeHasBeenMadeTicks?: boolean;
+
+    // Clusters
+    showClusters?: boolean;
+    clusterTimeFrame?: string;
+
+    // General
+    soundNotification?: boolean;
+}
+
+export interface OrderBookSettingsResponse {
+    connectionId: number;
+    ticker: string;
+    settings: OrderBookSettings;
+}
+
 export interface SocketEventMap {
   order_update: OrderUpdateData;
   position_update: PositionUpdateData;

@@ -112,6 +112,7 @@
   }
   .method-get { background: rgba(63,185,80,.15); color: var(--green); }
   .method-post { background: rgba(88,166,255,.15); color: var(--accent); }
+  .method-put { background: rgba(210,153,34,.15); color: var(--orange); }
   .method-delete { background: rgba(248,81,73,.15); color: var(--red); }
   .endpoint-path {
     font-family: monospace;
@@ -1441,6 +1442,86 @@
     </div>
   </div>
 
+  <!-- Order Book Settings -->
+  <div class="section-label">Order Book Settings</div>
+
+  <!-- GET /api/connections/{id}/orderbook-settings -->
+  <div class="endpoint" id="ep-obs-get">
+    <div class="endpoint-header" onclick="toggle('ep-obs-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{ConnectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-desc">Get order book settings</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns all order book settings for a specific ticker on a connection. Settings include trading defaults, order book display configuration, tick thresholds, and cluster options.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-obs-get-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-obs-get-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetOrderBookSettings()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-obs-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-obs-get-status"></span>
+          <span class="response-time" id="resp-obs-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-obs-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUT /api/connections/{id}/orderbook-settings -->
+  <div class="endpoint" id="ep-obs-put">
+    <div class="endpoint-header" onclick="toggle('ep-obs-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/connections/{ConnectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-desc">Update order book settings (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Returns the full updated settings object.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>), <code>ClusterTimeFrame</code> (<code>M1</code>, <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-obs-put-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-obs-put-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"LargeAmountUsd": 50000, "RowHeight": 14, "Autoscroll": true}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateOrderBookSettings()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-obs-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-obs-put-status"></span>
+          <span class="response-time" id="resp-obs-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-obs-put-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Real-time WebSocket -->
   <div class="section-label">Real-time WebSocket</div>
 
@@ -1864,6 +1945,9 @@
       <tr><td><code>/api/connections/{id}/signal-levels</code></td><td>Invalid request body</td><td>400</td><td><code>Invalid request body. 'ticker' and 'price' are required.</code></td></tr>
       <tr><td><code>/api/connections/{id}/signal-levels</code></td><td>No market data</td><td>400</td><td><code>No market data for 'TICKER'. Subscribe to order book data for this ticker first.</code></td></tr>
       <tr><td><code>/api/connections/{id}/signal-levels</code></td><td>Price &lt;= 0</td><td>400</td><td><code>Price must be greater than zero</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>Missing ticker</td><td>400</td><td><code>Query parameter 'Ticker' is required</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>No settings found</td><td>404</td><td><code>No order book settings found for ticker 'X'</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>Invalid enum value (PUT)</td><td>400</td><td><code>Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>
     </table>
@@ -1917,6 +2001,8 @@
         <tr><td><code>DELETE /api/connections/{id}/signal-levels/{slId}</code></td><td>Remove a single signal level</td></tr>
         <tr><td><code>DELETE /api/connections/{id}/signal-levels?Ticker=</code></td><td>Remove all signal levels for a ticker</td></tr>
         <tr><td><code>DELETE /api/signal-levels/triggered</code></td><td>Remove all triggered signal levels</td></tr>
+        <tr><td><code>GET /api/connections/{id}/orderbook-settings?Ticker=</code></td><td>Get order book settings</td></tr>
+        <tr><td><code>PUT /api/connections/{id}/orderbook-settings?Ticker=</code></td><td>Update order book settings (partial)</td></tr>
       </table>
 
       <h3>WebSocket streaming</h3>
@@ -1948,7 +2034,9 @@ POST /api/connections/{id}/orders/cancel-all      &rarr; cancel all orders for a
 GET  /api/connections/{id}/cluster-snapshot        &rarr; get cluster snapshot data
 GET  /api/connections/{id}/signal-levels?Ticker=   &rarr; list signal levels
 POST /api/connections/{id}/signal-levels           &rarr; place a signal level
-DELETE /api/connections/{id}/signal-levels/{slId}  &rarr; remove a signal level</code></pre>
+DELETE /api/connections/{id}/signal-levels/{slId}  &rarr; remove a signal level
+GET  /api/connections/{id}/orderbook-settings?Ticker= &rarr; get orderbook settings
+PUT  /api/connections/{id}/orderbook-settings?Ticker= &rarr; update orderbook settings</code></pre>
 
       <h3>Typical WebSocket client flow</h3>
       <pre><code><span style="color:var(--text-muted);">1. Connect</span>
@@ -2337,6 +2425,30 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       showResponse('cluster-snapshot', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('cluster-snapshot', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetOrderBookSettings() {
+    const id = document.getElementById('f-obs-get-conn').value;
+    const ticker = document.getElementById('f-obs-get-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('obs-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('obs-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendUpdateOrderBookSettings() {
+    const id = document.getElementById('f-obs-put-conn').value;
+    const ticker = document.getElementById('f-obs-put-ticker').value.trim();
+    const bodyText = document.getElementById('f-obs-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/connections/${id}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`, body);
+      showResponse('obs-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('obs-put', 'ERR', 'status-net', e.message, 0);
     }
   }
 

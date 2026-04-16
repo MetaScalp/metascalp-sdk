@@ -29,6 +29,8 @@ Use HTTP to discover connections, query data, and execute trades:
 | `DELETE /api/connections/{id}/signal-levels/{slId}` | Remove a single signal level |
 | `DELETE /api/connections/{id}/signal-levels?Ticker=` | Remove all signal levels for a ticker |
 | `DELETE /api/signal-levels/triggered` | Remove all triggered signal levels |
+| `GET /api/connections/{id}/orderbook-settings?Ticker=` | Get order book settings for a ticker |
+| `PUT /api/connections/{id}/orderbook-settings?Ticker=` | Update order book settings (partial) |
 
 ### WebSocket streaming
 
@@ -64,6 +66,8 @@ GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
 GET  /api/connections/{id}/signal-levels?Ticker=   → list signal levels
 POST /api/connections/{id}/signal-levels           → place a signal level
 DELETE /api/connections/{id}/signal-levels/{slId}  → remove a signal level
+GET  /api/connections/{id}/orderbook-settings?Ticker= → get orderbook settings
+PUT  /api/connections/{id}/orderbook-settings?Ticker= → update orderbook settings
 ```
 
 ### Typical WebSocket client flow
@@ -816,6 +820,190 @@ DELETE http://127.0.0.1:{port}/api/signal-levels/triggered
 
 ---
 
+### Order Book Settings
+
+Read and update order book display and trading settings for a specific ticker on a connection. The update endpoint uses partial semantics — only send the fields you want to change; omitted fields keep their current values.
+
+All order book settings endpoints require a valid `{ConnectionId}` in the URL path, subject to the same [connection validation errors](#trading-operations) as trading endpoints.
+
+#### Get Order Book Settings
+
+Returns all order book settings for a specific ticker on a connection.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ticker=BTCUSDT
+```
+
+| Query Parameter | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| `Ticker`        | string | yes      | Trading pair symbol |
+
+**Response `200 OK`:**
+```json
+{
+  "ConnectionId": 1,
+  "Ticker": "BTCUSDT",
+  "Settings": {
+    "NotificationTradeHasBeenMade": true,
+    "OrderTypeDefault": 0,
+    "DefaultOrderCoin": 0.001,
+    "DefaultOrderUsd": 100.0,
+    "OrderSlippageCoin": 0.0,
+    "OrderSlippageUsd": 0.0,
+    "CloseByMarket": false,
+    "AmountBarFilledAt": 10000.0,
+    "LargeAmount": 10000.0,
+    "LargeAmount2": 20000.0,
+    "AmountBarFilter": 0.0,
+    "AmountBarFilledAtUsd": 30000.0,
+    "LargeAmountUsd": 20000.0,
+    "LargeAmountUsd2": 30000.0,
+    "AmountBarFilterUsd": 0.0,
+    "NotificationLargeAmountDetected": false,
+    "NotificationLargeAmount2Detected": false,
+    "UseLargeAmountDetectionArea": false,
+    "LargeAmountDetectionMinValue": 0.0,
+    "LargeAmountDetectionMaxValue": 0.0,
+    "ShowRuler": "Percent",
+    "ZoomType": "Absolute",
+    "AutoZoom": false,
+    "ZoomPercent": 2.0,
+    "RowHeight": 12.0,
+    "SlimLevelsFactor": 10.0,
+    "BasicLevelsFactor": 50.0,
+    "NotificationSignalLevelTriggered": true,
+    "Autoscroll": false,
+    "FullDepth": true,
+    "TicksLargeAmount": 0.0,
+    "TicksLargeAmountUsd": 0.0,
+    "SizeType": "Coin",
+    "NotificationTradeHasBeenMadeTicks": false,
+    "ShowClusters": false,
+    "ClusterTimeFrame": "M1",
+    "SoundNotification": true
+  }
+}
+```
+
+Settings field reference:
+
+**Trading**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `NotificationTradeHasBeenMade` | boolean | Notify when a trade is executed |
+| `OrderTypeDefault` | integer | Default order type (`0` Limit, `4` Market) |
+| `DefaultOrderCoin` | decimal | Default order size in base asset |
+| `DefaultOrderUsd` | decimal | Default order size in USD |
+| `OrderSlippageCoin` | decimal | Order slippage allowance in base asset |
+| `OrderSlippageUsd` | decimal | Order slippage allowance in USD |
+| `CloseByMarket` | boolean | Close positions using market orders |
+
+**Order Book**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `AmountBarFilledAt` | decimal | Amount bar fill threshold (base asset) |
+| `LargeAmount` | decimal | Large amount highlight threshold (base asset) |
+| `LargeAmount2` | decimal | Second large amount highlight threshold (base asset) |
+| `AmountBarFilter` | decimal | Minimum amount to display in order book (base asset) |
+| `AmountBarFilledAtUsd` | decimal | Amount bar fill threshold (USD) |
+| `LargeAmountUsd` | decimal | Large amount highlight threshold (USD) |
+| `LargeAmountUsd2` | decimal | Second large amount highlight threshold (USD) |
+| `AmountBarFilterUsd` | decimal | Minimum amount to display in order book (USD) |
+| `NotificationLargeAmountDetected` | boolean | Notify when large amount is detected |
+| `NotificationLargeAmount2Detected` | boolean | Notify when second large amount is detected |
+| `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
+| `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
+| `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
+| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
+| `AutoZoom` | boolean | Enable automatic zoom |
+| `ZoomPercent` | decimal | Zoom percentage value |
+| `RowHeight` | decimal | Order book row height in pixels |
+| `SlimLevelsFactor` | decimal | Factor for slim price levels |
+| `BasicLevelsFactor` | decimal | Factor for basic price levels |
+| `NotificationSignalLevelTriggered` | boolean | Notify when a signal level is triggered |
+| `Autoscroll` | boolean | Auto-scroll order book to current price |
+| `FullDepth` | boolean | Show full order book depth |
+| `SizeType` | string | Size display type: `"Coin"`, `"Usd"` |
+| `SoundNotification` | boolean | Enable sound notifications |
+
+**Ticks**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `TicksLargeAmount` | decimal | Large tick highlight threshold (base asset) |
+| `TicksLargeAmountUsd` | decimal | Large tick highlight threshold (USD) |
+| `NotificationTradeHasBeenMadeTicks` | boolean | Notify on large ticks |
+
+**Clusters**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ShowClusters` | boolean | Show cluster (volume profile) data |
+| `ClusterTimeFrame` | string | Cluster timeframe: `"M1"`, `"M5"`, `"M15"`, `"M30"`, `"H1"`, `"H4"`, `"D1"` |
+
+**Enum values:**
+
+| Field | Valid values |
+|-------|-------------|
+| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ZoomType` | `"Absolute"`, `"Percentage"` |
+| `SizeType` | `"Coin"`, `"Usd"` |
+| `ClusterTimeFrame` | `"M1"`, `"M5"`, `"M15"`, `"M30"`, `"H1"`, `"H4"`, `"D1"` |
+
+#### Update Order Book Settings
+
+Partial update — only send the fields you want to change. Omitted fields keep their current values.
+
+```
+PUT http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ticker=BTCUSDT
+Content-Type: application/json
+```
+
+| Query Parameter | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| `Ticker`        | string | yes      | Trading pair symbol |
+
+**Request body** (only include fields to update):
+```json
+{
+  "LargeAmountUsd": 50000,
+  "RowHeight": 14,
+  "Autoscroll": true
+}
+```
+
+**Response `200 OK`:** Same shape as GET — returns the full updated settings object.
+
+**`400 Bad Request`:**
+
+| Condition | Error message |
+|-----------|---------------|
+| Missing ticker | `Query parameter 'Ticker' is required` |
+| Invalid enum value | `Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume` |
+
+**`404 Not Found`:**
+
+| Condition | Error message |
+|-----------|---------------|
+| No settings found | `No order book settings found for ticker 'X'` |
+
+**Examples:**
+
+```bash
+# Get order book settings
+curl "http://127.0.0.1:17845/api/connections/1/orderbook-settings?Ticker=BTCUSDT"
+
+# Update order book settings (partial)
+curl -X PUT http://127.0.0.1:17845/api/connections/1/orderbook-settings?Ticker=BTCUSDT \
+  -H "Content-Type: application/json" \
+  -d '{"LargeAmountUsd": 50000, "RowHeight": 14, "Autoscroll": true}'
+```
+
+---
+
 ### Real-time WebSocket
 
 Connect via WebSocket to receive live updates. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.
@@ -1506,6 +1694,20 @@ async function removeSignalLevel(port, ConnectionId, signalLevelId) {
   return r.json();
 }
 
+async function getOrderBookSettings(port, ConnectionId, ticker) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orderbook-settings?Ticker=${ticker}`);
+  return r.json();
+}
+
+async function updateOrderBookSettings(port, ConnectionId, ticker, settings) {
+  const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/orderbook-settings?Ticker=${ticker}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings)
+  });
+  return r.json();
+}
+
 async function changeTickerByPattern(port, TickerPattern, binding) {
   const body = { TickerPattern };
   if (binding) body.Binding = binding;
@@ -1546,6 +1748,10 @@ if (port) {
   const levels = await getSignalLevels(port, conn.Id, "BTCUSDT");
   await placeSignalLevel(port, conn.Id, "BTCUSDT", 95000.00);
   await removeSignalLevel(port, conn.Id, 1);
+
+  // Order book settings
+  const obSettings = await getOrderBookSettings(port, conn.Id, "BTCUSDT");
+  await updateOrderBookSettings(port, conn.Id, "BTCUSDT", { LargeAmountUsd: 50000, RowHeight: 14 });
 
   // Switch ticker in UI
   await changeTickerByPattern(port, "BINANCE:BTCUSDT.p", "001");
@@ -1634,6 +1840,16 @@ def remove_signal_level(port, connection_id, signal_level_id):
     r = requests.delete(f"http://127.0.0.1:{port}/api/connections/{connection_id}/signal-levels/{signal_level_id}")
     return r.json()
 
+def get_orderbook_settings(port, connection_id, ticker):
+    r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orderbook-settings",
+                     params={"Ticker": ticker})
+    return r.json()
+
+def update_orderbook_settings(port, connection_id, ticker, **settings):
+    r = requests.put(f"http://127.0.0.1:{port}/api/connections/{connection_id}/orderbook-settings",
+                     params={"Ticker": ticker}, json=settings)
+    return r.json()
+
 def change_ticker_by_pattern(port, ticker_pattern, binding=None):
     payload = {"TickerPattern": ticker_pattern}
     if binding:
@@ -1668,6 +1884,10 @@ if port:
     levels = get_signal_levels(port, conn["Id"], "BTCUSDT")
     place_signal_level(port, conn["Id"], "BTCUSDT", price=95000.00)
     remove_signal_level(port, conn["Id"], signal_level_id=1)
+
+    # Order book settings
+    ob_settings = get_orderbook_settings(port, conn["Id"], "BTCUSDT")
+    update_orderbook_settings(port, conn["Id"], "BTCUSDT", LargeAmountUsd=50000, RowHeight=14)
 
     # Switch ticker in UI
     change_ticker_by_pattern(port, "BINANCE:BTCUSDT.p", binding="001")
