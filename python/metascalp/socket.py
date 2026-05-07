@@ -140,6 +140,34 @@ class MetaScalpSocket:
         """Unsubscribe from order book updates for a specific ticker."""
         self._send("orderbook_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
+    def subscribe_mark_price(self, connection_id: int, ticker: str) -> None:
+        """Subscribe to mark price updates for a specific ticker (futures only).
+
+        No initial snapshot — only live updates as the exchange publishes them.
+        Spot connections will not emit any updates even after a successful subscribe.
+
+        Event: 'mark_price_update'
+        """
+        self._send("mark_price_subscribe", {"connectionId": connection_id, "ticker": ticker})
+
+    def unsubscribe_mark_price(self, connection_id: int, ticker: str) -> None:
+        """Unsubscribe from mark price updates for a specific ticker."""
+        self._send("mark_price_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
+
+    def subscribe_funding(self, connection_id: int, ticker: str) -> None:
+        """Subscribe to funding rate updates for a specific ticker (perpetual futures only).
+
+        No initial snapshot — only live updates as the exchange publishes them.
+        Spot and dated-futures connections will not emit any updates even after a successful subscribe.
+
+        Event: 'funding_update'
+        """
+        self._send("funding_subscribe", {"connectionId": connection_id, "ticker": ticker})
+
+    def unsubscribe_funding(self, connection_id: int, ticker: str) -> None:
+        """Unsubscribe from funding rate updates for a specific ticker."""
+        self._send("funding_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
+
     # ---- Notification subscriptions ----
     # App-wide notifications (trades, signal levels, large amounts, screener).
     # Independent from subscribe() — no connectionId required.

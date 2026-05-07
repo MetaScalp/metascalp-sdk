@@ -205,6 +205,19 @@ export interface OrderBookUpdateData {
   updates: OrderBookOrder[];
 }
 
+export interface MarkPriceUpdateData {
+  connectionId: number;
+  ticker: string;
+  markPrice: number;
+}
+
+export interface FundingUpdateData {
+  connectionId: number;
+  ticker: string;
+  fundingRate: number;
+  fundingTime: string;
+}
+
 export interface SignalLevel {
   id: number;
   connectionId: number;
@@ -336,12 +349,18 @@ export interface SocketEventMap {
   trade_update: TradeUpdateData;
   orderbook_snapshot: OrderBookSnapshotData;
   orderbook_update: OrderBookUpdateData;
+  mark_price_update: MarkPriceUpdateData;
+  funding_update: FundingUpdateData;
   subscribed: { connectionId: number };
   unsubscribed: { connectionId: number };
   trade_subscribed: { connectionId: number; ticker: string };
   trade_unsubscribed: { connectionId: number; ticker: string };
   orderbook_subscribed: { connectionId: number; ticker: string };
   orderbook_unsubscribed: { connectionId: number; ticker: string };
+  mark_price_subscribed: { connectionId: number; ticker: string };
+  mark_price_unsubscribed: { connectionId: number; ticker: string };
+  funding_subscribed: { connectionId: number; ticker: string };
+  funding_unsubscribed: { connectionId: number; ticker: string };
   notification_subscribed: Record<string, never>;
   notification_unsubscribed: Record<string, never>;
   notification_snapshot: NotificationSnapshotData;

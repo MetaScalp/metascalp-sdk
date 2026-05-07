@@ -168,6 +168,40 @@ export class MetaScalpSocket {
     this.send('orderbook_unsubscribe', { connectionId, ticker });
   }
 
+  /**
+   * Subscribe to mark price updates for a specific ticker (futures only).
+   * No initial snapshot — only live updates. Spot connections will not emit any updates.
+   *
+   * Event: `mark_price_update`
+   */
+  subscribeMarkPrice(connectionId: number, ticker: string): void {
+    this.send('mark_price_subscribe', { connectionId, ticker });
+  }
+
+  /**
+   * Unsubscribe from mark price updates for a specific ticker.
+   */
+  unsubscribeMarkPrice(connectionId: number, ticker: string): void {
+    this.send('mark_price_unsubscribe', { connectionId, ticker });
+  }
+
+  /**
+   * Subscribe to funding rate updates for a specific ticker (perpetual futures only).
+   * No initial snapshot — only live updates. Spot and dated-futures connections will not emit any updates.
+   *
+   * Event: `funding_update`
+   */
+  subscribeFunding(connectionId: number, ticker: string): void {
+    this.send('funding_subscribe', { connectionId, ticker });
+  }
+
+  /**
+   * Unsubscribe from funding rate updates for a specific ticker.
+   */
+  unsubscribeFunding(connectionId: number, ticker: string): void {
+    this.send('funding_unsubscribe', { connectionId, ticker });
+  }
+
   // ---- Notification subscriptions ----
   // App-wide notifications (trades, signal levels, large amounts, screener).
   // Independent from subscribe() — no connectionId required.

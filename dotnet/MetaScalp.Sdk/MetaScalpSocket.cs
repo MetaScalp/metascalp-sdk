@@ -46,6 +46,10 @@ public class MetaScalpSocket : IDisposable
     public event Action<OrderBookSnapshotData>? OnOrderBookSnapshot;
     /// <summary>Fired with incremental order book changes after the initial snapshot. Requires SubscribeOrderBook().</summary>
     public event Action<OrderBookUpdateData>? OnOrderBookUpdate;
+    /// <summary>Fired when the mark price changes for a subscribed ticker (futures only). Requires SubscribeMarkPrice().</summary>
+    public event Action<MarkPriceUpdateData>? OnMarkPriceUpdate;
+    /// <summary>Fired when the funding rate or funding time changes for a subscribed ticker (perpetual futures only). Requires SubscribeFunding().</summary>
+    public event Action<FundingUpdateData>? OnFundingUpdate;
 
     // Notification events — fired after calling SubscribeNotifications().
     // These are app-wide (not scoped to a connection).
@@ -185,6 +189,32 @@ public class MetaScalpSocket : IDisposable
     public void UnsubscribeOrderBook(long connectionId, string ticker)
         => Send("orderbook_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
+    /// <summary>
+    /// Subscribe to mark price updates for a specific ticker (futures only).
+    /// No initial snapshot — only live updates. Event: OnMarkPriceUpdate.
+    /// </summary>
+    public void SubscribeMarkPrice(long connectionId, string ticker)
+        => Send("mark_price_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
+    /// <summary>
+    /// Unsubscribe from mark price updates for a specific ticker.
+    /// </summary>
+    public void UnsubscribeMarkPrice(long connectionId, string ticker)
+        => Send("mark_price_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
+    /// <summary>
+    /// Subscribe to funding rate updates for a specific ticker (perpetual futures only).
+    /// No initial snapshot — only live updates. Event: OnFundingUpdate.
+    /// </summary>
+    public void SubscribeFunding(long connectionId, string ticker)
+        => Send("funding_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
+    /// <summary>
+    /// Unsubscribe from funding rate updates for a specific ticker.
+    /// </summary>
+    public void UnsubscribeFunding(long connectionId, string ticker)
+        => Send("funding_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
     // ---- Notification subscriptions ----
     // App-wide notifications (trades, signal levels, large amounts, screener).
     // Independent from Subscribe() — no connectionId required.
@@ -287,6 +317,12 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "orderbook_update":
                     OnOrderBookUpdate?.Invoke(data.ToObject<OrderBookUpdateData>()!);
+                    break;
+                case "mark_price_update":
+                    OnMarkPriceUpdate?.Invoke(data.ToObject<MarkPriceUpdateData>()!);
+                    break;
+                case "funding_update":
+                    OnFundingUpdate?.Invoke(data.ToObject<FundingUpdateData>()!);
                     break;
                 case "notification_snapshot":
                     OnNotificationSnapshot?.Invoke(data.ToObject<NotificationSnapshotData>()!);

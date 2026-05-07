@@ -1595,6 +1595,16 @@
           </div>
         </div>
 
+        <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
+          <div class="form-group" style="grid-column:1 / span 2;display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="wsSendMarketData('mark_price_subscribe')" id="ws-mp-sub-btn" disabled>Subscribe Mark Price</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('mark_price_unsubscribe')" id="ws-mp-unsub-btn" disabled>Unsubscribe Mark Price</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('funding_subscribe')" id="ws-fund-sub-btn" disabled>Subscribe Funding</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('funding_unsubscribe')" id="ws-fund-unsub-btn" disabled>Unsubscribe Funding</button>
+            <span style="color:var(--text-muted);font-size:11px;">(futures only — no events on spot)</span>
+          </div>
+        </div>
+
         <div class="form-grid single" style="margin-top:8px;">
           <div class="form-group">
             <label>Custom message <span class="optional">(raw JSON)</span></label>
@@ -1656,6 +1666,10 @@
           <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker. Idempotent.</td></tr>
           <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }</code></td><td>Subscribe to order book updates. <code>ZoomIndex</code> > 1 aggregates price levels into zoomed buckets. Idempotent.</td></tr>
           <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to mark price updates (futures only). No initial snapshot &mdash; only live updates. Idempotent.</td></tr>
+          <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>funding_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to funding rate updates (perpetual futures only). No initial snapshot. Idempotent.</td></tr>
+          <tr><td><code>funding_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker. Idempotent.</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Signal level subscriptions</strong> &mdash; subscribe to receive signal level events (placed, triggered, removed):</p>
         <table>
@@ -1674,6 +1688,10 @@
           <tr><td><code>trade_unsubscribed</code></td><td>After successful trade unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>ZoomIndex</code></td></tr>
           <tr><td><code>orderbook_unsubscribed</code></td><td>After successful order book unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>mark_price_subscribed</code></td><td>After successful mark price subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>mark_price_unsubscribed</code></td><td>After successful mark price unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>funding_subscribed</code></td><td>After successful funding subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>funding_unsubscribed</code></td><td>After successful funding unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>notification_subscribed</code></td><td>After successful notification subscribe</td><td>&mdash;</td></tr>
           <tr><td><code>notification_unsubscribed</code></td><td>After successful notification unsubscribe</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_subscribed</code></td><td>After successful signal level subscribe</td><td>&mdash;</td></tr>
@@ -1694,6 +1712,8 @@
           <tr><td><code>trade_update</code></td><td>New trades for subscribed ticker</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Trades[]</code> with <code>Price</code>, <code>Size</code>, <code>Side</code>, <code>Time</code></td></tr>
           <tr><td><code>orderbook_snapshot</code></td><td>Full order book on subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
           <tr><td><code>orderbook_update</code></td><td>Incremental order book changes</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code> with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
+          <tr><td><code>mark_price_update</code></td><td>Mark price changed (futures only)</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>MarkPrice</code></td></tr>
+          <tr><td><code>funding_update</code></td><td>Funding rate / time changed (perpetual futures only)</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>FundingRate</code>, <code>FundingTime</code> (ISO 8601)</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Notification updates:</strong></p>
         <table>
@@ -1721,6 +1741,7 @@
           <tr><td>Subscribe (already subscribed)</td><td>Idempotent &mdash; responds with confirmation, no duplicate events.</td></tr>
           <tr><td>Trade/orderbook subscribe (valid)</td><td>Server responds with <code>trade_subscribed</code> / <code>orderbook_subscribed</code>. Market data starts flowing for that ticker.</td></tr>
           <tr><td>Trade/orderbook subscribe (invalid)</td><td>Server responds with <code>Error</code> (bad connection ID or missing ticker).</td></tr>
+          <tr><td>Mark price / funding subscribe (valid)</td><td>Server responds with <code>mark_price_subscribed</code> / <code>funding_subscribed</code>. Updates flow as the exchange publishes them (no initial snapshot). Spot connections will not emit any events.</td></tr>
           <tr><td>Unsubscribe</td><td>Server responds with confirmation. Updates stop for that subscription.</td></tr>
           <tr><td>Notification subscribe</td><td>Server responds <code>notification_subscribed</code>. Sends snapshot, then live updates.</td></tr>
           <tr><td>Notification unsubscribe</td><td>Server responds <code>notification_unsubscribed</code>. Updates stop.</td></tr>
@@ -1856,9 +1877,25 @@
   }
 }
 
+<span style="color:var(--text-muted);">// Subscribe to mark price (futures only)</span>
+{ "Type": "mark_price_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "mark_price_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+
+<span style="color:var(--text-muted);">// Mark price update pushed by server</span>
+{ "Type": "mark_price_update", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "MarkPrice": 65123.5 } }
+
+<span style="color:var(--text-muted);">// Subscribe to funding rate (perpetual futures only)</span>
+{ "Type": "funding_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "funding_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+
+<span style="color:var(--text-muted);">// Funding update pushed by server</span>
+{ "Type": "funding_update", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "FundingRate": 0.0001, "FundingTime": "2026-03-16T16:00:00+00:00" } }
+
 <span style="color:var(--text-muted);">// Unsubscribe from market data</span>
 { "Type": "trade_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
 { "Type": "orderbook_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "mark_price_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "funding_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
 
 <span style="color:var(--text-muted);">// Unsubscribe from connection</span>
 { "Type": "unsubscribe", "Data": { "ConnectionId": 1 } }
@@ -2010,7 +2047,7 @@
       <ul>
         <li>Connect to <code>ws://127.0.0.1:{port}/</code> (same port as HTTP &mdash; scan <code>17845</code>&ndash;<code>17855</code>)</li>
         <li><strong>Connection-level:</strong> Send <code>subscribe</code> with a connection ID to receive order, position, balance, and finres updates</li>
-        <li><strong>Market data:</strong> Send <code>trade_subscribe</code> or <code>orderbook_subscribe</code> with connection ID + ticker to receive trade or order book updates</li>
+        <li><strong>Market data:</strong> Send <code>trade_subscribe</code>, <code>orderbook_subscribe</code>, <code>mark_price_subscribe</code>, or <code>funding_subscribe</code> with connection ID + ticker to receive trade, order book, mark price, or funding updates</li>
         <li><strong>Signal level subscriptions:</strong> Send <code>signal_level_subscribe</code> to receive signal level events (no connection ID required)</li>
         <li>You can subscribe to multiple connections and tickers simultaneously</li>
         <li>All subscriptions are automatically cleaned up when you disconnect</li>
@@ -2051,6 +2088,10 @@ ws.send('{"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","
 &larr; {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
 ws.send('{"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}')
 &larr; {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
+ws.send('{"Type":"mark_price_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
+&larr; {"Type":"mark_price_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+ws.send('{"Type":"funding_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
+&larr; {"Type":"funding_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 
 <span style="color:var(--text-muted);">4. Subscribe to signal levels</span>
 ws.send('{"Type":"signal_level_subscribe","Data":{}}')
@@ -2065,6 +2106,8 @@ ws.send('{"Type":"signal_level_subscribe","Data":{}}')
 &larr; {"Type":"trade_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Trades":[...]}}
 &larr; {"Type":"orderbook_snapshot","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Asks":[...],"Bids":[...],...}}
 &larr; {"Type":"orderbook_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Updates":[...]}}
+&larr; {"Type":"mark_price_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","MarkPrice":65123.5}}
+&larr; {"Type":"funding_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","FundingRate":0.0001,"FundingTime":"2026-03-16T16:00:00+00:00"}}
 &larr; {"Type":"signal_level_placed","Data":{"Id":1,"ConnectionId":1,"Ticker":"BTCUSDT","Price":95000,...}}
 &larr; {"Type":"signal_level_triggered","Data":{"Id":1,"TriggerTime":"2026-04-13T..."}}
 
@@ -2072,6 +2115,8 @@ ws.send('{"Type":"signal_level_subscribe","Data":{}}')
 ws.send('{"Type":"signal_level_unsubscribe","Data":{}}')
 ws.send('{"Type":"trade_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
 ws.send('{"Type":"orderbook_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
+ws.send('{"Type":"mark_price_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
+ws.send('{"Type":"funding_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
 ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
 &larr; {"Type":"unsubscribed","Data":{"ConnectionId":1}}</code></pre>
 
@@ -2086,6 +2131,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
         <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }</code></td><td>Start receiving order book updates. <code>ZoomIndex</code> > 1 aggregates price levels.</td></tr>
         <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
+        <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving mark price updates (futures only). No initial snapshot.</td></tr>
+        <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
+        <tr><td><code>funding_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving funding rate updates (perpetual futures only). No initial snapshot.</td></tr>
+        <tr><td><code>funding_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
         <tr><td><code>notification_subscribe</code></td><td><code>{}</code></td><td>Start receiving app-wide notifications.</td></tr>
         <tr><td><code>notification_unsubscribe</code></td><td><code>{}</code></td><td>Stop receiving notifications.</td></tr>
         <tr><td><code>signal_level_subscribe</code></td><td><code>{}</code></td><td>Start receiving signal level events.</td></tr>
@@ -2101,6 +2150,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>trade_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
         <tr><td><code>orderbook_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
         <tr><td><code>orderbook_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+        <tr><td><code>mark_price_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+        <tr><td><code>mark_price_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+        <tr><td><code>funding_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+        <tr><td><code>funding_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
         <tr><td><code>order_update</code></td><td><code>ConnectionId</code>, <code>OrderId</code>, <code>Ticker</code>, <code>Side</code>, <code>Type</code>, <code>Price</code>, <code>FilledPrice</code>, <code>Size</code>, <code>FilledSize</code>, <code>Fee</code>, <code>FeeCurrency</code>, <code>Status</code>, <code>Time</code></td></tr>
         <tr><td><code>position_update</code></td><td><code>ConnectionId</code>, <code>PositionId</code>, <code>Ticker</code>, <code>Side</code>, <code>Size</code>, <code>AvgPrice</code>, <code>AvgPriceFix</code>, <code>AvgPriceDyn</code>, <code>Status</code></td></tr>
         <tr><td><code>balance_update</code></td><td><code>ConnectionId</code>, <code>Balances[]</code>: <code>Coin</code>, <code>Total</code>, <code>Free</code>, <code>Locked</code></td></tr>
@@ -2108,6 +2161,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>trade_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Trades[]</code>: <code>Price</code>, <code>Size</code>, <code>Side</code>, <code>Time</code></td></tr>
         <tr><td><code>orderbook_snapshot</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
         <tr><td><code>orderbook_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code>: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
+        <tr><td><code>mark_price_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>MarkPrice</code></td></tr>
+        <tr><td><code>funding_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>FundingRate</code>, <code>FundingTime</code> (ISO 8601)</td></tr>
         <tr><td><code>notification_subscribed</code></td><td>&mdash;</td></tr>
         <tr><td><code>notification_unsubscribed</code></td><td>&mdash;</td></tr>
         <tr><td><code>notification_snapshot</code></td><td><code>Notifications[]</code>: <code>Type</code>, <code>Exchange</code>, <code>Ticker</code>, <code>Price</code>, <code>Size</code>, <code>Date</code>, ...</td></tr>
@@ -2493,6 +2548,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
     const tradeUnsubBtn = document.getElementById('ws-trade-unsub-btn');
     const obSubBtn = document.getElementById('ws-ob-sub-btn');
     const obUnsubBtn = document.getElementById('ws-ob-unsub-btn');
+    const mpSubBtn = document.getElementById('ws-mp-sub-btn');
+    const mpUnsubBtn = document.getElementById('ws-mp-unsub-btn');
+    const fundSubBtn = document.getElementById('ws-fund-sub-btn');
+    const fundUnsubBtn = document.getElementById('ws-fund-unsub-btn');
     const notifSubBtn = document.getElementById('ws-notif-sub-btn');
     const notifUnsubBtn = document.getElementById('ws-notif-unsub-btn');
     const slSubBtn = document.getElementById('ws-sl-sub-btn');
@@ -2509,6 +2568,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       tradeUnsubBtn.disabled = false;
       obSubBtn.disabled = false;
       obUnsubBtn.disabled = false;
+      mpSubBtn.disabled = false;
+      mpUnsubBtn.disabled = false;
+      fundSubBtn.disabled = false;
+      fundUnsubBtn.disabled = false;
       notifSubBtn.disabled = false;
       notifUnsubBtn.disabled = false;
       slSubBtn.disabled = false;
@@ -2525,6 +2588,10 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       tradeUnsubBtn.disabled = true;
       obSubBtn.disabled = true;
       obUnsubBtn.disabled = true;
+      mpSubBtn.disabled = true;
+      mpUnsubBtn.disabled = true;
+      fundSubBtn.disabled = true;
+      fundUnsubBtn.disabled = true;
       notifSubBtn.disabled = true;
       notifUnsubBtn.disabled = true;
       slSubBtn.disabled = true;

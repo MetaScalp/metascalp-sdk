@@ -169,6 +169,8 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 |-----------|-----------------|
 | `trade_subscribe` | `trade_update` |
 | `orderbook_subscribe` | `orderbook_snapshot`, `orderbook_update` |
+| `mark_price_subscribe` | `mark_price_update` (futures only) |
+| `funding_subscribe` | `funding_update` (perpetual futures only) |
 
 ## Connection Details
 

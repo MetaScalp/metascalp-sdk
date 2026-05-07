@@ -219,6 +219,21 @@ public class OrderBookUpdateData
     public List<OrderBookOrderDto> Updates { get; set; } = new();
 }
 
+public class MarkPriceUpdateData
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal MarkPrice { get; set; }
+}
+
+public class FundingUpdateData
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal FundingRate { get; set; }
+    public DateTimeOffset FundingTime { get; set; }
+}
+
 public class NotificationDto
 {
     public string Type { get; set; } = "";

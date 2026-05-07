@@ -38,7 +38,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 
 - Connect to `ws://127.0.0.1:{port}/` (same port as HTTP — scan ports `17845`–`17855`)
 - **Connection-level subscriptions:** Send a `subscribe` message with a connection ID to receive order, position, balance, and finres updates
-- **Market data subscriptions:** Send `trade_subscribe` or `orderbook_subscribe` with a connection ID + ticker to receive trade or order book updates for a specific symbol
+- **Market data subscriptions:** Send `trade_subscribe`, `orderbook_subscribe`, `mark_price_subscribe`, or `funding_subscribe` with a connection ID + ticker to receive trade, order book, mark price, or funding updates for a specific symbol
 - **Notification subscriptions:** Send `notification_subscribe` to receive app-wide notification events (no connection ID required)
 - **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required)
 - You can subscribe to multiple connections and tickers simultaneously
@@ -1035,7 +1035,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `subscribe` | `{ "ConnectionId": 123 }` | Subscribe to updates for a connection. Connection must be active in MetaScalp. Idempotent — re-subscribing is a no-op. |
 | `unsubscribe` | `{ "ConnectionId": 123 }` | Stop receiving updates for a connection. Idempotent. |
 
-**Market data subscriptions** — subscribe by connection ID + ticker to receive trade or order book updates for a specific symbol:
+**Market data subscriptions** — subscribe by connection ID + ticker to receive trade, order book, mark price, or funding updates for a specific symbol:
 
 | Type | Data | Description |
 |---|---|---|
@@ -1043,6 +1043,10 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `trade_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
 | `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. When `ZoomIndex` > 1, price levels are aggregated into zoomed buckets. Re-subscribing updates ZoomIndex. Connection must be active. Idempotent. |
 | `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
+| `mark_price_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to mark price updates for a specific ticker. No initial snapshot — only live updates. Connection must be active. Idempotent. |
+| `mark_price_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving mark price updates for that ticker. Idempotent. |
+| `funding_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to funding rate updates for a specific ticker. No initial snapshot — only live updates. Not all exchanges or markets emit funding events. Connection must be active. Idempotent. |
+| `funding_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving funding updates for that ticker. Idempotent. |
 
 **Notification subscriptions** — subscribe to receive app-wide notification events (trades, signal levels, large amounts, screener):
 
@@ -1070,6 +1074,10 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
 | `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | After successful order book subscribe |
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
+| `mark_price_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful mark price subscribe |
+| `mark_price_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful mark price unsubscribe |
+| `funding_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful funding subscribe |
+| `funding_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful funding unsubscribe |
 | `notification_subscribed` | `{}` | After successful notification subscribe |
 | `notification_unsubscribed` | `{}` | After successful notification unsubscribe |
 | `signal_level_subscribed` | `{}` | After successful signal level subscribe |
@@ -1286,6 +1294,50 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `Updates[].Size` | decimal | New total size at this level (0 = removed) |
 | `Updates[].Type` | string | `"Ask"`, `"Bid"`, `"BestAsk"`, or `"BestBid"` |
 
+**Mark price update** — sent when the mark price changes for a subscribed ticker (futures only):
+
+```json
+{
+  "Type": "mark_price_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "MarkPrice": 65123.5
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `ConnectionId` | integer | Connection this update belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `MarkPrice` | decimal | Current mark price |
+
+> Mark price is only published by exchanges that expose a mark price stream (typically futures markets). On exchanges/markets that don't, no `mark_price_update` events arrive — the subscribe ack still succeeds.
+
+**Funding update** — sent when funding rate or funding time changes for a subscribed ticker (perpetual futures only):
+
+```json
+{
+  "Type": "funding_update",
+  "Data": {
+    "ConnectionId": 1,
+    "Ticker": "BTCUSDT",
+    "FundingRate": 0.0001,
+    "FundingTime": "2026-03-16T16:00:00+00:00"
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `ConnectionId` | integer | Connection this update belongs to |
+| `Ticker` | string | Trading pair symbol |
+| `FundingRate` | decimal | Current funding rate (e.g. `0.0001` = 0.01%) |
+| `FundingTime` | string (ISO 8601) | Next funding settlement timestamp |
+
+> Funding is only published on perpetual futures connections; spot and dated futures connections will not emit `funding_update` events even after a successful subscribe.
+
 **Notification snapshot** — sent once after `notification_subscribe`, contains recent notifications (up to 200):
 
 ```json
@@ -1461,6 +1513,10 @@ These are pushed automatically after subscribing. You only receive updates for c
 | Trade/orderbook subscribe (invalid) | Server responds `error`. No subscription created. |
 | Trade/orderbook subscribe (duplicate) | Idempotent — responds with confirmation, no duplicate events. |
 | Trade/orderbook unsubscribe | Server responds `trade_unsubscribed` / `orderbook_unsubscribed`. Market data stops for that connection + ticker. |
+| Mark price / funding subscribe (valid) | Server responds `mark_price_subscribed` / `funding_subscribed`. Updates start flowing as the exchange publishes them (no initial snapshot). |
+| Mark price / funding subscribe (invalid) | Server responds `error`. No subscription created. |
+| Mark price / funding subscribe (duplicate) | Idempotent — responds with confirmation, no duplicate events. |
+| Mark price / funding unsubscribe | Server responds `mark_price_unsubscribed` / `funding_unsubscribed`. Updates stop for that connection + ticker. |
 | Notification subscribe | Server responds `notification_subscribed`. Sends snapshot of recent notifications, then live updates. |
 | Notification unsubscribe | Server responds `notification_unsubscribed`. Notification updates stop. |
 | Signal level subscribe | Server responds `signal_level_subscribed`. Sends snapshot of all signal levels, then live events (placed, triggered, removed). |
@@ -1477,6 +1533,8 @@ These are pushed automatically after subscribing. You only receive updates for c
 | Subscribe to non-existent connection | `Connection {id} not found or not active` |
 | Trade/orderbook subscribe with missing ticker | `Ticker is required for trade subscription` / `Ticker is required for order book subscription` |
 | Trade/orderbook subscribe with invalid connection | `Connection {id} not found or not active` |
+| Mark price / funding subscribe with missing ticker | `Ticker is required for mark price subscription` / `Ticker is required for funding subscription` |
+| Mark price / funding subscribe with invalid connection | `Connection {id} not found or not active` |
 | Unknown message type | `Unknown message type: {type}` |
 | Invalid JSON | `Invalid message format` |
 
@@ -1936,6 +1994,16 @@ ws.onopen = () => {
     Type: "orderbook_subscribe",
     Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
   }));
+
+  // Subscribe to mark price + funding rate for BTCUSDT on connection 1 (futures only)
+  ws.send(JSON.stringify({
+    Type: "mark_price_subscribe",
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
+  }));
+  ws.send(JSON.stringify({
+    Type: "funding_subscribe",
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
+  }));
 };
 
 ws.onmessage = (event) => {
@@ -1978,6 +2046,14 @@ ws.onmessage = (event) => {
     case "orderbook_update":
       console.log("Order book update:", msg.Data);
       // { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
+      break;
+    case "mark_price_update":
+      console.log("Mark price update:", msg.Data);
+      // { ConnectionId, Ticker, MarkPrice }
+      break;
+    case "funding_update":
+      console.log("Funding update:", msg.Data);
+      // { ConnectionId, Ticker, FundingRate, FundingTime }
       break;
     case "notification_snapshot":
       console.log("Notification snapshot:", msg.Data);
@@ -2067,6 +2143,16 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
             "Data": {"ConnectionId": connection_id, "Ticker": ticker}
         }))
 
+        # Subscribe to mark price + funding rate (futures only — no events on spot)
+        await ws.send(json.dumps({
+            "Type": "mark_price_subscribe",
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
+        }))
+        await ws.send(json.dumps({
+            "Type": "funding_subscribe",
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
+        }))
+
         # Listen for updates
         async for raw in ws:
             msg = json.loads(raw)
@@ -2095,6 +2181,12 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
             elif msg_type == "orderbook_update":
                 print(f"Order book update: {len(msg['Data'].get('Updates', []))} levels changed")
                 # { ConnectionId, Ticker, Updates: [{ Price, Size, Type }] }
+            elif msg_type == "mark_price_update":
+                print(f"Mark price: {msg['Data']['Ticker']} = {msg['Data']['MarkPrice']}")
+                # { ConnectionId, Ticker, MarkPrice }
+            elif msg_type == "funding_update":
+                print(f"Funding: {msg['Data']['Ticker']} rate={msg['Data']['FundingRate']} at {msg['Data']['FundingTime']}")
+                # { ConnectionId, Ticker, FundingRate, FundingTime }
             elif msg_type == "notification_snapshot":
                 print(f"Notification snapshot: {len(msg['Data'].get('Notifications', []))} notifications")
                 # { Notifications: [{ Type, Exchange, Ticker, Price, Size, Date, ... }] }
