@@ -1584,15 +1584,21 @@
           </div>
         </div>
 
-        <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
-          <div class="form-group">
+        <div style="margin-top:8px;display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="width:90px;">
             <label>ZoomIndex</label>
             <input type="number" id="f-ws-ob-zoom" value="1" min="0">
           </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="wsSendOrderBookSubscribe()" id="ws-ob-sub-btn" disabled>Subscribe Orderbook</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>Unsubscribe Orderbook</button>
+          <div class="form-group" style="width:110px;">
+            <label>DepthLevels <span class="optional">(opt)</span></label>
+            <input type="number" id="f-ws-ob-depth-levels" min="1" placeholder="50">
           </div>
+          <div class="form-group" style="width:120px;">
+            <label>DepthPercent <span class="optional">(opt)</span></label>
+            <input type="number" id="f-ws-ob-depth-percent" min="0" step="0.1" placeholder="0.5">
+          </div>
+          <button class="btn btn-primary" onclick="wsSendOrderBookSubscribe()" id="ws-ob-sub-btn" disabled>Subscribe Orderbook</button>
+          <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>Unsubscribe Orderbook</button>
         </div>
 
         <div class="form-grid" style="margin-top:8px;grid-template-columns:100px 1fr;">
@@ -1664,7 +1670,7 @@
           <tr><th>Type</th><th>Data</th><th>Description</th></tr>
           <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Subscribe to real-time trade updates. When <code>ZoomIndex</code> &gt; 1, trades are aggregated by zoomed price level. Re-subscribing updates ZoomIndex.</td></tr>
           <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker. Idempotent.</td></tr>
-          <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }</code></td><td>Subscribe to order book updates. <code>ZoomIndex</code> > 1 aggregates price levels into zoomed buckets. Idempotent.</td></tr>
+          <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 }</code></td><td>Subscribe to order book updates. <code>ZoomIndex</code> > 1 aggregates price levels into zoomed buckets. Optional <code>DepthLevels</code> (top-N per side, snapshot only) and <code>DepthPercent</code> (per-side band on best ask / best bid, snapshot + updates). Idempotent &mdash; re-subscribing replaces these atomically.</td></tr>
           <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker. Idempotent.</td></tr>
           <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to mark price updates (futures only). No initial snapshot &mdash; only live updates. Idempotent.</td></tr>
           <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker. Idempotent.</td></tr>
@@ -1686,7 +1692,7 @@
           <tr><td><code>unsubscribed</code></td><td>After successful connection unsubscribe</td><td><code>ConnectionId</code></td></tr>
           <tr><td><code>trade_subscribed</code></td><td>After successful trade subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>trade_unsubscribed</code></td><td>After successful trade unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>ZoomIndex</code></td></tr>
+          <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>ZoomIndex</code>, <code>DepthLevels</code>, <code>DepthPercent</code> (last two echoed only when set)</td></tr>
           <tr><td><code>orderbook_unsubscribed</code></td><td>After successful order book unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>mark_price_subscribed</code></td><td>After successful mark price subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
           <tr><td><code>mark_price_unsubscribed</code></td><td>After successful mark price unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
@@ -1839,10 +1845,10 @@
 }
 
 <span style="color:var(--text-muted);">// Subscribe to order book for a specific ticker</span>
-{ "Type": "orderbook_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0 } }
+{ "Type": "orderbook_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 } }
 
 <span style="color:var(--text-muted);">// Server confirms order book subscription</span>
-{ "Type": "orderbook_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0 } }
+{ "Type": "orderbook_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 } }
 
 <span style="color:var(--text-muted);">// Order book snapshot (full state, sent once on subscribe)</span>
 {
@@ -2086,8 +2092,8 @@ ws.send('{"Type":"subscribe","Data":{"ConnectionId":1}}')
 <span style="color:var(--text-muted);">3. Subscribe to market data for a specific ticker</span>
 ws.send('{"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}')
 &larr; {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
-ws.send('{"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}')
-&larr; {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
+ws.send('{"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5}}')
+&larr; {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5}}
 ws.send('{"Type":"mark_price_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
 &larr; {"Type":"mark_price_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
 ws.send('{"Type":"funding_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
@@ -2129,7 +2135,7 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
         <tr><td><code>unsubscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Stop receiving connection-level updates.</td></tr>
         <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Start receiving trade updates. ZoomIndex &gt; 1 aggregates by zoomed price.</td></tr>
         <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
-        <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }</code></td><td>Start receiving order book updates. <code>ZoomIndex</code> > 1 aggregates price levels.</td></tr>
+        <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 }</code></td><td>Start receiving order book updates. <code>ZoomIndex</code> > 1 aggregates price levels. Optional <code>DepthLevels</code> (snapshot only) and <code>DepthPercent</code> (snapshot + updates) trim the payload.</td></tr>
         <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
         <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving mark price updates (futures only). No initial snapshot.</td></tr>
         <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
@@ -2751,7 +2757,12 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       wsLog('Ticker is required for order book subscription', 'log-err');
       return;
     }
-    wsSend({ type: 'orderbook_subscribe', data: { ConnectionId: connId, ticker: ticker, ZoomIndex: zoomIndex } });
+    const data = { ConnectionId: connId, ticker: ticker, ZoomIndex: zoomIndex };
+    const lvlRaw = document.getElementById('f-ws-ob-depth-levels').value;
+    const pctRaw = document.getElementById('f-ws-ob-depth-percent').value;
+    if (lvlRaw !== '') data.DepthLevels = parseInt(lvlRaw);
+    if (pctRaw !== '') data.DepthPercent = parseFloat(pctRaw);
+    wsSend({ type: 'orderbook_subscribe', data: data });
   }
 
   function wsSendNotification(type) {

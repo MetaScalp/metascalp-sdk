@@ -126,15 +126,38 @@ class MetaScalpSocket:
         """Unsubscribe from trade updates for a specific ticker."""
         self._send("trade_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
-    def subscribe_order_book(self, connection_id: int, ticker: str, zoom_index: int = 0) -> None:
+    def subscribe_order_book(
+        self,
+        connection_id: int,
+        ticker: str,
+        zoom_index: int = 0,
+        depth_levels: int | None = None,
+        depth_percent: float | None = None,
+    ) -> None:
         """Subscribe to order book updates for a specific ticker.
 
         When zoom_index is 0 (default), receives full order book + incremental updates.
         When zoom_index > 1, price levels are aggregated into zoomed buckets.
 
+        Optional depth filters (must be > 0):
+        - depth_levels: trims the snapshot to the top N price levels per side (asks ascending,
+          bids descending), applied AFTER zoom and depth_percent. Filters the snapshot ONLY —
+          incremental updates are unaffected.
+        - depth_percent: per-side band as a percentage, anchored on best ask / best bid (NOT mid).
+          Asks kept where price <= bestAsk * (1 + depth_percent / 100); bids where
+          price >= bestBid * (1 - depth_percent / 100). Applies to both the snapshot and
+          subsequent updates; the band refreshes from the latest known best ask / best bid on
+          each event. If a side's anchor is unknown, that side is not filtered (degrades open).
+        bestAsk / bestBid payload fields are never filtered.
+
         Events: 'orderbook_snapshot' (once), then 'orderbook_update' (continuous)
         """
-        self._send("orderbook_subscribe", {"connectionId": connection_id, "ticker": ticker, "zoomIndex": zoom_index})
+        data: dict = {"connectionId": connection_id, "ticker": ticker, "zoomIndex": zoom_index}
+        if depth_levels is not None:
+            data["depthLevels"] = depth_levels
+        if depth_percent is not None:
+            data["depthPercent"] = depth_percent
+        self._send("orderbook_subscribe", data)
 
     def unsubscribe_order_book(self, connection_id: int, ticker: str) -> None:
         """Unsubscribe from order book updates for a specific ticker."""

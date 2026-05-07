@@ -155,10 +155,30 @@ export class MetaScalpSocket {
    * When zoomIndex is 0 (default), you receive the full order book + incremental updates.
    * When zoomIndex > 1, price levels are aggregated into zoomed buckets.
    *
+   * Optional depth filters:
+   *  - `depthLevels` (must be >= 1): trims the snapshot to the top N price levels per side
+   *    (asks ascending, bids descending), applied AFTER zoom and `depthPercent`.
+   *    Filters the snapshot ONLY — incremental updates are unaffected.
+   *  - `depthPercent` (must be > 0): per-side band as a percentage, anchored on best ask /
+   *    best bid (NOT mid). Asks kept where price <= bestAsk * (1 + depthPercent / 100);
+   *    bids where price >= bestBid * (1 - depthPercent / 100). Applies to both snapshot
+   *    and updates; the band refreshes from the latest known best ask / best bid on each
+   *    event. If a side's anchor is unknown, that side is not filtered (degrades open).
+   *  bestAsk / bestBid payload fields are never filtered.
+   *
    * Events: `orderbook_snapshot` (once), then `orderbook_update` (continuous)
    */
-  subscribeOrderBook(connectionId: number, ticker: string, zoomIndex = 0): void {
-    this.send('orderbook_subscribe', { connectionId, ticker, zoomIndex });
+  subscribeOrderBook(
+    connectionId: number,
+    ticker: string,
+    zoomIndex = 0,
+    depthLevels?: number,
+    depthPercent?: number,
+  ): void {
+    const data: Record<string, unknown> = { connectionId, ticker, zoomIndex };
+    if (depthLevels !== undefined) data.depthLevels = depthLevels;
+    if (depthPercent !== undefined) data.depthPercent = depthPercent;
+    this.send('orderbook_subscribe', data);
   }
 
   /**

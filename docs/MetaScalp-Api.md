@@ -83,8 +83,8 @@ PUT  /api/connections/{id}/orderbook-settings?Ticker= → update orderbook setti
 3. Subscribe to market data for a specific ticker
    → {"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
    ← {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
-   → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
-   ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0}}
+   → {"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5}}
+   ← {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5}}
 
 4. Subscribe to notifications (app-wide, no connection ID needed)
    → {"Type":"notification_subscribe","Data":{}}
@@ -1041,12 +1041,23 @@ All messages (inbound and outbound) are JSON with this envelope:
 |---|---|---|
 | `trade_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | Subscribe to real-time trade updates. When `ZoomIndex` > 1, trades are aggregated by zoomed price level before sending. Re-subscribing updates ZoomIndex. Connection and ticker must be valid. |
 | `trade_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving trade updates for that ticker. Idempotent. |
-| `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. When `ZoomIndex` > 1, price levels are aggregated into zoomed buckets. Re-subscribing updates ZoomIndex. Connection must be active. Idempotent. |
+| `orderbook_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 }` | Subscribe to order book updates for a specific ticker on a connection. You will receive an initial snapshot followed by incremental updates. When `ZoomIndex` > 1, price levels are aggregated into zoomed buckets. Re-subscribing replaces `ZoomIndex` / `DepthLevels` / `DepthPercent` atomically. Connection must be active. Idempotent. Optional `DepthLevels` (top-N per side, snapshot only) and `DepthPercent` (per-side band on best ask / best bid, snapshot + updates) — see notes below. |
 | `orderbook_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving order book updates for that ticker. Idempotent. |
 | `mark_price_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to mark price updates for a specific ticker. No initial snapshot — only live updates. Connection must be active. Idempotent. |
 | `mark_price_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving mark price updates for that ticker. Idempotent. |
 | `funding_subscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Subscribe to funding rate updates for a specific ticker. No initial snapshot — only live updates. Not all exchanges or markets emit funding events. Connection must be active. Idempotent. |
 | `funding_unsubscribe` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | Stop receiving funding updates for that ticker. Idempotent. |
+
+**`orderbook_subscribe` optional fields:**
+
+- **`ZoomIndex`** *(int, default `0`)* — price aggregation factor. When `> 1`, levels are bucketed into zoomed price slots and sizes summed. Affects both snapshot and updates.
+- **`DepthLevels`** *(int, optional, must be ≥ 1)* — keep at most N price levels per side (asks ascending by price, bids descending), applied **after** zoom and `DepthPercent`. **Filters the snapshot only — incremental updates are unaffected**, so the client should maintain its own top-N view as updates arrive.
+- **`DepthPercent`** *(decimal, optional, must be > 0)* — per-side band as a percentage, anchored on **best ask** / **best bid** (NOT the mid):
+  - Asks: keeps `price ≤ bestAsk × (1 + DepthPercent / 100)`.
+  - Bids: keeps `price ≥ bestBid × (1 − DepthPercent / 100)`.
+  - Applies to **both the snapshot and subsequent updates**. The band refreshes from the latest known best ask / best bid (snapshots, plus any `BestAsk` / `BestBid` entries on update events).
+  - If a side's anchor is unknown (e.g. an empty side at snapshot time), that side is **not filtered** until an anchor arrives (degrades open).
+- `BestAsk` / `BestBid` payload fields are **never filtered** — they always represent best of book.
 
 **Notification subscriptions** — subscribe to receive app-wide notification events (trades, signal levels, large amounts, screener):
 
@@ -1072,7 +1083,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `unsubscribed` | `{ "ConnectionId": 123 }` | After successful connection unsubscribe |
 | `trade_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }` | After successful trade subscribe |
 | `trade_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful trade unsubscribe |
-| `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0 }` | After successful order book subscribe |
+| `orderbook_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5 }` | After successful order book subscribe. Echoes any non-null `DepthLevels` / `DepthPercent`. |
 | `orderbook_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful order book unsubscribe |
 | `mark_price_subscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful mark price subscribe |
 | `mark_price_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful mark price unsubscribe |
@@ -1989,10 +2000,12 @@ ws.onopen = () => {
     Data: { ConnectionId: 1, Ticker: "BTCUSDT", ZoomIndex: 1 }
   }));
 
-  // Subscribe to order book for BTCUSDT on connection 1
+  // Subscribe to order book for BTCUSDT on connection 1.
+  // ZoomIndex aggregates prices; DepthLevels caps the snapshot; DepthPercent narrows
+  // both snapshot and updates to a band around best ask / best bid.
   ws.send(JSON.stringify({
     Type: "orderbook_subscribe",
-    Data: { ConnectionId: 1, Ticker: "BTCUSDT" }
+    Data: { ConnectionId: 1, Ticker: "BTCUSDT", ZoomIndex: 0, DepthLevels: 50, DepthPercent: 0.5 }
   }));
 
   // Subscribe to mark price + funding rate for BTCUSDT on connection 1 (futures only)
@@ -2137,10 +2150,11 @@ async def listen_updates(connection_id, ticker="BTCUSDT"):
             "Data": {"ConnectionId": connection_id, "Ticker": ticker, "ZoomIndex": 1}
         }))
 
-        # Subscribe to order book for the same ticker
+        # Subscribe to order book for the same ticker.
+        # ZoomIndex / DepthLevels / DepthPercent are optional — see orderbook_subscribe notes.
         await ws.send(json.dumps({
             "Type": "orderbook_subscribe",
-            "Data": {"ConnectionId": connection_id, "Ticker": ticker}
+            "Data": {"ConnectionId": connection_id, "Ticker": ticker, "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5}
         }))
 
         # Subscribe to mark price + funding rate (futures only — no events on spot)

@@ -178,10 +178,35 @@ public class MetaScalpSocket : IDisposable
     /// <summary>
     /// Subscribe to order book updates for a specific ticker.
     /// When zoomIndex is 0 (default), you receive the full order book snapshot + incremental updates.
-    /// When zoomIndex > 1, price levels are aggregated into zoomed buckets (same as trades).
+    /// When zoomIndex &gt; 1, price levels are aggregated into zoomed buckets (same as trades).
+    /// <para>
+    /// Optional depth filters:
+    /// <list type="bullet">
+    ///   <item><c>depthLevels</c> (must be ≥ 1): trims the snapshot to the top N price levels per side
+    ///     (asks ascending, bids descending), applied AFTER zoom and <c>depthPercent</c>.
+    ///     Filters the snapshot ONLY — incremental updates are unaffected.</item>
+    ///   <item><c>depthPercent</c> (must be &gt; 0): per-side band as a percentage, anchored on best ask /
+    ///     best bid (NOT mid). Asks kept where <c>price &lt;= bestAsk * (1 + depthPercent / 100)</c>;
+    ///     bids where <c>price &gt;= bestBid * (1 - depthPercent / 100)</c>. Applies to both snapshot
+    ///     and updates; the band refreshes from the latest known best ask / best bid on each event.
+    ///     If a side's anchor is unknown, that side is not filtered (degrades open).</item>
+    /// </list>
+    /// <c>bestAsk</c> / <c>bestBid</c> payload fields are never filtered.
+    /// </para>
     /// </summary>
-    public void SubscribeOrderBook(long connectionId, string ticker, int zoomIndex = 0)
-        => Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex });
+    public void SubscribeOrderBook(long connectionId, string ticker, int zoomIndex = 0,
+        int? depthLevels = null, decimal? depthPercent = null)
+    {
+        // Build the payload dynamically so we only include depth fields when set
+        if (depthLevels is null && depthPercent is null)
+            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex });
+        else if (depthLevels is not null && depthPercent is null)
+            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthLevels = depthLevels });
+        else if (depthLevels is null && depthPercent is not null)
+            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthPercent = depthPercent });
+        else
+            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthLevels = depthLevels, DepthPercent = depthPercent });
+    }
 
     /// <summary>
     /// Unsubscribe from order book updates for a specific ticker.
