@@ -119,6 +119,12 @@ class MetaScalpSocket:
         Independent from subscribe() — only sends trade data for this exact ticker.
 
         Event: 'trade_update'
+
+        Trades are aggregated server-side using the order book's `AddingTicksForAPeriod`
+        setting (per-(connection, ticker), default 200 ms). Consecutive same-side trades
+        inside the window are merged into one entry — `size` is summed, `price` and `time`
+        track the latest merged trade. Set `AddingTicksForAPeriod = 0` in the order book
+        settings to receive the raw exchange stream.
         """
         self._send("trade_subscribe", {"connectionId": connection_id, "ticker": ticker})
 
@@ -133,30 +139,41 @@ class MetaScalpSocket:
         zoom_index: int = 0,
         depth_levels: int | None = None,
         depth_percent: float | None = None,
+        fetch_snapshot: bool = True,
     ) -> None:
         """Subscribe to order book updates for a specific ticker.
 
         When zoom_index is 0 (default), receives full order book + incremental updates.
         When zoom_index > 1, price levels are aggregated into zoomed buckets.
 
-        Optional depth filters (must be > 0):
-        - depth_levels: trims the snapshot to the top N price levels per side (asks ascending,
-          bids descending), applied AFTER zoom and depth_percent. Filters the snapshot ONLY —
-          incremental updates are unaffected.
-        - depth_percent: per-side band as a percentage, anchored on best ask / best bid (NOT mid).
-          Asks kept where price <= bestAsk * (1 + depth_percent / 100); bids where
-          price >= bestBid * (1 - depth_percent / 100). Applies to both the snapshot and
-          subsequent updates; the band refreshes from the latest known best ask / best bid on
-          each event. If a side's anchor is unknown, that side is not filtered (degrades open).
+        Optional filters:
+        - depth_levels (must be >= 1): trims the snapshot to the top N price levels per side
+          (asks ascending, bids descending), applied AFTER zoom and depth_percent. Filters the
+          snapshot ONLY — incremental updates are unaffected.
+        - depth_percent (must be > 0): per-side band as a percentage, anchored on best ask /
+          best bid (NOT mid). Asks kept where price <= bestAsk * (1 + depth_percent / 100);
+          bids where price >= bestBid * (1 - depth_percent / 100). Applies to both the
+          snapshot and subsequent updates; the band refreshes from the latest known best ask /
+          best bid on each event. If a side's anchor is unknown, that side is not filtered
+          (degrades open).
+        - fetch_snapshot (default True): when False AND this subscriber is the first to ask for
+          the ticker, the exchange REST snapshot fetch is skipped — only the WS delta feed is
+          subscribed. Useful for mass-subscribing 100+ tickers without hitting exchange REST
+          rate limits. Seed state separately via MetaScalpClient.get_order_book_snapshot()
+          when needed. If a later subscriber requests a snapshot, it is fetched lazily and
+          delivered to all subscribers.
         bestAsk / bestBid payload fields are never filtered.
 
-        Events: 'orderbook_snapshot' (once), then 'orderbook_update' (continuous)
+        Events: 'orderbook_snapshot' (once, unless fetch_snapshot=False), then 'orderbook_update'
         """
         data: dict = {"connectionId": connection_id, "ticker": ticker, "zoomIndex": zoom_index}
         if depth_levels is not None:
             data["depthLevels"] = depth_levels
         if depth_percent is not None:
             data["depthPercent"] = depth_percent
+        # Only emit fetchSnapshot when non-default, for compatibility with older servers
+        if not fetch_snapshot:
+            data["fetchSnapshot"] = False
         self._send("orderbook_subscribe", data)
 
     def unsubscribe_order_book(self, connection_id: int, ticker: str) -> None:

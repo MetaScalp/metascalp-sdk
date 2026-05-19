@@ -165,6 +165,12 @@ public class MetaScalpSocket : IDisposable
     /// <summary>
     /// Subscribe to real-time trade updates for a specific ticker.
     /// Event: OnTradeUpdate.
+    ///
+    /// Trades are aggregated server-side using the order book's AddingTicksForAPeriod
+    /// setting (per-(connection, ticker), default 200 ms). Consecutive same-side trades
+    /// inside the window are merged into one entry — Size is summed, Price and Time track
+    /// the latest merged trade. Set AddingTicksForAPeriod = 0 in the order book settings
+    /// to receive the raw stream.
     /// </summary>
     public void SubscribeTrades(long connectionId, string ticker)
         => Send("trade_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
@@ -190,22 +196,33 @@ public class MetaScalpSocket : IDisposable
     ///     bids where <c>price &gt;= bestBid * (1 - depthPercent / 100)</c>. Applies to both snapshot
     ///     and updates; the band refreshes from the latest known best ask / best bid on each event.
     ///     If a side's anchor is unknown, that side is not filtered (degrades open).</item>
+    ///   <item><c>fetchSnapshot</c> (default <c>true</c>): when <c>false</c> AND this subscriber is the
+    ///     first to ask for this ticker, the exchange REST snapshot fetch is skipped — only the WS feed is
+    ///     subscribed and you receive only delta updates. Useful for mass-subscribing to many tickers
+    ///     without hitting the exchange's REST rate limit. Seed state separately via
+    ///     <see cref="MetaScalpClient.GetOrderBookSnapshotAsync"/> when needed. If a later subscriber
+    ///     (UI or another API client with <c>fetchSnapshot=true</c>) joins, a snapshot is fetched lazily
+    ///     and delivered to all subscribers.</item>
     /// </list>
     /// <c>bestAsk</c> / <c>bestBid</c> payload fields are never filtered.
     /// </para>
     /// </summary>
     public void SubscribeOrderBook(long connectionId, string ticker, int zoomIndex = 0,
-        int? depthLevels = null, decimal? depthPercent = null)
+        int? depthLevels = null, decimal? depthPercent = null, bool fetchSnapshot = true)
     {
-        // Build the payload dynamically so we only include depth fields when set
-        if (depthLevels is null && depthPercent is null)
-            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex });
-        else if (depthLevels is not null && depthPercent is null)
-            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthLevels = depthLevels });
-        else if (depthLevels is null && depthPercent is not null)
-            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthPercent = depthPercent });
-        else
-            Send("orderbook_subscribe", new { ConnectionId = connectionId, Ticker = ticker, ZoomIndex = zoomIndex, DepthLevels = depthLevels, DepthPercent = depthPercent });
+        // Build the payload dynamically so we only include fields that differ from defaults.
+        // FetchSnapshot is only emitted when false to keep the on-wire payload compatible
+        // with older servers that don't know the field.
+        var payload = new Dictionary<string, object>
+        {
+            ["ConnectionId"] = connectionId,
+            ["Ticker"] = ticker,
+            ["ZoomIndex"] = zoomIndex
+        };
+        if (depthLevels is not null) payload["DepthLevels"] = depthLevels;
+        if (depthPercent is not null) payload["DepthPercent"] = depthPercent;
+        if (!fetchSnapshot) payload["FetchSnapshot"] = false;
+        Send("orderbook_subscribe", payload);
     }
 
     /// <summary>

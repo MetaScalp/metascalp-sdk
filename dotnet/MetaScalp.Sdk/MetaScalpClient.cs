@@ -90,6 +90,29 @@ public class MetaScalpClient : IDisposable
     public Task<OrderBookSettingsResponse> UpdateOrderBookSettingsAsync(long connectionId, string ticker, OrderBookSettingsDto settings, CancellationToken ct = default)
         => PutAsync<OrderBookSettingsResponse>($"/api/connections/{connectionId}/orderbook-settings?Ticker={Uri.EscapeDataString(ticker)}", settings, ct);
 
+    // ---- Order Book Snapshot (one-shot fresh REST fetch) ----
+
+    /// <summary>
+    /// Fetches a fresh order book snapshot directly from the exchange REST endpoint.
+    /// Each call performs one exchange REST request — no cache, no subscription side effects.
+    /// Intended as a one-shot complement to <c>SubscribeOrderBook(..., fetchSnapshot: false)</c>:
+    /// subscribe to deltas cheaply, then call this once per ticker when you actually need to seed state.
+    /// Throws <see cref="MetaScalpApiException"/> with status <c>501</c> for exchanges that don't
+    /// expose a REST snapshot endpoint (e.g. Bybit USDT Perpetual).
+    /// </summary>
+    /// <param name="zoomIndex">Price aggregation factor. <c>0</c>/<c>1</c> = no aggregation; <c>&gt; 1</c> = bucket and sum sizes.</param>
+    /// <param name="depthLevels">Top-N price levels per side after zoom + percent. Must be ≥ 1 when specified.</param>
+    /// <param name="depthPercent">Per-side band as a percentage anchored on best ask / best bid. Must be &gt; 0 when specified.</param>
+    public Task<OrderBookSnapshotResponse> GetOrderBookSnapshotAsync(long connectionId, string ticker,
+        int zoomIndex = 0, int? depthLevels = null, decimal? depthPercent = null, CancellationToken ct = default)
+    {
+        var qs = new List<string> { $"Ticker={Uri.EscapeDataString(ticker)}" };
+        if (zoomIndex > 0) qs.Add($"ZoomIndex={zoomIndex}");
+        if (depthLevels is not null) qs.Add($"DepthLevels={depthLevels}");
+        if (depthPercent is not null) qs.Add($"DepthPercent={depthPercent.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        return GetAsync<OrderBookSnapshotResponse>($"/api/connections/{connectionId}/orderbook-snapshot?{string.Join("&", qs)}", ct);
+    }
+
     // ---- Signal Levels ----
 
     public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)

@@ -247,3 +247,39 @@ class MetaScalpClient:
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",
             settings,
         )
+
+    # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
+
+    async def get_order_book_snapshot(
+        self,
+        connection_id: int,
+        ticker: str,
+        zoom_index: int = 0,
+        depth_levels: int | None = None,
+        depth_percent: float | None = None,
+    ) -> dict:
+        """Fetch a fresh order book snapshot directly from the exchange REST endpoint.
+
+        Each call performs one exchange REST request — no cache, no subscription side
+        effects. Intended as a one-shot complement to subscribe_order_book(..., fetch_snapshot=False):
+        subscribe to deltas cheaply, then call this once per ticker when you need to seed
+        state.
+
+        Raises MetaScalpApiError with status 501 for exchanges that don't expose a REST
+        snapshot endpoint (e.g. Bybit USDT Perpetual, which only delivers snapshots over WS).
+
+        The caller is responsible for not exceeding the exchange's rate limit when invoking
+        this for many tickers in quick succession.
+
+        Returns a dict with keys: connectionId, ticker, updateId, asks, bids, bestAsk, bestBid.
+        """
+        qs = [f"Ticker={ticker}"]
+        if zoom_index > 0:
+            qs.append(f"ZoomIndex={zoom_index}")
+        if depth_levels is not None:
+            qs.append(f"DepthLevels={depth_levels}")
+        if depth_percent is not None:
+            qs.append(f"DepthPercent={depth_percent}")
+        return await self._get(
+            f"/api/connections/{connection_id}/orderbook-snapshot?{'&'.join(qs)}"
+        )

@@ -15,6 +15,8 @@ import type {
   PlaceSignalLevelRequest,
   OrderBookSettingsResponse,
   OrderBookSettings,
+  OrderBookSnapshotResponse,
+  GetOrderBookSnapshotOptions,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -119,6 +121,32 @@ export class MetaScalpClient {
 
   async updateOrderBookSettings(connectionId: number, ticker: string, settings: Partial<OrderBookSettings>): Promise<OrderBookSettingsResponse> {
     return this.put(`/api/connections/${connectionId}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`, settings);
+  }
+
+  // ---- Order Book Snapshot (one-shot fresh REST fetch) ----
+
+  /**
+   * Fetches a fresh order book snapshot directly from the exchange REST endpoint.
+   * Each call performs one exchange REST request — no cache, no subscription side effects.
+   * Intended as a one-shot complement to `subscribeOrderBook(..., fetchSnapshot=false)`:
+   * subscribe to deltas cheaply, then call this once per ticker when you need to seed state.
+   *
+   * Throws `MetaScalpApiError` with status `501` for exchanges that don't expose a REST
+   * snapshot endpoint (e.g. Bybit USDT Perpetual, which only delivers snapshots over WS).
+   *
+   * The caller is responsible for not exceeding the exchange's rate limit when invoking
+   * this endpoint for many tickers in quick succession.
+   */
+  async getOrderBookSnapshot(
+    connectionId: number,
+    ticker: string,
+    options: GetOrderBookSnapshotOptions = {},
+  ): Promise<OrderBookSnapshotResponse> {
+    const qs: string[] = [`Ticker=${encodeURIComponent(ticker)}`];
+    if (options.zoomIndex !== undefined && options.zoomIndex > 0) qs.push(`ZoomIndex=${options.zoomIndex}`);
+    if (options.depthLevels !== undefined) qs.push(`DepthLevels=${options.depthLevels}`);
+    if (options.depthPercent !== undefined) qs.push(`DepthPercent=${options.depthPercent}`);
+    return this.get(`/api/connections/${connectionId}/orderbook-snapshot?${qs.join('&')}`);
   }
 
   // ---- Signal Levels ----

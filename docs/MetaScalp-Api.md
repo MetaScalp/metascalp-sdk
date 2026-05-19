@@ -23,6 +23,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
 | `POST /api/connections/{id}/orders/cancel` | Cancel a single order |
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
+| `GET /api/connections/{id}/orderbook-snapshot?Ticker=` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
 | `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
 | `POST /api/connections/{id}/signal-levels` | Place a signal level |
@@ -62,6 +63,7 @@ GET /api/connections/{id}/orders?Ticker=BTCUSDT   → view open orders
 POST /api/connections/{id}/orders                 → place an order
 POST /api/connections/{id}/orders/cancel          → cancel an order
 POST /api/connections/{id}/orders/cancel-all      → cancel all orders for a ticker
+GET  /api/connections/{id}/orderbook-snapshot?Ticker=BTCUSDT  → fresh order book snapshot (single REST call)
 GET  /api/connections/{id}/cluster-snapshot        → get cluster snapshot data
 GET  /api/connections/{id}/signal-levels?Ticker=   → list signal levels
 POST /api/connections/{id}/signal-levels           → place a signal level
@@ -530,10 +532,16 @@ Content-Type: application/json
 |--------------|---------|----------|---------|-------------|
 | `Ticker`     | string  | yes      |         | Trading pair symbol |
 | `Side`       | integer | yes      |         | `1` Buy, `2` Sell |
-| `Price`      | decimal | yes*     |         | Order price (*required for non-market orders) |
+| `Price`      | decimal | yes*     |         | For `Limit`: the limit price. For `Stop`/`StopLoss`/`TakeProfit`: the **trigger price**. Not required for `Market`. |
 | `Size`       | decimal | yes      |         | Order size (must be > 0) |
 | `Type`       | integer | no       | `0`     | `0` Limit, `1` Stop, `2` StopLoss, `3` TakeProfit, `4` Market |
 | `ReduceOnly` | boolean | no       | `false` | Close position only, do not open new |
+
+> **Stop / StopLoss / TakeProfit orders.** Pass `Price` as the trigger price (e.g. `64500` to trigger when BTC drops to $64,500).
+> - `Stop` is a **stop-limit** order: once the trigger fires, MetaScalp submits a limit order at a price offset automatically by the same logic the UI uses (so the order fills reliably without you having to compute it).
+> - `StopLoss` and `TakeProfit` are **stop-market** orders: once the trigger fires, the position is closed at market.
+>
+> If the connection's *Stop loss / Take profit* setting is `Application`, MetaScalp tracks `StopLoss` and `TakeProfit` triggers locally and only places the order on the exchange once the price is hit.
 
 **Response `200 OK`:**
 ```json
@@ -621,6 +629,68 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel-all \
 ---
 
 ### Market data
+
+#### Get Order Book Snapshot
+
+Always fetches a **fresh** order book snapshot from the exchange REST endpoint — no cache lookup, no WebSocket subscription side effects. Intended as a one-shot complement to `orderbook_subscribe` with `FetchSnapshot=false`: subscribe to deltas cheaply, then call this endpoint when (and only when) you actually need to seed the book.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-snapshot?Ticker=BTCUSDT
+```
+
+**Query parameters:**
+
+| Field          | Type    | Required | Default | Description |
+|----------------|---------|----------|---------|-------------|
+| `Ticker`       | string  | yes      |         | Trading pair symbol |
+| `ZoomIndex`    | integer | no       | `0`     | Price aggregation factor. When `> 1`, levels are bucketed and sizes summed (same semantics as `orderbook_subscribe`). |
+| `DepthLevels`  | integer | no       |         | Top-N price levels per side after zoom + percent. Must be ≥ 1 when specified. |
+| `DepthPercent` | decimal | no       |         | Per-side band as a percentage anchored on best ask / best bid. Must be > 0 when specified. |
+
+**Response `200 OK`:**
+```json
+{
+  "ConnectionId": 1,
+  "Ticker": "BTCUSDT",
+  "UpdateId": 12345678,
+  "Asks": [
+    { "Price": 65010.0, "Size": 0.5, "Type": "Ask" }
+  ],
+  "Bids": [
+    { "Price": 65000.0, "Size": 0.3, "Type": "Bid" }
+  ],
+  "BestAsk": { "Price": 65010.0, "Size": 0.5, "Type": "BestAsk" },
+  "BestBid": { "Price": 65000.0, "Size": 0.3, "Type": "BestBid" }
+}
+```
+
+**`400 Bad Request`:**
+
+| Condition                                  | Error message                                                  |
+|--------------------------------------------|----------------------------------------------------------------|
+| Invalid connection ID                      | `Invalid connection ID`                                        |
+| Missing `Ticker`                           | `Query parameter 'Ticker' is required`                         |
+| `DepthLevels < 1`                          | `DepthLevels must be >= 1 when specified`                      |
+| `DepthPercent <= 0`                        | `DepthPercent must be > 0 when specified`                      |
+| Ticker not on connection                   | `Ticker '{ticker}' not found on connection {id}`               |
+| Empty snapshot from exchange               | `Exchange returned no snapshot`                                |
+
+**`404 Not Found`** — connection not active:
+```json
+{ "Error": "Connection {id} not found" }
+```
+
+**`501 Not Implemented`** — exchange does not expose a REST snapshot endpoint (e.g. Bybit USDT Perpetual, which only delivers snapshots over WebSocket):
+```json
+{ "Error": "REST snapshot is not supported for this exchange" }
+```
+
+> **Rate limiting.** Each call performs **one** REST request to the exchange. The caller is responsible for not exceeding the exchange's rate limit when invoking this endpoint for many tickers in quick succession.
+
+**Example:**
+```bash
+curl "http://127.0.0.1:17845/api/connections/1/orderbook-snapshot?Ticker=BTCUSDT&DepthLevels=50"
+```
 
 #### Cluster snapshot
 
@@ -1057,6 +1127,7 @@ All messages (inbound and outbound) are JSON with this envelope:
   - Bids: keeps `price ≥ bestBid × (1 − DepthPercent / 100)`.
   - Applies to **both the snapshot and subsequent updates**. The band refreshes from the latest known best ask / best bid (snapshots, plus any `BestAsk` / `BestBid` entries on update events).
   - If a side's anchor is unknown (e.g. an empty side at snapshot time), that side is **not filtered** until an anchor arrives (degrades open).
+- **`FetchSnapshot`** *(bool, default `true`)* — when `false` AND this subscriber is the first to ask for the ticker, the exchange REST snapshot fetch is skipped — only the WS delta feed is subscribed, and no `orderbook_snapshot` is emitted to this subscriber. Useful for mass-subscribing to 100+ tickers without hitting exchange REST rate limits. Seed state separately via `GET /api/connections/{id}/orderbook-snapshot` when needed. If a later subscriber requests a snapshot (or the UI joins), it is fetched lazily and delivered to all subscribers.
 - `BestAsk` / `BestBid` payload fields are **never filtered** — they always represent best of book.
 
 **Notification subscriptions** — subscribe to receive app-wide notification events (trades, signal levels, large amounts, screener):
@@ -1244,6 +1315,8 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `Trades[].Size` | decimal | Trade size |
 | `Trades[].Side` | string | `"Buy"` or `"Sell"` |
 | `Trades[].Time` | string (ISO) | Trade timestamp |
+
+> **Trade aggregation.** Trades are aggregated server-side using the order book's `AddingTicksForAPeriod` setting (the same value that drives the UI ticks section, default `200` ms; per-(connection, ticker)). Consecutive same-side trades that arrive within the window are merged into one entry — `Size` is summed, `Price` and `Time` track the latest merged trade. A new entry is emitted when the side changes or the window expires. Set `AddingTicksForAPeriod = 0` in the order book settings to disable aggregation and receive the raw exchange stream. Changes to this setting are picked up live by active subscriptions.
 
 **Order book snapshot** — sent once after subscribing, contains the full current order book state:
 
@@ -1610,12 +1683,15 @@ This means you can pass symbols in **any case** and with or without common separ
 
 | Value | Exchange     | Notes |
 |-------|-------------|-------|
+| 1     | Ftx         | Defunct exchange; retained for back-compat. |
 | 2     | Binance     | |
-| 3     | Gate        | |
+| 3     | GateIo      | |
+| 4     | Bybit       | Classic / Standard API. |
 | 5     | KuCoin      | |
-| 6     | Bybit       | |
+| 6     | BybitUta    | Bybit Unified Trading Account. |
 | 7     | Bitget      | |
 | 8     | Mexc        | |
+| 9     | CommEx      | |
 | 10    | Okx         | |
 | 11    | BingX       | |
 | 12    | HTX         | |
@@ -1626,8 +1702,14 @@ This means you can pass symbols in **any case** and with or without common separ
 | 17    | AsterDex    | |
 | 18    | Moex        | |
 | 19    | Lighter     | |
-
-> **Note:** Values `1` and `9` are unused and reserved. Exchange identifiers are not sequential.
+| 20    | XT          | |
+| 21    | EdgeX       | |
+| 22    | Bitunix     | |
+| 23    | Ourbit      | |
+| 24    | Whitebit    | |
+| 25    | Blofin      | |
+| 26    | Weex        | |
+| 27    | TBank       | |
 
 ## MarketType values
 

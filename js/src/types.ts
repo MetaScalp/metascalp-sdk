@@ -341,6 +341,27 @@ export interface OrderBookSettingsResponse {
     settings: OrderBookSettings;
 }
 
+export interface GetOrderBookSnapshotOptions {
+    /** Price aggregation factor. `0`/`1` = no aggregation; `> 1` = bucket and sum sizes. */
+    zoomIndex?: number;
+    /** Top-N price levels per side after zoom + percent. Must be >= 1 when specified. */
+    depthLevels?: number;
+    /** Per-side band as a percentage anchored on best ask / best bid. Must be > 0 when specified. */
+    depthPercent?: number;
+}
+
+/** Response from `MetaScalpClient.getOrderBookSnapshot`. Same shape as the WS `orderbook_snapshot`
+ * payload with an additional `updateId` from the exchange. */
+export interface OrderBookSnapshotResponse {
+    connectionId: number;
+    ticker: string;
+    updateId: number;
+    asks: OrderBookOrder[];
+    bids: OrderBookOrder[];
+    bestAsk: OrderBookOrder | null;
+    bestBid: OrderBookOrder | null;
+}
+
 export interface SocketEventMap {
   order_update: OrderUpdateData;
   position_update: PositionUpdateData;

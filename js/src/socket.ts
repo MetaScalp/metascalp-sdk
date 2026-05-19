@@ -138,6 +138,12 @@ export class MetaScalpSocket {
    * Independent from subscribe() — only sends trade data for this exact ticker.
    *
    * Event: `trade_update`
+   *
+   * Trades are aggregated server-side using the order book's `AddingTicksForAPeriod`
+   * setting (per-(connection, ticker), default 200 ms). Consecutive same-side trades inside
+   * the window are merged into one entry — `size` is summed, `price` and `time` track the
+   * latest merged trade. Set `AddingTicksForAPeriod = 0` in the order book settings to
+   * receive the raw stream.
    */
   subscribeTrades(connectionId: number, ticker: string): void {
     this.send('trade_subscribe', { connectionId, ticker });
@@ -155,7 +161,7 @@ export class MetaScalpSocket {
    * When zoomIndex is 0 (default), you receive the full order book + incremental updates.
    * When zoomIndex > 1, price levels are aggregated into zoomed buckets.
    *
-   * Optional depth filters:
+   * Optional filters:
    *  - `depthLevels` (must be >= 1): trims the snapshot to the top N price levels per side
    *    (asks ascending, bids descending), applied AFTER zoom and `depthPercent`.
    *    Filters the snapshot ONLY — incremental updates are unaffected.
@@ -164,9 +170,15 @@ export class MetaScalpSocket {
    *    bids where price >= bestBid * (1 - depthPercent / 100). Applies to both snapshot
    *    and updates; the band refreshes from the latest known best ask / best bid on each
    *    event. If a side's anchor is unknown, that side is not filtered (degrades open).
+   *  - `fetchSnapshot` (default `true`): when `false` AND this subscriber is the first to
+   *    ask for the ticker, the exchange REST snapshot fetch is skipped — only the WS delta
+   *    feed is subscribed. Useful for mass-subscribing 100+ tickers without hitting exchange
+   *    REST rate limits. Seed state separately via `MetaScalpClient.getOrderBookSnapshot()`
+   *    when needed. If a later subscriber requests a snapshot, it is fetched lazily and
+   *    delivered to all subscribers.
    *  bestAsk / bestBid payload fields are never filtered.
    *
-   * Events: `orderbook_snapshot` (once), then `orderbook_update` (continuous)
+   * Events: `orderbook_snapshot` (once, unless `fetchSnapshot=false`), then `orderbook_update` (continuous)
    */
   subscribeOrderBook(
     connectionId: number,
@@ -174,10 +186,13 @@ export class MetaScalpSocket {
     zoomIndex = 0,
     depthLevels?: number,
     depthPercent?: number,
+    fetchSnapshot = true,
   ): void {
     const data: Record<string, unknown> = { connectionId, ticker, zoomIndex };
     if (depthLevels !== undefined) data.depthLevels = depthLevels;
     if (depthPercent !== undefined) data.depthPercent = depthPercent;
+    // Only send fetchSnapshot when non-default, for compatibility with older servers
+    if (!fetchSnapshot) data.fetchSnapshot = false;
     this.send('orderbook_subscribe', data);
   }
 

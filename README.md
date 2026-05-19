@@ -150,6 +150,7 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 | `GET` | `/api/connections/{id}/orders?Ticker=X` | Get open orders |
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
+| `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `POST` | `/api/connections/{id}/orders` | Place an order |
 | `POST` | `/api/connections/{id}/orders/cancel` | Cancel an order |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
@@ -171,6 +172,8 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 | `orderbook_subscribe` | `orderbook_snapshot`, `orderbook_update` |
 | `mark_price_subscribe` | `mark_price_update` (futures only) |
 | `funding_subscribe` | `funding_update` (perpetual futures only) |
+
+> **Mass-subscribe optimization.** `orderbook_subscribe` accepts an optional `fetchSnapshot` field (default `true`). Pass `false` to skip the exchange REST snapshot fetch when subscribing — useful when subscribing to 100+ tickers at once without hitting exchange REST rate limits. Seed state separately via `GET /api/connections/{id}/orderbook-snapshot` when you need it. A later subscriber that wants a snapshot triggers a lazy fetch that fans out to all listeners.
 
 ## Connection Details
 

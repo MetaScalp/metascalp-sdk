@@ -212,6 +212,21 @@ public class OrderBookSnapshotData
     public OrderBookOrderDto? BestBid { get; set; }
 }
 
+/// <summary>
+/// Response from <see cref="MetaScalpClient.GetOrderBookSnapshotAsync"/>. Same shape as the WS
+/// <c>orderbook_snapshot</c> message but with an additional <c>UpdateId</c> from the exchange.
+/// </summary>
+public class OrderBookSnapshotResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal UpdateId { get; set; }
+    public List<OrderBookOrderDto> Asks { get; set; } = new();
+    public List<OrderBookOrderDto> Bids { get; set; } = new();
+    public OrderBookOrderDto? BestAsk { get; set; }
+    public OrderBookOrderDto? BestBid { get; set; }
+}
+
 public class OrderBookUpdateData
 {
     public long ConnectionId { get; set; }
