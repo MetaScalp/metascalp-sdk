@@ -832,18 +832,18 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns all currently active exchange connections. Use the <code>Id</code> from the response to query orders, positions, balances, or to subscribe via WebSocket.</p>
+        <p>Returns all currently active exchange connections. Use the <code>id</code> from the response to query orders, positions, balances, or to subscribe via WebSocket.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>Id</code></td><td>integer</td><td>Connection ID &mdash; use for all exchange operations</td></tr>
-          <tr><td><code>Name</code></td><td>string</td><td>User-defined connection name</td></tr>
-          <tr><td><code>Exchange</code></td><td>string</td><td>Exchange name</td></tr>
-          <tr><td><code>ExchangeId</code></td><td>integer</td><td>Exchange identifier</td></tr>
-          <tr><td><code>Market</code></td><td>string</td><td>Market display name</td></tr>
-          <tr><td><code>MarketType</code></td><td>integer</td><td>Market type enum value</td></tr>
-          <tr><td><code>State</code></td><td>integer</td><td>0=Disconnected, 1=Connecting, 2=Connected, 3=Reconnecting, 4=Resetting</td></tr>
-          <tr><td><code>ViewMode</code></td><td>boolean</td><td>Read-only (no trading)</td></tr>
-          <tr><td><code>DemoMode</code></td><td>boolean</td><td>Paper trading</td></tr>
+          <tr><td><code>id</code></td><td>integer</td><td>Connection ID &mdash; use for all exchange operations</td></tr>
+          <tr><td><code>name</code></td><td>string</td><td>User-defined connection name</td></tr>
+          <tr><td><code>exchange</code></td><td>string</td><td>Exchange name</td></tr>
+          <tr><td><code>exchangeId</code></td><td>integer</td><td>Exchange identifier</td></tr>
+          <tr><td><code>market</code></td><td>string</td><td>Market display name</td></tr>
+          <tr><td><code>marketType</code></td><td>integer</td><td>Market type enum value</td></tr>
+          <tr><td><code>state</code></td><td>integer</td><td>0=Disconnected, 1=Connecting, 2=Connected, 3=Reconnecting, 4=Resetting</td></tr>
+          <tr><td><code>viewMode</code></td><td>boolean</td><td>Read-only (no trading)</td></tr>
+          <tr><td><code>demoMode</code></td><td>boolean</td><td>Paper trading</td></tr>
         </table>
       </div>
       <div class="actions-row">
@@ -863,7 +863,7 @@
   <div class="endpoint" id="ep-connection">
     <div class="endpoint-header" onclick="toggle('ep-connection')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}</span>
+      <span class="endpoint-path">/api/connections/{connectionId}</span>
       <span class="endpoint-desc">Get single connection</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -897,7 +897,7 @@
   <div class="endpoint" id="ep-ex-tickers">
     <div class="endpoint-header" onclick="toggle('ep-ex-tickers')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/tickers</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/tickers</span>
       <span class="endpoint-desc">Get available tickers</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -932,7 +932,7 @@
   <div class="endpoint" id="ep-ex-orders">
     <div class="endpoint-header" onclick="toggle('ep-ex-orders')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orders?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders?Ticker=...</span>
       <span class="endpoint-desc">Get open orders</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -941,19 +941,19 @@
         <p>Returns open orders for a specific ticker on a connection. The <code>Ticker</code> query parameter is required.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>Id</code></td><td>integer</td><td>Exchange order ID</td></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>Trading pair</td></tr>
-          <tr><td><code>ClientId</code></td><td>string?</td><td>Client-generated order ID</td></tr>
-          <tr><td><code>Side</code></td><td>integer</td><td><code>0</code> None, <code>1</code> Buy, <code>2</code> Sell</td></tr>
-          <tr><td><code>Price</code></td><td>decimal</td><td>Order price</td></tr>
-          <tr><td><code>Size</code></td><td>decimal</td><td>Order size</td></tr>
-          <tr><td><code>FilledSize</code></td><td>decimal</td><td>Filled amount</td></tr>
-          <tr><td><code>FilledPrice</code></td><td>decimal</td><td>Execution price (0 if not yet filled)</td></tr>
-          <tr><td><code>RemainingSize</code></td><td>decimal</td><td>Remaining amount</td></tr>
-          <tr><td><code>Status</code></td><td>integer</td><td><code>0</code> New, <code>1</code> Open, <code>2</code> Closed</td></tr>
-          <tr><td><code>Type</code></td><td>integer</td><td><code>0</code> Limit, <code>1</code> Stop, <code>2</code> StopLoss, <code>3</code> TakeProfit, <code>4</code> Market</td></tr>
-          <tr><td><code>TriggerPrice</code></td><td>decimal?</td><td>Trigger price for stop/conditional orders</td></tr>
-          <tr><td><code>CreateDate</code></td><td>string (ISO)</td><td>Order creation timestamp</td></tr>
+          <tr><td><code>id</code></td><td>integer</td><td>Exchange order ID</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>Trading pair</td></tr>
+          <tr><td><code>clientId</code></td><td>string?</td><td>Client-generated order ID</td></tr>
+          <tr><td><code>side</code></td><td>integer</td><td><code>0</code> None, <code>1</code> Buy, <code>2</code> Sell</td></tr>
+          <tr><td><code>price</code></td><td>decimal</td><td>Order price</td></tr>
+          <tr><td><code>size</code></td><td>decimal</td><td>Order size</td></tr>
+          <tr><td><code>filledSize</code></td><td>decimal</td><td>Filled amount</td></tr>
+          <tr><td><code>filledPrice</code></td><td>decimal</td><td>Execution price (0 if not yet filled)</td></tr>
+          <tr><td><code>remainingSize</code></td><td>decimal</td><td>Remaining amount</td></tr>
+          <tr><td><code>status</code></td><td>integer</td><td><code>0</code> New, <code>1</code> Open, <code>2</code> Closed</td></tr>
+          <tr><td><code>type</code></td><td>integer</td><td><code>0</code> Limit, <code>1</code> Stop, <code>2</code> StopLoss, <code>3</code> TakeProfit, <code>4</code> Market</td></tr>
+          <tr><td><code>triggerPrice</code></td><td>decimal?</td><td>Trigger price for stop/conditional orders</td></tr>
+          <tr><td><code>createDate</code></td><td>string (ISO)</td><td>Order creation timestamp</td></tr>
         </table>
       </div>
       <div class="form-grid">
@@ -983,7 +983,7 @@
   <div class="endpoint" id="ep-ex-positions">
     <div class="endpoint-header" onclick="toggle('ep-ex-positions')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/positions</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/positions</span>
       <span class="endpoint-desc">Get open positions</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1014,7 +1014,7 @@
   <div class="endpoint" id="ep-ex-balance">
     <div class="endpoint-header" onclick="toggle('ep-ex-balance')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/balance</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/balance</span>
       <span class="endpoint-desc">Get account balance</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1045,21 +1045,21 @@
   <div class="endpoint" id="ep-ex-place-order">
     <div class="endpoint-header" onclick="toggle('ep-ex-place-order')">
       <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orders</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders</span>
       <span class="endpoint-desc">Place order</span>
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Places a new order on the exchange through a connection. Returns an auto-generated <code>ClientId</code> for order tracking and <code>ExecutionTimeMs</code> indicating how long the exchange request took (in milliseconds).</p>
+        <p>Places a new order on the exchange through a connection. Returns an auto-generated <code>clientId</code> for order tracking and <code>executionTimeMs</code> indicating how long the exchange request took (in milliseconds).</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
-          <tr><td><code>Side</code></td><td>integer</td><td>yes</td><td><code>1</code> Buy, <code>2</code> Sell</td></tr>
-          <tr><td><code>Price</code></td><td>decimal</td><td>yes*</td><td>Order price (*required for non-market orders)</td></tr>
-          <tr><td><code>Size</code></td><td>decimal</td><td>yes</td><td>Order size (must be &gt; 0)</td></tr>
-          <tr><td><code>Type</code></td><td>integer</td><td>no</td><td><code>0</code> Limit (default), <code>1</code> Stop, <code>2</code> StopLoss, <code>3</code> TakeProfit, <code>4</code> Market</td></tr>
-          <tr><td><code>ReduceOnly</code></td><td>boolean</td><td>no</td><td>Close-only, default <code>false</code></td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+          <tr><td><code>side</code></td><td>integer</td><td>yes</td><td><code>1</code> Buy, <code>2</code> Sell</td></tr>
+          <tr><td><code>price</code></td><td>decimal</td><td>yes*</td><td>Order price (*required for non-market orders)</td></tr>
+          <tr><td><code>size</code></td><td>decimal</td><td>yes</td><td>Order size (must be &gt; 0)</td></tr>
+          <tr><td><code>type</code></td><td>integer</td><td>no</td><td><code>0</code> Limit (default), <code>1</code> Stop, <code>2</code> StopLoss, <code>3</code> TakeProfit, <code>4</code> Market</td></tr>
+          <tr><td><code>reduceOnly</code></td><td>boolean</td><td>no</td><td>Close-only, default <code>false</code></td></tr>
         </table>
       </div>
       <div class="form-grid triple">
@@ -1112,7 +1112,7 @@
   <div class="endpoint" id="ep-ex-cancel-order">
     <div class="endpoint-header" onclick="toggle('ep-ex-cancel-order')">
       <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orders/cancel</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders/cancel</span>
       <span class="endpoint-desc">Cancel order</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1121,9 +1121,9 @@
         <p>Cancels an existing order on the exchange.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
-          <tr><td><code>OrderId</code></td><td>integer</td><td>yes</td><td>Exchange order ID</td></tr>
-          <tr><td><code>Type</code></td><td>integer</td><td>no</td><td>Order type (default <code>0</code> Limit)</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+          <tr><td><code>orderId</code></td><td>integer</td><td>yes</td><td>Exchange order ID</td></tr>
+          <tr><td><code>type</code></td><td>integer</td><td>no</td><td>Order type (default <code>0</code> Limit)</td></tr>
         </table>
       </div>
       <div class="form-grid triple">
@@ -1157,7 +1157,7 @@
   <div class="endpoint" id="ep-ex-cancel-all">
     <div class="endpoint-header" onclick="toggle('ep-ex-cancel-all')">
       <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orders/cancel-all</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders/cancel-all</span>
       <span class="endpoint-desc">Cancel all orders</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1166,9 +1166,9 @@
         <p>Cancels all open orders for a given ticker on the exchange.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
         </table>
-        <p>Returns <code>CancelledCount: 0</code> if there are no open orders for that ticker.</p>
+        <p>Returns <code>cancelledCount: 0</code> if there are no open orders for that ticker.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1200,7 +1200,7 @@
   <div class="endpoint" id="ep-cluster-snapshot">
     <div class="endpoint-header" onclick="toggle('ep-cluster-snapshot')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/cluster-snapshot</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/cluster-snapshot</span>
       <span class="endpoint-desc">Cluster snapshot</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1262,7 +1262,7 @@
   <div class="endpoint" id="ep-sl-get">
     <div class="endpoint-header" onclick="toggle('ep-sl-get')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/signal-levels?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels?Ticker=...</span>
       <span class="endpoint-desc">Get signal levels</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1271,13 +1271,13 @@
         <p>Returns all signal levels for a specific ticker on a connection. Signal levels are price alerts that trigger when the market price crosses the threshold.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>Id</code></td><td>integer</td><td>Signal level ID</td></tr>
-          <tr><td><code>ConnectionId</code></td><td>integer</td><td>Connection this signal level belongs to</td></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>Trading pair symbol</td></tr>
-          <tr><td><code>Price</code></td><td>decimal</td><td>Price threshold</td></tr>
-          <tr><td><code>IsTriggered</code></td><td>boolean</td><td>Whether the signal has been triggered</td></tr>
-          <tr><td><code>TriggerTime</code></td><td>string (ISO)?</td><td>When triggered (null if not triggered)</td></tr>
-          <tr><td><code>TriggerRule</code></td><td>string</td><td><code>"LessThanEqual"</code> or <code>"GreaterThanEqual"</code></td></tr>
+          <tr><td><code>id</code></td><td>integer</td><td>Signal level ID</td></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>Connection this signal level belongs to</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>Trading pair symbol</td></tr>
+          <tr><td><code>price</code></td><td>decimal</td><td>Price threshold</td></tr>
+          <tr><td><code>isTriggered</code></td><td>boolean</td><td>Whether the signal has been triggered</td></tr>
+          <tr><td><code>triggerTime</code></td><td>string (ISO)?</td><td>When triggered (null if not triggered)</td></tr>
+          <tr><td><code>triggerRule</code></td><td>string</td><td><code>"LessThanEqual"</code> or <code>"GreaterThanEqual"</code></td></tr>
         </table>
       </div>
       <div class="form-grid">
@@ -1307,7 +1307,7 @@
   <div class="endpoint" id="ep-sl-place">
     <div class="endpoint-header" onclick="toggle('ep-sl-place')">
       <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/signal-levels</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels</span>
       <span class="endpoint-desc">Place signal level</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1316,8 +1316,8 @@
         <p>Places a new signal level at a specific price. The trigger rule is determined automatically from the current order book. Order book must be active for this ticker.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
-          <tr><td><code>Price</code></td><td>decimal</td><td>yes</td><td>Price threshold (must be &gt; 0)</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+          <tr><td><code>price</code></td><td>decimal</td><td>yes</td><td>Price threshold (must be &gt; 0)</td></tr>
         </table>
       </div>
       <div class="form-grid">
@@ -1351,7 +1351,7 @@
   <div class="endpoint" id="ep-sl-remove">
     <div class="endpoint-header" onclick="toggle('ep-sl-remove')">
       <span class="method method-delete">DELETE</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/signal-levels/{Id}</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels/{id}</span>
       <span class="endpoint-desc">Remove signal level</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1386,7 +1386,7 @@
   <div class="endpoint" id="ep-sl-remove-all">
     <div class="endpoint-header" onclick="toggle('ep-sl-remove-all')">
       <span class="method method-delete">DELETE</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/signal-levels?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels?Ticker=...</span>
       <span class="endpoint-desc">Remove all signal levels (by ticker)</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1449,7 +1449,7 @@
   <div class="endpoint" id="ep-obs-get">
     <div class="endpoint-header" onclick="toggle('ep-obs-get')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-settings?Ticker=...</span>
       <span class="endpoint-desc">Get order book settings</span>
       <span class="chevron">&#9656;</span>
     </div>
@@ -1484,14 +1484,14 @@
   <div class="endpoint" id="ep-obs-put">
     <div class="endpoint-header" onclick="toggle('ep-obs-put')">
       <span class="method method-put">PUT</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-settings?Ticker=...</span>
       <span class="endpoint-desc">Update order book settings (partial)</span>
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
       <div class="docs">
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Returns the full updated settings object.</p>
-        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>), <code>ClusterTimeFrame</code> (<code>M1</code>, <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>showRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>zoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>sizeType</code> (<code>Coin</code>, <code>Usd</code>), <code>clusterTimeFrame</code> (<code>M1</code>, <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>).</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1506,7 +1506,7 @@
       <div class="form-grid single">
         <div class="form-group">
           <label>Request body (JSON)</label>
-          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"LargeAmountUsd": 50000, "RowHeight": 14, "Autoscroll": true}</textarea>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true}</textarea>
         </div>
       </div>
       <div class="actions-row">
@@ -1529,13 +1529,13 @@
   <div class="endpoint" id="ep-obsnap-get">
     <div class="endpoint-header" onclick="toggle('ep-obsnap-get')">
       <span class="method method-get">GET</span>
-      <span class="endpoint-path">/api/connections/{ConnectionId}/orderbook-snapshot?Ticker=...</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-snapshot?Ticker=...</span>
       <span class="endpoint-desc">Fresh one-shot order book snapshot from the exchange</span>
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Fetches a <strong>fresh</strong> order book snapshot directly from the exchange REST endpoint &mdash; no cache lookup, no WebSocket subscription side effects. Intended as a one-shot complement to <code>orderbook_subscribe</code> with <code>FetchSnapshot=false</code>: subscribe to deltas cheaply, then call this once per ticker when you actually need to seed the book.</p>
+        <p>Fetches a <strong>fresh</strong> order book snapshot directly from the exchange REST endpoint &mdash; no cache lookup, no WebSocket subscription side effects. Intended as a one-shot complement to <code>orderbook_subscribe</code> with <code>fetchSnapshot=false</code>: subscribe to deltas cheaply, then call this once per ticker when you actually need to seed the book.</p>
         <p style="font-size:13px;color:var(--text-muted);">Each call performs <strong>one</strong> REST request to the exchange. The caller is responsible for not exceeding the exchange's rate limit when invoking this endpoint for many tickers in quick succession.</p>
         <p style="font-size:13px;color:var(--text-muted);">Returns <code>501 Not Implemented</code> for exchanges that don't expose a REST snapshot endpoint (e.g. Bybit USDT Perpetual, which only delivers snapshots over WebSocket).</p>
       </div>
@@ -1673,7 +1673,7 @@
           <div class="form-group">
             <label>Custom message <span class="optional">(raw JSON)</span></label>
             <div style="display:flex;gap:8px;">
-              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"ConnectionId":1}}' style="flex:1;">
+              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"connectionId":1}}' style="flex:1;">
               <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
             </div>
           </div>
@@ -1720,20 +1720,20 @@
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;"><strong>Connection-level</strong> &mdash; subscribe by connection ID for order, position, balance, and finres updates:</p>
         <table>
           <tr><th>Type</th><th>Data</th><th>Description</th></tr>
-          <tr><td><code>subscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Subscribe to updates for a connection. Connection must be active. Idempotent.</td></tr>
-          <tr><td><code>unsubscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Stop receiving updates for a connection. Idempotent.</td></tr>
+          <tr><td><code>subscribe</code></td><td><code>{ "connectionId": 123 }</code></td><td>Subscribe to updates for a connection. Connection must be active. Idempotent.</td></tr>
+          <tr><td><code>unsubscribe</code></td><td><code>{ "connectionId": 123 }</code></td><td>Stop receiving updates for a connection. Idempotent.</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Market data</strong> &mdash; subscribe by connection ID + ticker for trade or order book updates:</p>
         <table>
           <tr><th>Type</th><th>Data</th><th>Description</th></tr>
-          <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Subscribe to real-time trade updates. When <code>ZoomIndex</code> &gt; 1, trades are aggregated by zoomed price level. Re-subscribing updates ZoomIndex.</td></tr>
-          <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker. Idempotent.</td></tr>
-          <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5, "FetchSnapshot": true }</code></td><td>Subscribe to order book updates. <code>ZoomIndex</code> &gt; 1 aggregates price levels into zoomed buckets. Optional <code>DepthLevels</code> (top-N per side, snapshot only) and <code>DepthPercent</code> (per-side band on best ask / best bid, snapshot + updates). Optional <code>FetchSnapshot</code> (default <code>true</code>) &mdash; when <code>false</code> AND this is the first subscriber for the ticker, the exchange REST snapshot fetch is skipped, so you receive only delta updates (useful for mass-subscribing to many tickers without hitting exchange REST rate limits; seed state separately via <code>GET /api/connections/{id}/orderbook-snapshot</code>). Idempotent &mdash; re-subscribing replaces these atomically.</td></tr>
-          <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker. Idempotent.</td></tr>
-          <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to mark price updates (futures only). No initial snapshot &mdash; only live updates. Idempotent.</td></tr>
-          <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker. Idempotent.</td></tr>
-          <tr><td><code>funding_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Subscribe to funding rate updates (perpetual futures only). No initial snapshot. Idempotent.</td></tr>
-          <tr><td><code>funding_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>trade_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT", "zoomIndex": 1 }</code></td><td>Subscribe to real-time trade updates. When <code>zoomIndex</code> &gt; 1, trades are aggregated by zoomed price level. Re-subscribing updates ZoomIndex.</td></tr>
+          <tr><td><code>trade_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>orderbook_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT", "zoomIndex": 0, "depthLevels": 50, "depthPercent": 0.5, "fetchSnapshot": true }</code></td><td>Subscribe to order book updates. <code>zoomIndex</code> &gt; 1 aggregates price levels into zoomed buckets. Optional <code>depthLevels</code> (top-N per side, snapshot only) and <code>depthPercent</code> (per-side band on best ask / best bid, snapshot + updates). Optional <code>fetchSnapshot</code> (default <code>true</code>) &mdash; when <code>false</code> AND this is the first subscriber for the ticker, the exchange REST snapshot fetch is skipped, so you receive only delta updates (useful for mass-subscribing to many tickers without hitting exchange REST rate limits; seed state separately via <code>GET /api/connections/{id}/orderbook-snapshot</code>). Idempotent &mdash; re-subscribing replaces these atomically.</td></tr>
+          <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>mark_price_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Subscribe to mark price updates (futures only). No initial snapshot &mdash; only live updates. Idempotent.</td></tr>
+          <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>funding_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Subscribe to funding rate updates (perpetual futures only). No initial snapshot. Idempotent.</td></tr>
+          <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker. Idempotent.</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Signal level subscriptions</strong> &mdash; subscribe to receive signal level events (placed, triggered, removed):</p>
         <table>
@@ -1746,54 +1746,54 @@
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;"><strong>Acknowledgements:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>subscribed</code></td><td>After successful connection subscribe</td><td><code>ConnectionId</code></td></tr>
-          <tr><td><code>unsubscribed</code></td><td>After successful connection unsubscribe</td><td><code>ConnectionId</code></td></tr>
-          <tr><td><code>trade_subscribed</code></td><td>After successful trade subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>trade_unsubscribed</code></td><td>After successful trade unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>ZoomIndex</code>, <code>DepthLevels</code>, <code>DepthPercent</code>, <code>FetchSnapshot</code> (last three echoed only when non-default)</td></tr>
-          <tr><td><code>orderbook_unsubscribed</code></td><td>After successful order book unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>mark_price_subscribed</code></td><td>After successful mark price subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>mark_price_unsubscribed</code></td><td>After successful mark price unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>funding_subscribed</code></td><td>After successful funding subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>funding_unsubscribed</code></td><td>After successful funding unsubscribe</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>subscribed</code></td><td>After successful connection subscribe</td><td><code>connectionId</code></td></tr>
+          <tr><td><code>unsubscribed</code></td><td>After successful connection unsubscribe</td><td><code>connectionId</code></td></tr>
+          <tr><td><code>trade_subscribed</code></td><td>After successful trade subscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>trade_unsubscribed</code></td><td>After successful trade unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>orderbook_subscribed</code></td><td>After successful order book subscribe</td><td><code>connectionId</code>, <code>ticker</code>, <code>zoomIndex</code>, <code>depthLevels</code>, <code>depthPercent</code>, <code>fetchSnapshot</code> (last three echoed only when non-default)</td></tr>
+          <tr><td><code>orderbook_unsubscribed</code></td><td>After successful order book unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>mark_price_subscribed</code></td><td>After successful mark price subscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>mark_price_unsubscribed</code></td><td>After successful mark price unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>funding_subscribed</code></td><td>After successful funding subscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>funding_unsubscribed</code></td><td>After successful funding unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
           <tr><td><code>notification_subscribed</code></td><td>After successful notification subscribe</td><td>&mdash;</td></tr>
           <tr><td><code>notification_unsubscribed</code></td><td>After successful notification unsubscribe</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_subscribed</code></td><td>After successful signal level subscribe</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_unsubscribed</code></td><td>After successful signal level unsubscribe</td><td>&mdash;</td></tr>
-          <tr><td><code>Error</code></td><td>Invalid message, bad connection ID, or missing ticker</td><td><code>Error</code> (string)</td></tr>
+          <tr><td><code>error</code></td><td>Invalid message, bad connection ID, or missing ticker</td><td><code>error</code> (string)</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Connection-level updates:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>order_update</code></td><td>Order created/changed/filled/cancelled</td><td><code>ConnectionId</code>, <code>OrderId</code>, <code>Ticker</code>, <code>Side</code>, <code>Type</code>, <code>Price</code>, <code>FilledPrice</code>, <code>Size</code>, <code>FilledSize</code>, <code>Fee</code>, <code>FeeCurrency</code>, <code>Status</code>, <code>Time</code></td></tr>
-          <tr><td><code>position_update</code></td><td>Position opened/changed/closed</td><td><code>ConnectionId</code>, <code>PositionId</code>, <code>Ticker</code>, <code>Side</code>, <code>Size</code>, <code>AvgPrice</code>, <code>AvgPriceFix</code>, <code>AvgPriceDyn</code>, <code>Status</code></td></tr>
-          <tr><td><code>balance_update</code></td><td>Account balance changed</td><td><code>ConnectionId</code>, <code>Balances[]</code> with <code>Coin</code>, <code>Total</code>, <code>Free</code>, <code>Locked</code></td></tr>
-          <tr><td><code>finres_update</code></td><td>Financial results updated</td><td><code>ConnectionId</code>, <code>Finreses[]</code> with <code>Currency</code>, <code>Result</code>, <code>Fee</code>, <code>Funds</code>, <code>Available</code>, <code>Blocked</code></td></tr>
+          <tr><td><code>order_update</code></td><td>Order created/changed/filled/cancelled</td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>filledPrice</code>, <code>size</code>, <code>filledSize</code>, <code>fee</code>, <code>feeCurrency</code>, <code>status</code>, <code>time</code></td></tr>
+          <tr><td><code>position_update</code></td><td>Position opened/changed/closed</td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>avgPriceFix</code>, <code>avgPriceDyn</code>, <code>status</code></td></tr>
+          <tr><td><code>balance_update</code></td><td>Account balance changed</td><td><code>connectionId</code>, <code>balances[]</code> with <code>coin</code>, <code>total</code>, <code>free</code>, <code>locked</code></td></tr>
+          <tr><td><code>finres_update</code></td><td>Financial results updated</td><td><code>connectionId</code>, <code>finreses[]</code> with <code>currency</code>, <code>result</code>, <code>fee</code>, <code>funds</code>, <code>available</code>, <code>blocked</code></td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Market data updates:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>trade_update</code></td><td>New trades for subscribed ticker (server-side aggregated &mdash; see note below)</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Trades[]</code> with <code>Price</code>, <code>Size</code>, <code>Side</code>, <code>Time</code></td></tr>
-          <tr><td><code>orderbook_snapshot</code></td><td>Full order book on subscribe</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
-          <tr><td><code>orderbook_update</code></td><td>Incremental order book changes</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code> with <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
-          <tr><td><code>mark_price_update</code></td><td>Mark price changed (futures only)</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>MarkPrice</code></td></tr>
-          <tr><td><code>funding_update</code></td><td>Funding rate / time changed (perpetual futures only)</td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>FundingRate</code>, <code>FundingTime</code> (ISO 8601)</td></tr>
+          <tr><td><code>trade_update</code></td><td>New trades for subscribed ticker (server-side aggregated &mdash; see note below)</td><td><code>connectionId</code>, <code>ticker</code>, <code>trades[]</code> with <code>price</code>, <code>size</code>, <code>side</code>, <code>time</code></td></tr>
+          <tr><td><code>orderbook_snapshot</code></td><td>Full order book on subscribe</td><td><code>connectionId</code>, <code>ticker</code>, <code>asks[]</code>, <code>bids[]</code>, <code>bestAsk</code>, <code>bestBid</code> &mdash; each with <code>price</code>, <code>size</code>, <code>type</code></td></tr>
+          <tr><td><code>orderbook_update</code></td><td>Incremental order book changes</td><td><code>connectionId</code>, <code>ticker</code>, <code>updates[]</code> with <code>price</code>, <code>size</code>, <code>type</code></td></tr>
+          <tr><td><code>mark_price_update</code></td><td>Mark price changed (futures only)</td><td><code>connectionId</code>, <code>ticker</code>, <code>markPrice</code></td></tr>
+          <tr><td><code>funding_update</code></td><td>Funding rate / time changed (perpetual futures only)</td><td><code>connectionId</code>, <code>ticker</code>, <code>fundingRate</code>, <code>fundingTime</code> (ISO 8601)</td></tr>
         </table>
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Trade aggregation:</strong> <code>trade_update</code> entries are aggregated server-side using the order book's <code>AddingTicksForAPeriod</code> setting (same value that drives the UI ticks section, default <code>200</code> ms; per-(connection, ticker)). Consecutive same-side trades within the window are merged into one entry &mdash; <code>Size</code> is summed, <code>Price</code> and <code>Time</code> track the latest merged trade. A new entry is emitted when the side changes or the window expires. Set <code>AddingTicksForAPeriod = 0</code> in the order book settings to disable aggregation. Changes are picked up live by active subscriptions.</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Trade aggregation:</strong> <code>trade_update</code> entries are aggregated server-side using the order book's <code>AddingTicksForAPeriod</code> setting (same value that drives the UI ticks section, default <code>200</code> ms; per-(connection, ticker)). Consecutive same-side trades within the window are merged into one entry &mdash; <code>size</code> is summed, <code>price</code> and <code>time</code> track the latest merged trade. A new entry is emitted when the side changes or the window expires. Set <code>AddingTicksForAPeriod = 0</code> in the order book settings to disable aggregation. Changes are picked up live by active subscriptions.</p>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Notification updates:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>notification_snapshot</code></td><td>On subscribe &mdash; recent notifications (up to 200)</td><td><code>Notifications[]</code> with <code>Type</code>, <code>Exchange</code>, <code>Ticker</code>, <code>Price</code>, <code>Size</code>, <code>Date</code>, ...</td></tr>
-          <tr><td><code>notification_update</code></td><td>New notifications (~1 sec batches)</td><td><code>Notifications[]</code> &mdash; same fields</td></tr>
+          <tr><td><code>notification_snapshot</code></td><td>On subscribe &mdash; recent notifications (up to 200)</td><td><code>notifications[]</code> with <code>type</code>, <code>exchange</code>, <code>ticker</code>, <code>price</code>, <code>size</code>, <code>date</code>, ...</td></tr>
+          <tr><td><code>notification_update</code></td><td>New notifications (~1 sec batches)</td><td><code>notifications[]</code> &mdash; same fields</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Signal level updates:</strong></p>
         <table>
           <tr><th>Type</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>signal_levels_snapshot</code></td><td>On subscribe &mdash; all signal levels</td><td><code>SignalLevels[]</code> with <code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-          <tr><td><code>signal_level_placed</code></td><td>New signal level created</td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-          <tr><td><code>signal_level_triggered</code></td><td>Signal level triggered by price</td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-          <tr><td><code>signal_level_removed</code></td><td>Single signal level removed</td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code></td></tr>
-          <tr><td><code>signal_levels_removed_all</code></td><td>All signal levels for ticker cleared</td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+          <tr><td><code>signal_levels_snapshot</code></td><td>On subscribe &mdash; all signal levels</td><td><code>signalLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+          <tr><td><code>signal_level_placed</code></td><td>New signal level created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+          <tr><td><code>signal_level_triggered</code></td><td>Signal level triggered by price</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+          <tr><td><code>signal_level_removed</code></td><td>Single signal level removed</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>signal_levels_removed_all</code></td><td>All signal levels for ticker cleared</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
           <tr><td><code>signal_levels_removed_triggered</code></td><td>All triggered signal levels cleared</td><td>&mdash;</td></tr>
         </table>
 
@@ -1802,10 +1802,10 @@
           <tr><th>Event</th><th>Behavior</th></tr>
           <tr><td>Client connects</td><td>Session created. No updates until subscribe.</td></tr>
           <tr><td>Subscribe (valid ID)</td><td>Server responds with <code>subscribed</code>. Order, position, balance, finres updates start flowing.</td></tr>
-          <tr><td>Subscribe (invalid ID)</td><td>Server responds with <code>Error</code>. No subscription created.</td></tr>
+          <tr><td>Subscribe (invalid ID)</td><td>Server responds with <code>error</code>. No subscription created.</td></tr>
           <tr><td>Subscribe (already subscribed)</td><td>Idempotent &mdash; responds with confirmation, no duplicate events.</td></tr>
           <tr><td>Trade/orderbook subscribe (valid)</td><td>Server responds with <code>trade_subscribed</code> / <code>orderbook_subscribed</code>. Market data starts flowing for that ticker.</td></tr>
-          <tr><td>Trade/orderbook subscribe (invalid)</td><td>Server responds with <code>Error</code> (bad connection ID or missing ticker).</td></tr>
+          <tr><td>Trade/orderbook subscribe (invalid)</td><td>Server responds with <code>error</code> (bad connection ID or missing ticker).</td></tr>
           <tr><td>Mark price / funding subscribe (valid)</td><td>Server responds with <code>mark_price_subscribed</code> / <code>funding_subscribed</code>. Updates flow as the exchange publishes them (no initial snapshot). Spot connections will not emit any events.</td></tr>
           <tr><td>Unsubscribe</td><td>Server responds with confirmation. Updates stop for that subscription.</td></tr>
           <tr><td>Notification subscribe</td><td>Server responds <code>notification_subscribed</code>. Sends snapshot, then live updates.</td></tr>
@@ -1819,28 +1819,28 @@
         <details>
         <summary style="cursor:pointer;font-size:15px;font-weight:600;margin:8px 0;color:var(--text);">Example payloads</summary>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code><span style="color:var(--text-muted);">// Subscribe</span>
-{ "Type": "subscribe", "Data": { "ConnectionId": 1 } }
+{ "Type": "subscribe", "Data": { "connectionId": 1 } }
 
 <span style="color:var(--text-muted);">// Server confirms</span>
-{ "Type": "subscribed", "Data": { "ConnectionId": 1 } }
+{ "Type": "subscribed", "Data": { "connectionId": 1 } }
 
 <span style="color:var(--text-muted);">// Order update pushed by server</span>
 {
   "Type": "order_update",
   "Data": {
-    "ConnectionId": 1,
-    "OrderId": 98765,
-    "Ticker": "BTCUSDT",
-    "Side": "Buy",
-    "Type": "Limit",
-    "Price": 65000.0,
-    "FilledPrice": 64980.5,
-    "Size": 0.01,
-    "FilledSize": 0.0,
-    "Fee": 0.0013,
-    "FeeCurrency": "USDT",
-    "Status": "New",
-    "Time": "2025-03-24T14:30:00+00:00"
+    "connectionId": 1,
+    "orderId": 98765,
+    "ticker": "BTCUSDT",
+    "side": "Buy",
+    "type": "Limit",
+    "price": 65000.0,
+    "filledPrice": 64980.5,
+    "size": 0.01,
+    "filledSize": 0.0,
+    "fee": 0.0013,
+    "feeCurrency": "USDT",
+    "status": "New",
+    "time": "2025-03-24T14:30:00+00:00"
   }
 }
 
@@ -1848,15 +1848,15 @@
 {
   "Type": "position_update",
   "Data": {
-    "ConnectionId": 1,
-    "PositionId": 4321,
-    "Ticker": "ETHUSDT",
-    "Side": "Buy",
-    "Size": 1.5,
-    "AvgPrice": 3200.00,
-    "AvgPriceFix": 3200.00,
-    "AvgPriceDyn": 3195.50,
-    "Status": "Open"
+    "connectionId": 1,
+    "positionId": 4321,
+    "ticker": "ETHUSDT",
+    "side": "Buy",
+    "size": 1.5,
+    "avgPrice": 3200.00,
+    "avgPriceFix": 3200.00,
+    "avgPriceDyn": 3195.50,
+    "status": "Open"
   }
 }
 
@@ -1864,10 +1864,10 @@
 {
   "Type": "balance_update",
   "Data": {
-    "ConnectionId": 1,
-    "Balances": [
-      { "Coin": "USDT", "Total": 10000.0, "Free": 8500.0, "Locked": 1500.0 },
-      { "Coin": "BTC", "Total": 0.5, "Free": 0.5, "Locked": 0.0 }
+    "connectionId": 1,
+    "balances": [
+      { "coin": "USDT", "total": 10000.0, "free": 8500.0, "locked": 1500.0 },
+      { "coin": "BTC", "total": 0.5, "free": 0.5, "locked": 0.0 }
     ]
   }
 }
@@ -1876,55 +1876,55 @@
 {
   "Type": "finres_update",
   "Data": {
-    "ConnectionId": 1,
-    "Finreses": [
-      { "Currency": "USDT", "Result": 250.50, "Fee": 12.30, "Funds": 10000.0, "Available": 8500.0, "Blocked": 1500.0 },
-      { "Currency": "BTC", "Result": 0.005, "Fee": 0.0001, "Funds": 0.5, "Available": 0.5, "Blocked": 0.0 }
+    "connectionId": 1,
+    "finreses": [
+      { "currency": "USDT", "result": 250.50, "fee": 12.30, "funds": 10000.0, "available": 8500.0, "blocked": 1500.0 },
+      { "currency": "BTC", "result": 0.005, "fee": 0.0001, "funds": 0.5, "available": 0.5, "blocked": 0.0 }
     ]
   }
 }
 
 <span style="color:var(--text-muted);">// Subscribe to trades for a specific ticker</span>
-{ "Type": "trade_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 1 } }
+{ "Type": "trade_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "zoomIndex": 1 } }
 
 <span style="color:var(--text-muted);">// Server confirms trade subscription</span>
-{ "Type": "trade_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 1 } }
+{ "Type": "trade_subscribed", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "zoomIndex": 1 } }
 
 <span style="color:var(--text-muted);">// Trade update pushed by server</span>
 {
   "Type": "trade_update",
   "Data": {
-    "ConnectionId": 1,
-    "Ticker": "BTCUSDT",
-    "Trades": [
-      { "Price": 65123.50, "Size": 0.15, "Side": "Buy", "Time": "2026-03-16T12:00:01.234+00:00" },
-      { "Price": 65123.00, "Size": 0.03, "Side": "Sell", "Time": "2026-03-16T12:00:01.235+00:00" }
+    "connectionId": 1,
+    "ticker": "BTCUSDT",
+    "trades": [
+      { "price": 65123.50, "size": 0.15, "side": "Buy", "time": "2026-03-16T12:00:01.234+00:00" },
+      { "price": 65123.00, "size": 0.03, "side": "Sell", "time": "2026-03-16T12:00:01.235+00:00" }
     ]
   }
 }
 
 <span style="color:var(--text-muted);">// Subscribe to order book for a specific ticker</span>
-{ "Type": "orderbook_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5, "FetchSnapshot": true } }
+{ "Type": "orderbook_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "zoomIndex": 0, "depthLevels": 50, "depthPercent": 0.5, "fetchSnapshot": true } }
 
 <span style="color:var(--text-muted);">// Server confirms order book subscription</span>
-{ "Type": "orderbook_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5, "FetchSnapshot": true } }
+{ "Type": "orderbook_subscribed", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "zoomIndex": 0, "depthLevels": 50, "depthPercent": 0.5, "fetchSnapshot": true } }
 
 <span style="color:var(--text-muted);">// Order book snapshot (full state, sent once on subscribe)</span>
 {
   "Type": "orderbook_snapshot",
   "Data": {
-    "ConnectionId": 1,
-    "Ticker": "BTCUSDT",
-    "Asks": [
-      { "Price": 65124.00, "Size": 1.20, "Type": "Ask" },
-      { "Price": 65125.00, "Size": 0.85, "Type": "Ask" }
+    "connectionId": 1,
+    "ticker": "BTCUSDT",
+    "asks": [
+      { "price": 65124.00, "size": 1.20, "type": "Ask" },
+      { "price": 65125.00, "size": 0.85, "type": "Ask" }
     ],
-    "Bids": [
-      { "Price": 65123.00, "Size": 2.50, "Type": "Bid" },
-      { "Price": 65122.00, "Size": 1.10, "Type": "Bid" }
+    "bids": [
+      { "price": 65123.00, "size": 2.50, "type": "Bid" },
+      { "price": 65122.00, "size": 1.10, "type": "Bid" }
     ],
-    "BestAsk": { "Price": 65124.00, "Size": 1.20, "Type": "BestAsk" },
-    "BestBid": { "Price": 65123.00, "Size": 2.50, "Type": "BestBid" }
+    "bestAsk": { "price": 65124.00, "size": 1.20, "type": "BestAsk" },
+    "bestBid": { "price": 65123.00, "size": 2.50, "type": "BestBid" }
   }
 }
 
@@ -1932,41 +1932,41 @@
 {
   "Type": "orderbook_update",
   "Data": {
-    "ConnectionId": 1,
-    "Ticker": "BTCUSDT",
-    "Updates": [
-      { "Price": 65124.00, "Size": 0.90, "Type": "Ask" },
-      { "Price": 65126.00, "Size": 0.50, "Type": "Ask" },
-      { "Price": 65123.00, "Size": 2.80, "Type": "Bid" }
+    "connectionId": 1,
+    "ticker": "BTCUSDT",
+    "updates": [
+      { "price": 65124.00, "size": 0.90, "type": "Ask" },
+      { "price": 65126.00, "size": 0.50, "type": "Ask" },
+      { "price": 65123.00, "size": 2.80, "type": "Bid" }
     ]
   }
 }
 
 <span style="color:var(--text-muted);">// Subscribe to mark price (futures only)</span>
-{ "Type": "mark_price_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
-{ "Type": "mark_price_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "mark_price_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+{ "Type": "mark_price_subscribed", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
 
 <span style="color:var(--text-muted);">// Mark price update pushed by server</span>
-{ "Type": "mark_price_update", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "MarkPrice": 65123.5 } }
+{ "Type": "mark_price_update", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "markPrice": 65123.5 } }
 
 <span style="color:var(--text-muted);">// Subscribe to funding rate (perpetual futures only)</span>
-{ "Type": "funding_subscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
-{ "Type": "funding_subscribed", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "funding_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+{ "Type": "funding_subscribed", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
 
 <span style="color:var(--text-muted);">// Funding update pushed by server</span>
-{ "Type": "funding_update", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT", "FundingRate": 0.0001, "FundingTime": "2026-03-16T16:00:00+00:00" } }
+{ "Type": "funding_update", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "fundingRate": 0.0001, "fundingTime": "2026-03-16T16:00:00+00:00" } }
 
 <span style="color:var(--text-muted);">// Unsubscribe from market data</span>
-{ "Type": "trade_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
-{ "Type": "orderbook_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
-{ "Type": "mark_price_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
-{ "Type": "funding_unsubscribe", "Data": { "ConnectionId": 1, "Ticker": "BTCUSDT" } }
+{ "Type": "trade_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+{ "Type": "orderbook_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+{ "Type": "mark_price_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+{ "Type": "funding_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
 
 <span style="color:var(--text-muted);">// Unsubscribe from connection</span>
-{ "Type": "unsubscribe", "Data": { "ConnectionId": 1 } }
+{ "Type": "unsubscribe", "Data": { "connectionId": 1 } }
 
 <span style="color:var(--text-muted);">// Error (invalid connection)</span>
-{ "Type": "error", "Data": { "Error": "Connection 999 not found or not active" } }</code></pre>
+{ "Type": "error", "Data": { "error": "Connection 999 not found or not active" } }</code></pre>
         </details>
       </div>
     </div>
@@ -2025,7 +2025,7 @@
     <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Errors return HTTP <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">400</code> or <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">404</code> with a JSON body.</p>
     <table>
       <tr><th>Endpoint</th><th>Condition</th><th>HTTP</th><th>Error message</th></tr>
-      <tr><td><code>/api/change-ticker</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. Provide 'TickerPattern' or 'exchange'+'market'+'ticker'.</code></td></tr>
+      <tr><td><code>/api/change-ticker</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. Provide 'tickerPattern' or 'exchange'+'market'+'ticker'.</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Invalid pattern</td><td>400</td><td><code>Invalid ticker pattern: '{pattern}'</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Binding not found</td><td>400</td><td><code>Binding '{name}' not found. Available: {list}</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>No connection</td><td>400</td><td><code>No connection found for exchange ... and market ...</code></td></tr>
@@ -2039,7 +2039,7 @@
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Invalid order fields</td><td>400</td><td><code>Invalid request body. 'ticker', 'side', 'price', and 'size' are required.</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Size &lt;= 0</td><td>400</td><td><code>Size must be greater than zero</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Price &lt;= 0 (non-market)</td><td>400</td><td><code>Price must be greater than zero for non-market orders</code></td></tr>
-      <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. 'ticker' and 'OrderId' are required.</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. 'ticker' and 'orderId' are required.</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders/cancel-all</code></td><td>Missing ticker</td><td>400</td><td><code>Invalid request body. 'ticker' is required.</code></td></tr>
       <tr><td><code>/api/connections/{id}/cluster-snapshot</code></td><td>Missing ticker or timeframe</td><td>400</td><td><code>Query parameter 'Ticker' is required</code></td></tr>
       <tr><td><code>/api/connections/{id}/cluster-snapshot</code></td><td>Ticker not found</td><td>404</td><td><code>Ticker 'XYZ' not found</code></td></tr>
@@ -2049,13 +2049,13 @@
       <tr><td><code>/api/connections/{id}/signal-levels</code></td><td>Price &lt;= 0</td><td>400</td><td><code>Price must be greater than zero</code></td></tr>
       <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>Missing ticker</td><td>400</td><td><code>Query parameter 'Ticker' is required</code></td></tr>
       <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>No settings found</td><td>404</td><td><code>No order book settings found for ticker 'X'</code></td></tr>
-      <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>Invalid enum value (PUT)</td><td>400</td><td><code>Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orderbook-settings</code></td><td>Invalid enum value (PUT)</td><td>400</td><td><code>Invalid value 'X' for field 'showRuler'. Valid values: None, Points, Percent, PercentVolume</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>
     </table>
 
     <h2 style="font-size:16px;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);">Socket error messages</h2>
-    <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Socket errors are sent as <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">{ "Type": "error", "Data": { "Error": "..." } }</code></p>
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Socket errors are sent as <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">{ "Type": "error", "Data": { "error": "..." } }</code></p>
     <table>
       <tr><th>Condition</th><th>Error message</th></tr>
       <tr><td>Subscribe to non-existent connection</td><td><code>Connection {id} not found or not active</code></td></tr>
@@ -2147,61 +2147,61 @@ GET  /api/connections/{id}/orderbook-snapshot?Ticker= &rarr; fresh one-shot orde
 ws = new WebSocket("ws://127.0.0.1:17845/")
 
 <span style="color:var(--text-muted);">2. Subscribe to a connection (orders, positions, balances, finres)</span>
-ws.send('{"Type":"subscribe","Data":{"ConnectionId":1}}')
-&larr; {"Type":"subscribed","Data":{"ConnectionId":1}}
+ws.send('{"Type":"subscribe","Data":{"connectionId":1}}')
+&larr; {"Type":"subscribed","Data":{"connectionId":1}}
 
 <span style="color:var(--text-muted);">3. Subscribe to market data for a specific ticker</span>
-ws.send('{"Type":"trade_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}')
-&larr; {"Type":"trade_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":1}}
-ws.send('{"Type":"orderbook_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5,"FetchSnapshot":true}}')
-&larr; {"Type":"orderbook_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","ZoomIndex":0,"DepthLevels":50,"DepthPercent":0.5,"FetchSnapshot":true}}
-ws.send('{"Type":"mark_price_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-&larr; {"Type":"mark_price_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
-ws.send('{"Type":"funding_subscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-&larr; {"Type":"funding_subscribed","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}
+ws.send('{"Type":"trade_subscribe","Data":{"connectionId":1,"ticker":"BTCUSDT","zoomIndex":1}}')
+&larr; {"Type":"trade_subscribed","Data":{"connectionId":1,"ticker":"BTCUSDT","zoomIndex":1}}
+ws.send('{"Type":"orderbook_subscribe","Data":{"connectionId":1,"ticker":"BTCUSDT","zoomIndex":0,"depthLevels":50,"depthPercent":0.5,"fetchSnapshot":true}}')
+&larr; {"Type":"orderbook_subscribed","Data":{"connectionId":1,"ticker":"BTCUSDT","zoomIndex":0,"depthLevels":50,"depthPercent":0.5,"fetchSnapshot":true}}
+ws.send('{"Type":"mark_price_subscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+&larr; {"Type":"mark_price_subscribed","Data":{"connectionId":1,"ticker":"BTCUSDT"}}
+ws.send('{"Type":"funding_subscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+&larr; {"Type":"funding_subscribed","Data":{"connectionId":1,"ticker":"BTCUSDT"}}
 
 <span style="color:var(--text-muted);">4. Subscribe to signal levels</span>
 ws.send('{"Type":"signal_level_subscribe","Data":{}}')
 &larr; {"Type":"signal_level_subscribed","Data":{}}
-&larr; {"Type":"signal_levels_snapshot","Data":{"SignalLevels":[...]}}
+&larr; {"Type":"signal_levels_snapshot","Data":{"signalLevels":[...]}}
 
 <span style="color:var(--text-muted);">5. Receive real-time updates</span>
-&larr; {"Type":"order_update","Data":{"ConnectionId":1,"OrderId":123,...}}
-&larr; {"Type":"position_update","Data":{"ConnectionId":1,...}}
-&larr; {"Type":"balance_update","Data":{"ConnectionId":1,"Balances":[...]}}
-&larr; {"Type":"finres_update","Data":{"ConnectionId":1,"Finreses":[...]}}
-&larr; {"Type":"trade_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Trades":[...]}}
-&larr; {"Type":"orderbook_snapshot","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Asks":[...],"Bids":[...],...}}
-&larr; {"Type":"orderbook_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","Updates":[...]}}
-&larr; {"Type":"mark_price_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","MarkPrice":65123.5}}
-&larr; {"Type":"funding_update","Data":{"ConnectionId":1,"Ticker":"BTCUSDT","FundingRate":0.0001,"FundingTime":"2026-03-16T16:00:00+00:00"}}
-&larr; {"Type":"signal_level_placed","Data":{"Id":1,"ConnectionId":1,"Ticker":"BTCUSDT","Price":95000,...}}
-&larr; {"Type":"signal_level_triggered","Data":{"Id":1,"TriggerTime":"2026-04-13T..."}}
+&larr; {"Type":"order_update","Data":{"connectionId":1,"orderId":123,...}}
+&larr; {"Type":"position_update","Data":{"connectionId":1,...}}
+&larr; {"Type":"balance_update","Data":{"connectionId":1,"balances":[...]}}
+&larr; {"Type":"finres_update","Data":{"connectionId":1,"finreses":[...]}}
+&larr; {"Type":"trade_update","Data":{"connectionId":1,"ticker":"BTCUSDT","trades":[...]}}
+&larr; {"Type":"orderbook_snapshot","Data":{"connectionId":1,"ticker":"BTCUSDT","asks":[...],"bids":[...],...}}
+&larr; {"Type":"orderbook_update","Data":{"connectionId":1,"ticker":"BTCUSDT","updates":[...]}}
+&larr; {"Type":"mark_price_update","Data":{"connectionId":1,"ticker":"BTCUSDT","markPrice":65123.5}}
+&larr; {"Type":"funding_update","Data":{"connectionId":1,"ticker":"BTCUSDT","fundingRate":0.0001,"fundingTime":"2026-03-16T16:00:00+00:00"}}
+&larr; {"Type":"signal_level_placed","Data":{"id":1,"connectionId":1,"ticker":"BTCUSDT","price":95000,...}}
+&larr; {"Type":"signal_level_triggered","Data":{"id":1,"triggerTime":"2026-04-13T..."}}
 
 <span style="color:var(--text-muted);">6. Unsubscribe when done</span>
 ws.send('{"Type":"signal_level_unsubscribe","Data":{}}')
-ws.send('{"Type":"trade_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-ws.send('{"Type":"orderbook_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-ws.send('{"Type":"mark_price_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-ws.send('{"Type":"funding_unsubscribe","Data":{"ConnectionId":1,"Ticker":"BTCUSDT"}}')
-ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
-&larr; {"Type":"unsubscribed","Data":{"ConnectionId":1}}</code></pre>
+ws.send('{"Type":"trade_unsubscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+ws.send('{"Type":"orderbook_unsubscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+ws.send('{"Type":"mark_price_unsubscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+ws.send('{"Type":"funding_unsubscribe","Data":{"connectionId":1,"ticker":"BTCUSDT"}}')
+ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
+&larr; {"Type":"unsubscribed","Data":{"connectionId":1}}</code></pre>
 
       <h2>WebSocket message reference</h2>
 
       <h3>Messages you send</h3>
       <table>
         <tr><th>Type</th><th>Data</th><th>Description</th></tr>
-        <tr><td><code>subscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Start receiving order, position, balance, finres updates for a connection.</td></tr>
-        <tr><td><code>unsubscribe</code></td><td><code>{ "ConnectionId": 123 }</code></td><td>Stop receiving connection-level updates.</td></tr>
-        <tr><td><code>trade_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 1 }</code></td><td>Start receiving trade updates. ZoomIndex &gt; 1 aggregates by zoomed price.</td></tr>
-        <tr><td><code>trade_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
-        <tr><td><code>orderbook_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT", "ZoomIndex": 0, "DepthLevels": 50, "DepthPercent": 0.5, "FetchSnapshot": true }</code></td><td>Start receiving order book updates. <code>ZoomIndex</code> &gt; 1 aggregates price levels. Optional <code>DepthLevels</code> (snapshot only) and <code>DepthPercent</code> (snapshot + updates) trim the payload. Optional <code>FetchSnapshot</code> (default <code>true</code>): set to <code>false</code> to skip the exchange REST snapshot fetch on cold subscribe &mdash; useful for mass-subscribing many tickers without hitting REST rate limits.</td></tr>
-        <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
-        <tr><td><code>mark_price_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving mark price updates (futures only). No initial snapshot.</td></tr>
-        <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
-        <tr><td><code>funding_subscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Start receiving funding rate updates (perpetual futures only). No initial snapshot.</td></tr>
-        <tr><td><code>funding_unsubscribe</code></td><td><code>{ "ConnectionId": 123, "Ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
+        <tr><td><code>subscribe</code></td><td><code>{ "connectionId": 123 }</code></td><td>Start receiving order, position, balance, finres updates for a connection.</td></tr>
+        <tr><td><code>unsubscribe</code></td><td><code>{ "connectionId": 123 }</code></td><td>Stop receiving connection-level updates.</td></tr>
+        <tr><td><code>trade_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT", "zoomIndex": 1 }</code></td><td>Start receiving trade updates. ZoomIndex &gt; 1 aggregates by zoomed price.</td></tr>
+        <tr><td><code>trade_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving trade updates for that ticker.</td></tr>
+        <tr><td><code>orderbook_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT", "zoomIndex": 0, "depthLevels": 50, "depthPercent": 0.5, "fetchSnapshot": true }</code></td><td>Start receiving order book updates. <code>zoomIndex</code> &gt; 1 aggregates price levels. Optional <code>depthLevels</code> (snapshot only) and <code>depthPercent</code> (snapshot + updates) trim the payload. Optional <code>fetchSnapshot</code> (default <code>true</code>): set to <code>false</code> to skip the exchange REST snapshot fetch on cold subscribe &mdash; useful for mass-subscribing many tickers without hitting REST rate limits.</td></tr>
+        <tr><td><code>orderbook_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving order book updates for that ticker.</td></tr>
+        <tr><td><code>mark_price_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving mark price updates (futures only). No initial snapshot.</td></tr>
+        <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
+        <tr><td><code>funding_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving funding rate updates (perpetual futures only). No initial snapshot.</td></tr>
+        <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
         <tr><td><code>notification_subscribe</code></td><td><code>{}</code></td><td>Start receiving app-wide notifications.</td></tr>
         <tr><td><code>notification_unsubscribe</code></td><td><code>{}</code></td><td>Stop receiving notifications.</td></tr>
         <tr><td><code>signal_level_subscribe</code></td><td><code>{}</code></td><td>Start receiving signal level events.</td></tr>
@@ -2211,38 +2211,38 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       <h3>Messages you receive</h3>
       <table>
         <tr><th>Type</th><th>Data fields</th></tr>
-        <tr><td><code>subscribed</code></td><td><code>ConnectionId</code></td></tr>
-        <tr><td><code>unsubscribed</code></td><td><code>ConnectionId</code></td></tr>
-        <tr><td><code>trade_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>trade_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>orderbook_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>orderbook_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>mark_price_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>mark_price_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>funding_subscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>funding_unsubscribed</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>order_update</code></td><td><code>ConnectionId</code>, <code>OrderId</code>, <code>Ticker</code>, <code>Side</code>, <code>Type</code>, <code>Price</code>, <code>FilledPrice</code>, <code>Size</code>, <code>FilledSize</code>, <code>Fee</code>, <code>FeeCurrency</code>, <code>Status</code>, <code>Time</code></td></tr>
-        <tr><td><code>position_update</code></td><td><code>ConnectionId</code>, <code>PositionId</code>, <code>Ticker</code>, <code>Side</code>, <code>Size</code>, <code>AvgPrice</code>, <code>AvgPriceFix</code>, <code>AvgPriceDyn</code>, <code>Status</code></td></tr>
-        <tr><td><code>balance_update</code></td><td><code>ConnectionId</code>, <code>Balances[]</code>: <code>Coin</code>, <code>Total</code>, <code>Free</code>, <code>Locked</code></td></tr>
-        <tr><td><code>finres_update</code></td><td><code>ConnectionId</code>, <code>Finreses[]</code>: <code>Currency</code>, <code>Result</code>, <code>Fee</code>, <code>Funds</code>, <code>Available</code>, <code>Blocked</code></td></tr>
-        <tr><td><code>trade_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Trades[]</code>: <code>Price</code>, <code>Size</code>, <code>Side</code>, <code>Time</code></td></tr>
-        <tr><td><code>orderbook_snapshot</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Asks[]</code>, <code>Bids[]</code>, <code>BestAsk</code>, <code>BestBid</code> &mdash; each: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
-        <tr><td><code>orderbook_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>Updates[]</code>: <code>Price</code>, <code>Size</code>, <code>Type</code></td></tr>
-        <tr><td><code>mark_price_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>MarkPrice</code></td></tr>
-        <tr><td><code>funding_update</code></td><td><code>ConnectionId</code>, <code>Ticker</code>, <code>FundingRate</code>, <code>FundingTime</code> (ISO 8601)</td></tr>
+        <tr><td><code>subscribed</code></td><td><code>connectionId</code></td></tr>
+        <tr><td><code>unsubscribed</code></td><td><code>connectionId</code></td></tr>
+        <tr><td><code>trade_subscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>trade_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>orderbook_subscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>orderbook_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>mark_price_subscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>mark_price_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>funding_subscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>funding_unsubscribed</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>order_update</code></td><td><code>connectionId</code>, <code>orderId</code>, <code>ticker</code>, <code>side</code>, <code>type</code>, <code>price</code>, <code>filledPrice</code>, <code>size</code>, <code>filledSize</code>, <code>fee</code>, <code>feeCurrency</code>, <code>status</code>, <code>time</code></td></tr>
+        <tr><td><code>position_update</code></td><td><code>connectionId</code>, <code>positionId</code>, <code>ticker</code>, <code>side</code>, <code>size</code>, <code>avgPrice</code>, <code>avgPriceFix</code>, <code>avgPriceDyn</code>, <code>status</code></td></tr>
+        <tr><td><code>balance_update</code></td><td><code>connectionId</code>, <code>balances[]</code>: <code>coin</code>, <code>total</code>, <code>free</code>, <code>locked</code></td></tr>
+        <tr><td><code>finres_update</code></td><td><code>connectionId</code>, <code>finreses[]</code>: <code>currency</code>, <code>result</code>, <code>fee</code>, <code>funds</code>, <code>available</code>, <code>blocked</code></td></tr>
+        <tr><td><code>trade_update</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>trades[]</code>: <code>price</code>, <code>size</code>, <code>side</code>, <code>time</code></td></tr>
+        <tr><td><code>orderbook_snapshot</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>asks[]</code>, <code>bids[]</code>, <code>bestAsk</code>, <code>bestBid</code> &mdash; each: <code>price</code>, <code>size</code>, <code>type</code></td></tr>
+        <tr><td><code>orderbook_update</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>updates[]</code>: <code>price</code>, <code>size</code>, <code>type</code></td></tr>
+        <tr><td><code>mark_price_update</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>markPrice</code></td></tr>
+        <tr><td><code>funding_update</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>fundingRate</code>, <code>fundingTime</code> (ISO 8601)</td></tr>
         <tr><td><code>notification_subscribed</code></td><td>&mdash;</td></tr>
         <tr><td><code>notification_unsubscribed</code></td><td>&mdash;</td></tr>
-        <tr><td><code>notification_snapshot</code></td><td><code>Notifications[]</code>: <code>Type</code>, <code>Exchange</code>, <code>Ticker</code>, <code>Price</code>, <code>Size</code>, <code>Date</code>, ...</td></tr>
-        <tr><td><code>notification_update</code></td><td><code>Notifications[]</code> &mdash; same fields</td></tr>
+        <tr><td><code>notification_snapshot</code></td><td><code>notifications[]</code>: <code>type</code>, <code>exchange</code>, <code>ticker</code>, <code>price</code>, <code>size</code>, <code>date</code>, ...</td></tr>
+        <tr><td><code>notification_update</code></td><td><code>notifications[]</code> &mdash; same fields</td></tr>
         <tr><td><code>signal_level_subscribed</code></td><td>&mdash;</td></tr>
         <tr><td><code>signal_level_unsubscribed</code></td><td>&mdash;</td></tr>
-        <tr><td><code>signal_levels_snapshot</code></td><td><code>SignalLevels[]</code>: <code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-        <tr><td><code>signal_level_placed</code></td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-        <tr><td><code>signal_level_triggered</code></td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code>, <code>Price</code>, <code>IsTriggered</code>, <code>TriggerTime</code>, <code>TriggerRule</code></td></tr>
-        <tr><td><code>signal_level_removed</code></td><td><code>Id</code>, <code>ConnectionId</code>, <code>Ticker</code></td></tr>
-        <tr><td><code>signal_levels_removed_all</code></td><td><code>ConnectionId</code>, <code>Ticker</code></td></tr>
+        <tr><td><code>signal_levels_snapshot</code></td><td><code>signalLevels[]</code>: <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+        <tr><td><code>signal_level_placed</code></td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+        <tr><td><code>signal_level_triggered</code></td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+        <tr><td><code>signal_level_removed</code></td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code></td></tr>
+        <tr><td><code>signal_levels_removed_all</code></td><td><code>connectionId</code>, <code>ticker</code></td></tr>
         <tr><td><code>signal_levels_removed_triggered</code></td><td>&mdash;</td></tr>
-        <tr><td><code>Error</code></td><td><code>Error</code> (string message)</td></tr>
+        <tr><td><code>error</code></td><td><code>error</code> (string message)</td></tr>
       </table>
 
       <hr>
@@ -2728,19 +2728,19 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
           obHandleMessage(data);
         }
         if (data.type === 'orderbook_subscribed') {
-          obOnSubscribed(data.data.ConnectionId, data.data.ticker);
+          obOnSubscribed(data.data.connectionId, data.data.ticker);
         }
         if (data.type === 'orderbook_unsubscribed') {
-          obOnUnsubscribed(data.data.ConnectionId, data.data.ticker);
+          obOnUnsubscribed(data.data.connectionId, data.data.ticker);
         }
         if (data.type === 'trade_update') {
           tradesHandleMessage(data);
         }
         if (data.type === 'trade_subscribed') {
-          tradesOnSubscribed(data.data.ConnectionId, data.data.ticker);
+          tradesOnSubscribed(data.data.connectionId, data.data.ticker);
         }
         if (data.type === 'trade_unsubscribed') {
-          tradesOnUnsubscribed(data.data.ConnectionId, data.data.ticker);
+          tradesOnUnsubscribed(data.data.connectionId, data.data.ticker);
         }
         // Log everything except high-frequency order book updates
         if (data.type !== 'orderbook_update' && data.type !== 'orderbook_snapshot' && data.type !== 'trade_update') {
@@ -2908,7 +2908,7 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
 
   function obHandleMessage(data) {
     const d = data.data;
-    const key = obMakeKey(d.ConnectionId, d.ticker);
+    const key = obMakeKey(d.connectionId, d.ticker);
     let book = obBooks[key];
     if (!book) {
       book = { asks: new Map(), bids: new Map(), BestAsk: null, BestBid: null, scrolled: false };
@@ -2924,8 +2924,8 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
       if (d.bids) d.bids.forEach(o => {
         if (o.size > 0) book.bids.set(o.price, o.size);
       });
-      if (d.BestAsk) book.BestAsk = d.BestAsk.price;
-      if (d.BestBid) book.BestBid = d.BestBid.price;
+      if (d.bestAsk) book.BestAsk = d.bestAsk.price;
+      if (d.bestBid) book.BestBid = d.bestBid.price;
     } else if (data.type === 'orderbook_update') {
       if (d.updates) d.updates.forEach(o => {
         const map = (o.type === 'Ask' || o.type === 'BestAsk') ? book.asks : book.bids;
@@ -3110,7 +3110,7 @@ ws.send('{"Type":"unsubscribe","Data":{"ConnectionId":1}}')
 
   function tradesHandleMessage(data) {
     const d = data.data;
-    const key = obMakeKey(d.ConnectionId, d.ticker);
+    const key = obMakeKey(d.connectionId, d.ticker);
     let feed = tradesFeeds[key];
     if (!feed) {
       feed = { trades: [] };
