@@ -1,6 +1,6 @@
 {
   "name": "metascalp",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Official SDK for MetaScalp API — trade, stream order book and trades via REST and WebSocket",
   "author": "MetaScalp",
   "license": "MIT",
@@ -14,6 +14,7 @@
   },
   "keywords": ["metascalp", "trading", "api", "websocket", "orderbook", "crypto", "trading-bot", "market-data"],
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {
