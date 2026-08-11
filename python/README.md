@@ -2,7 +2,7 @@
 
 Official SDK for [MetaScalp](https://metascalp.io) API — connect your trading bots and scripts to the MetaScalp terminal via REST and WebSocket.
 
-MetaScalp exposes a local API that lets you query exchange data, execute trades, and stream real-time market data (trades, order book) and account updates (orders, positions, balances).
+MetaScalp exposes a local API that lets you query exchange data, execute trades, and stream real-time market data (trades, order book, mark/index price, funding) and account updates (orders, positions, balances) — plus manage signal levels, plain levels, chart annotations, the notification feed and the terminal UI itself.
 
 ## Available SDKs
 
@@ -139,6 +139,8 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 
 ## API Overview
 
+Full reference with request/response shapes: [MetaScalp API docs](https://metascalp.github.io/metascalp-sdk/) ([markdown](./docs/MetaScalp-Api.md)).
+
 ### REST Endpoints
 
 | Method | Endpoint | Description |
@@ -146,13 +148,22 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 | `GET` | `/ping` | Discover running MetaScalp instance |
 | `GET` | `/api/connections` | List active exchange connections |
 | `GET` | `/api/connections/{id}` | Get single connection details |
-| `GET` | `/api/connections/{id}/tickers` | List available tickers |
+| `GET` | `/api/connections/{id}/tickers` | List available tickers (`?Refresh=true` re-fetches from the exchange) |
 | `GET` | `/api/connections/{id}/orders?Ticker=X` | Get open orders |
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
+| `GET` | `/api/connections/{id}/cluster-snapshot` | Cluster (volume profile) snapshot data |
 | `POST` | `/api/connections/{id}/orders` | Place an order |
 | `POST` | `/api/connections/{id}/orders/cancel` | Cancel an order |
+| `POST` | `/api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
+| `GET/POST/PUT/DELETE` | `/api/connections/{id}/signal-levels[/{slId}]` | Full signal-level CRUD (+ `DELETE /api/signal-levels/triggered`) |
+| `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
+| `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
+| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings |
+| `POST` | `/api/notifications` | Inject a custom row into the notification feed |
+| `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
+| `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout |
 
@@ -168,10 +179,23 @@ socket.SubscribeOrderBook(conn.Id, "BTCUSDT");
 
 | Subscribe | Updates received |
 |-----------|-----------------|
-| `trade_subscribe` | `trade_update` |
+| `trade_subscribe` | `trade_update` (aggregated ticks carry `highPrice`/`lowPrice`) |
 | `orderbook_subscribe` | `orderbook_snapshot`, `orderbook_update` |
 | `mark_price_subscribe` | `mark_price_update` (futures only) |
+| `index_price_subscribe` | `index_price_update` (futures only) |
 | `funding_subscribe` | `funding_update` (perpetual futures only) |
+| `annotation_subscribe` | one-shot `annotations_snapshot` of the current chart annotations |
+
+**App-wide** — no `connectionId` required:
+
+| Subscribe | Updates received |
+|-----------|-----------------|
+| `notification_subscribe` | `notification_update` (including custom rows injected via `POST /api/notifications`) |
+| `signal_level_subscribe` | `signal_level_placed/updated/triggered/removed/...` |
+| `user_level_subscribe` | `user_level_placed/updated/removed/...` |
+| `ui_subscribe` | `ui_snapshot`, then `ui_update` on UI changes |
+
+> **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship.
 
 > **Mass-subscribe optimization.** `orderbook_subscribe` accepts an optional `fetchSnapshot` field (default `true`). Pass `false` to skip the exchange REST snapshot fetch when subscribing — useful when subscribing to 100+ tickers at once without hitting exchange REST rate limits. Seed state separately via `GET /api/connections/{id}/orderbook-snapshot` when you need it. A later subscriber that wants a snapshot triggers a lazy fetch that fans out to all listeners.
 
