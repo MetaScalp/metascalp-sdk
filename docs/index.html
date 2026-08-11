@@ -1154,6 +1154,109 @@
     </div>
   </div>
 
+  <!-- /api/connections/{id}/orders/cancel-all -->
+  <div class="endpoint" id="ep-ex-cancel-all">
+    <div class="endpoint-header" onclick="toggle('ep-ex-cancel-all')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orders/cancel-all</span>
+      <span class="endpoint-desc">Cancel all orders</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Cancels all open orders for a given ticker on the exchange.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
+        </table>
+        <p>Returns <code>{ status, cancelledCount }</code> &mdash; <code>cancelledCount: 0</code> if there are no open orders for that ticker.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-cancel-all-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-cancel-all-ticker" value="BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCancelAllOrders()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ex-cancel-all">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ex-cancel-all-status"></span>
+          <span class="response-time" id="resp-ex-cancel-all-time"></span>
+        </div>
+        <div class="response-body" id="resp-ex-cancel-all-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Market Data -->
+  <div class="section-label">Market Data</div>
+
+  <!-- /api/connections/{id}/cluster-snapshot -->
+  <div class="endpoint" id="ep-cluster-snapshot">
+    <div class="endpoint-header" onclick="toggle('ep-cluster-snapshot')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/cluster-snapshot</span>
+      <span class="endpoint-desc">Cluster snapshot</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.</p>
+        <table>
+          <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
+          <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, H4, D1</td></tr>
+          <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
+        </table>
+        <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-cluster-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-cluster-ticker" value="BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>TimeFrame</label>
+          <select id="f-cluster-timeframe">
+            <option value="S30">30 seconds</option>
+            <option value="M1">1 minute</option>
+            <option value="M5" selected>5 minutes</option>
+            <option value="M10">10 minutes</option>
+            <option value="M15">15 minutes</option>
+            <option value="M30">30 minutes</option>
+            <option value="H1">1 hour</option>
+            <option value="H4">4 hours</option>
+            <option value="D1">1 day</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ZoomIndex</label>
+          <input type="number" id="f-cluster-zoom" value="1" min="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendClusterSnapshot()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-cluster-snapshot">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-cluster-snapshot-status"></span>
+          <span class="response-time" id="resp-cluster-snapshot-time"></span>
+        </div>
+        <div class="response-body" id="resp-cluster-snapshot-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Signal levels -->
   <div class="section-label">Signal levels</div>
 
@@ -1167,6 +1270,43 @@
     <code>DELETE .../signal-levels?Ticker=...</code>. <code>GET</code> returns each level as
     <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>,
     <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>.</p>
+  </div>
+
+  <!-- /api/connections/{id}/signal-levels (GET) -->
+  <div class="endpoint" id="ep-sl-get">
+    <div class="endpoint-header" onclick="toggle('ep-sl-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels?Ticker=...</span>
+      <span class="endpoint-desc">Get signal levels</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns all signal levels for a specific ticker on a connection, each with the fields
+        described above (<code>id</code>, <code>connectionId</code>, <code>ticker</code>,
+        <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-sl-get-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-sl-get-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetSignalLevels()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-get-status"></span>
+          <span class="response-time" id="resp-sl-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-get-body"></div>
+      </div>
+    </div>
   </div>
 
   <!-- /api/connections/{id}/signal-levels (POST) -->
@@ -1192,6 +1332,38 @@
         <code>triggerRule</code> &rarr; <code>400 Invalid 'triggerRule'. Allowed values: LessThanEqual,
         GreaterThanEqual.</code>; no order book data for the ticker &rarr; <code>400</code>; unknown
         connection &rarr; <code>404 Connection {id} not found</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-sl-place-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-sl-place-ticker" value="BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input type="number" id="f-sl-place-price" value="95000" step="any">
+        </div>
+        <div class="form-group">
+          <label>Trigger rule (optional)</label>
+          <select id="f-sl-place-rule">
+            <option value="" selected>(omit &mdash; derive from best ask)</option>
+            <option value="LessThanEqual">LessThanEqual</option>
+            <option value="GreaterThanEqual">GreaterThanEqual</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendPlaceSignalLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-place">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-place-status"></span>
+          <span class="response-time" id="resp-sl-place-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-place-body"></div>
       </div>
     </div>
   </div>
@@ -1226,6 +1398,233 @@
         <code>400 Price must be greater than zero</code>; unknown <code>triggerRule</code> &rarr;
         <code>400 Invalid 'triggerRule'. Allowed values: LessThanEqual, GreaterThanEqual.</code>; level
         not found &rarr; <code>404 Signal level {id} not found</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE /api/connections/{id}/signal-levels/{signalLevelId} -->
+  <div class="endpoint" id="ep-sl-remove">
+    <div class="endpoint-header" onclick="toggle('ep-sl-remove')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels/{signalLevelId}</span>
+      <span class="endpoint-desc">Remove signal level</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes a single signal level by ID.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-sl-remove-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Signal Level ID</label>
+          <input type="number" id="f-sl-remove-id" value="" placeholder="Signal level ID">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveSignalLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-remove">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-remove-status"></span>
+          <span class="response-time" id="resp-sl-remove-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-remove-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE /api/connections/{id}/signal-levels?Ticker= -->
+  <div class="endpoint" id="ep-sl-remove-all">
+    <div class="endpoint-header" onclick="toggle('ep-sl-remove-all')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/signal-levels?Ticker=...</span>
+      <span class="endpoint-desc">Remove all signal levels (by ticker)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes all signal levels for a specific ticker on a connection.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-sl-removeall-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-sl-removeall-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveAllSignalLevels()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-remove-all">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-remove-all-status"></span>
+          <span class="response-time" id="resp-sl-remove-all-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-remove-all-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE /api/signal-levels/triggered -->
+  <div class="endpoint" id="ep-sl-remove-triggered">
+    <div class="endpoint-header" onclick="toggle('ep-sl-remove-triggered')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/signal-levels/triggered</span>
+      <span class="endpoint-desc">Remove all triggered signal levels</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes all triggered signal levels across all connections and tickers.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveTriggeredSignalLevels()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-remove-triggered">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-remove-triggered-status"></span>
+          <span class="response-time" id="resp-sl-remove-triggered-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-remove-triggered-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Book Settings -->
+  <div class="section-label">Order Book Settings</div>
+
+  <!-- GET /api/connections/{id}/orderbook-settings -->
+  <div class="endpoint" id="ep-obs-get">
+    <div class="endpoint-header" onclick="toggle('ep-obs-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-desc">Get order book settings</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns all order book settings for a specific ticker on a connection. Settings include trading defaults, order book display configuration, tick thresholds, and cluster options.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-obs-get-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-obs-get-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetOrderBookSettings()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-obs-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-obs-get-status"></span>
+          <span class="response-time" id="resp-obs-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-obs-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUT /api/connections/{id}/orderbook-settings -->
+  <div class="endpoint" id="ep-obs-put">
+    <div class="endpoint-header" onclick="toggle('ep-obs-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-settings?Ticker=...</span>
+      <span class="endpoint-desc">Update order book settings (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-obs-put-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-obs-put-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateOrderBookSettings()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-obs-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-obs-put-status"></span>
+          <span class="response-time" id="resp-obs-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-obs-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Book Snapshot -->
+  <div class="section-label">Order Book Snapshot</div>
+
+  <!-- GET /api/connections/{id}/orderbook-snapshot -->
+  <div class="endpoint" id="ep-obsnap-get">
+    <div class="endpoint-header" onclick="toggle('ep-obsnap-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/orderbook-snapshot?Ticker=...</span>
+      <span class="endpoint-desc">Fresh one-shot order book snapshot from the exchange</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Fetches a <strong>fresh</strong> order book snapshot directly from the exchange REST endpoint &mdash; no cache lookup, no WebSocket subscription side effects. Intended as a one-shot complement to <code>orderbook_subscribe</code> with <code>FetchSnapshot=false</code>: subscribe to deltas cheaply, then call this once per ticker when you actually need to seed the book.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Each call performs <strong>one</strong> REST request to the exchange. The caller is responsible for not exceeding the exchange's rate limit when invoking this endpoint for many tickers in quick succession.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Returns <code>501 Not Implemented</code> for exchanges that don't expose a REST snapshot endpoint (e.g. Bybit USDT Perpetual, which only delivers snapshots over WebSocket).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-obsnap-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-obsnap-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>ZoomIndex (optional)</label>
+          <input type="number" id="f-obsnap-zoom" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>DepthLevels (optional, &ge; 1)</label>
+          <input type="number" id="f-obsnap-depth-levels" placeholder="(none)" min="1">
+        </div>
+        <div class="form-group">
+          <label>DepthPercent (optional, &gt; 0)</label>
+          <input type="number" id="f-obsnap-depth-percent" placeholder="(none)" step="0.1" min="0">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetOrderBookSnapshot()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-obsnap">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-obsnap-status"></span>
+          <span class="response-time" id="resp-obsnap-time"></span>
+        </div>
+        <div class="response-body" id="resp-obsnap-body"></div>
       </div>
     </div>
   </div>
@@ -2673,6 +3072,137 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('ex-cancel-order', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('ex-cancel-order', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCancelAllOrders() {
+    const id = document.getElementById('f-cancel-all-conn').value;
+    const payload = {
+      ticker: document.getElementById('f-cancel-all-ticker').value.trim()
+    };
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/connections/${id}/orders/cancel-all`, payload);
+      showResponse('ex-cancel-all', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ex-cancel-all', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Market Data ---
+  async function sendClusterSnapshot() {
+    const id = document.getElementById('f-cluster-conn').value;
+    const ticker = document.getElementById('f-cluster-ticker').value.trim();
+    const timeFrame = document.getElementById('f-cluster-timeframe').value;
+    const zoomIndex = document.getElementById('f-cluster-zoom').value;
+    const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/cluster-snapshot?${params}`);
+      showResponse('cluster-snapshot', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('cluster-snapshot', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Signal Levels ---
+  async function sendGetSignalLevels() {
+    const id = document.getElementById('f-sl-get-conn').value;
+    const ticker = document.getElementById('f-sl-get-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/signal-levels?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('sl-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendPlaceSignalLevel() {
+    const id = document.getElementById('f-sl-place-conn').value;
+    const payload = {
+      ticker: document.getElementById('f-sl-place-ticker').value.trim(),
+      price: parseFloat(document.getElementById('f-sl-place-price').value)
+    };
+    const rule = document.getElementById('f-sl-place-rule').value;
+    if (rule) payload.triggerRule = rule;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/connections/${id}/signal-levels`, payload);
+      showResponse('sl-place', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-place', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveSignalLevel() {
+    const connId = document.getElementById('f-sl-remove-conn').value;
+    const slId = document.getElementById('f-sl-remove-id').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${connId}/signal-levels/${slId}`);
+      showResponse('sl-remove', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-remove', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveAllSignalLevels() {
+    const id = document.getElementById('f-sl-removeall-conn').value;
+    const ticker = document.getElementById('f-sl-removeall-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${id}/signal-levels?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('sl-remove-all', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-remove-all', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveTriggeredSignalLevels() {
+    try {
+      const { status, data, ms } = await apiCall('DELETE', '/api/signal-levels/triggered');
+      showResponse('sl-remove-triggered', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-remove-triggered', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Order Book Settings ---
+  async function sendGetOrderBookSettings() {
+    const id = document.getElementById('f-obs-get-conn').value;
+    const ticker = document.getElementById('f-obs-get-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('obs-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('obs-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendUpdateOrderBookSettings() {
+    const id = document.getElementById('f-obs-put-conn').value;
+    const ticker = document.getElementById('f-obs-put-ticker').value.trim();
+    const bodyText = document.getElementById('f-obs-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/connections/${id}/orderbook-settings?Ticker=${encodeURIComponent(ticker)}`, body);
+      showResponse('obs-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('obs-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Order Book Snapshot ---
+  async function sendGetOrderBookSnapshot() {
+    const id = document.getElementById('f-obsnap-conn').value;
+    const ticker = document.getElementById('f-obsnap-ticker').value.trim();
+    const zoom = parseInt(document.getElementById('f-obsnap-zoom').value, 10);
+    const depthLevelsRaw = document.getElementById('f-obsnap-depth-levels').value.trim();
+    const depthPercentRaw = document.getElementById('f-obsnap-depth-percent').value.trim();
+    const qs = [`Ticker=${encodeURIComponent(ticker)}`];
+    if (!isNaN(zoom) && zoom > 0) qs.push(`ZoomIndex=${zoom}`);
+    if (depthLevelsRaw !== '') qs.push(`DepthLevels=${encodeURIComponent(depthLevelsRaw)}`);
+    if (depthPercentRaw !== '') qs.push(`DepthPercent=${encodeURIComponent(depthPercentRaw)}`);
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/orderbook-snapshot?${qs.join('&')}`);
+      showResponse('obsnap', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('obsnap', 'ERR', 'status-net', e.message, 0);
     }
   }
 
