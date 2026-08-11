@@ -1399,6 +1399,38 @@
         <code>400 Invalid 'triggerRule'. Allowed values: LessThanEqual, GreaterThanEqual.</code>; level
         not found &rarr; <code>404 Signal level {id} not found</code>.</p>
       </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-sl-update-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Signal Level ID</label>
+          <input type="number" id="f-sl-update-id" value="" placeholder="Signal level ID">
+        </div>
+        <div class="form-group">
+          <label>Price <span class="optional">(optional)</span></label>
+          <input type="number" id="f-sl-update-price" value="" placeholder="(omit)" step="any">
+        </div>
+        <div class="form-group">
+          <label>Trigger rule <span class="optional">(optional)</span></label>
+          <select id="f-sl-update-rule">
+            <option value="" selected>(omit &mdash; keep current)</option>
+            <option value="LessThanEqual">LessThanEqual</option>
+            <option value="GreaterThanEqual">GreaterThanEqual</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateSignalLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-sl-update">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-sl-update-status"></span>
+          <span class="response-time" id="resp-sl-update-time"></span>
+        </div>
+        <div class="response-body" id="resp-sl-update-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1647,6 +1679,47 @@
     the raw chart time). A plain level has <code>date = null</code>.</p>
   </div>
 
+  <!-- /api/connections/{id}/user-levels (GET) -->
+  <div class="endpoint" id="ep-ul-get">
+    <div class="endpoint-header" onclick="toggle('ep-ul-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/user-levels?Ticker=...</span>
+      <span class="endpoint-desc">Get user levels</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns all user levels for a specific ticker on a connection, each with the fields
+        described above (<code>id</code>, <code>connectionId</code>, <code>ticker</code>,
+        <code>price</code>, <code>name</code>, <code>date</code> &mdash; the <code>date</code> is
+        returned as a nullable ISO-8601 timestamp).</p>
+        <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
+        unknown connection &rarr; <code>404 Connection {id} not found</code>; missing <code>Ticker</code>
+        query &rarr; <code>400 Query parameter 'Ticker' is required</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-ul-get-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-ul-get-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetUserLevels()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ul-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ul-get-status"></span>
+          <span class="response-time" id="resp-ul-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-ul-get-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- /api/connections/{id}/user-levels (POST) -->
   <div class="endpoint" id="ep-ul-place">
     <div class="endpoint-header" onclick="toggle('ep-ul-place')">
@@ -1670,6 +1743,38 @@
         request body. 'ticker' and 'price' are required.</code>; <code>price &le; 0</code> &rarr;
         <code>400 Price must be greater than zero</code>; invalid connection id &rarr; <code>400 Invalid
         connection ID</code>; unknown connection &rarr; <code>404 Connection {id} not found</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-ul-place-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-ul-place-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input type="number" id="f-ul-place-price" value="95000" step="any">
+        </div>
+        <div class="form-group">
+          <label>Name <span class="optional">(optional)</span></label>
+          <input type="text" id="f-ul-place-name" value="" placeholder="(omit &mdash; today's date dd.MM.yyyy)">
+        </div>
+        <div class="form-group">
+          <label>Date <span class="optional">(optional, epoch seconds)</span></label>
+          <input type="number" id="f-ul-place-date" value="" placeholder="(omit &mdash; plain level)">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendPlaceUserLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ul-place">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ul-place-status"></span>
+          <span class="response-time" id="resp-ul-place-time"></span>
+        </div>
+        <div class="response-body" id="resp-ul-place-body"></div>
       </div>
     </div>
   </div>
@@ -1700,6 +1805,114 @@
         body must set at least one of 'price', 'name' or 'date'.</code>; <code>price &le; 0</code> &rarr;
         <code>400 Price must be greater than zero</code>; level not found &rarr; <code>404 User level {id}
         not found</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-ul-update-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>User Level ID</label>
+          <input type="number" id="f-ul-update-id" value="" placeholder="User level ID">
+        </div>
+        <div class="form-group">
+          <label>Price <span class="optional">(optional)</span></label>
+          <input type="number" id="f-ul-update-price" value="" placeholder="(omit)" step="any">
+        </div>
+        <div class="form-group">
+          <label>Name <span class="optional">(optional)</span></label>
+          <input type="text" id="f-ul-update-name" value="" placeholder="(omit)">
+        </div>
+        <div class="form-group">
+          <label>Date <span class="optional">(optional, epoch seconds)</span></label>
+          <input type="number" id="f-ul-update-date" value="" placeholder="(omit)">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateUserLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ul-update">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ul-update-status"></span>
+          <span class="response-time" id="resp-ul-update-time"></span>
+        </div>
+        <div class="response-body" id="resp-ul-update-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE /api/connections/{id}/user-levels/{userLevelId} -->
+  <div class="endpoint" id="ep-ul-remove">
+    <div class="endpoint-header" onclick="toggle('ep-ul-remove')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/user-levels/{userLevelId}</span>
+      <span class="endpoint-desc">Remove user level</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes a single user level by ID.</p>
+        <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
+        unknown connection &rarr; <code>404 Connection {id} not found</code>; invalid level id &rarr;
+        <code>400 Invalid user level ID</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-ul-remove-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>User Level ID</label>
+          <input type="number" id="f-ul-remove-id" value="" placeholder="User level ID">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveUserLevel()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ul-remove">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ul-remove-status"></span>
+          <span class="response-time" id="resp-ul-remove-time"></span>
+        </div>
+        <div class="response-body" id="resp-ul-remove-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE /api/connections/{id}/user-levels?Ticker= -->
+  <div class="endpoint" id="ep-ul-remove-all">
+    <div class="endpoint-header" onclick="toggle('ep-ul-remove-all')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/user-levels?Ticker=...</span>
+      <span class="endpoint-desc">Remove all user levels (by ticker)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes all user levels for a specific ticker on a connection.</p>
+        <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
+        unknown connection &rarr; <code>404 Connection {id} not found</code>; missing <code>Ticker</code>
+        query &rarr; <code>400 Query parameter 'Ticker' is required</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-ul-removeall-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-ul-removeall-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveAllUserLevels()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ul-remove-all">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ul-remove-all-status"></span>
+          <span class="response-time" id="resp-ul-remove-all-time"></span>
+        </div>
+        <div class="response-body" id="resp-ul-remove-all-body"></div>
       </div>
     </div>
   </div>
@@ -1790,6 +2003,26 @@
         <code>PriceIncrement &le; 0</code> &rarr; <code>400 Ticker '{ticker}' not found on connection
         {connectionId}</code>.</p>
       </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-annot-get-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-annot-get-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetAnnotations()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-annot-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-annot-get-status"></span>
+          <span class="response-time" id="resp-annot-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-annot-get-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1827,6 +2060,40 @@
         &rarr; <code>400</code>; unknown ticker or <code>PriceIncrement &le; 0</code> &rarr;
         <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>.</p>
       </div>
+      <div class="form-grid triple">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-annot-put-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-annot-put-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="f-annot-put-type" onchange="annotSetExample('put')">
+            <option value="lines" selected>lines</option>
+            <option value="horizontal-lines">horizontal-lines</option>
+            <option value="horizontal-rays">horizontal-rays</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body <span class="optional">(JSON array &mdash; replaces the whole list)</span></label>
+          <textarea id="f-annot-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">[{"x1": "2026-08-11T10:00:00Z", "x2": "2026-08-11T12:00:00Z", "y1": 65000, "y2": 66000}]</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendReplaceAnnotations()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-annot-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-annot-put-status"></span>
+          <span class="response-time" id="resp-annot-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-annot-put-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1852,6 +2119,40 @@
         &rarr; <code>400</code>; unknown ticker or <code>PriceIncrement &le; 0</code> &rarr;
         <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>.</p>
       </div>
+      <div class="form-grid triple">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-annot-post-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-annot-post-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="f-annot-post-type" onchange="annotSetExample('post')">
+            <option value="lines" selected>lines</option>
+            <option value="horizontal-lines">horizontal-lines</option>
+            <option value="horizontal-rays">horizontal-rays</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body <span class="optional">(single JSON object &mdash; appended to the list)</span></label>
+          <textarea id="f-annot-post-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"x1": "2026-08-11T10:00:00Z", "x2": "2026-08-11T12:00:00Z", "y1": 65000, "y2": 66000}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppendAnnotation()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-annot-post">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-annot-post-status"></span>
+          <span class="response-time" id="resp-annot-post-time"></span>
+        </div>
+        <div class="response-body" id="resp-annot-post-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1874,6 +2175,38 @@
         {Type} annotation index {index} not found</code>; invalid connection id &rarr; <code>400</code>;
         unknown connection &rarr; <code>404</code>; missing <code>Ticker</code> &rarr; <code>400</code>.</p>
       </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-annot-del-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-annot-del-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="f-annot-del-type">
+            <option value="lines" selected>lines</option>
+            <option value="horizontal-lines">horizontal-lines</option>
+            <option value="horizontal-rays">horizontal-rays</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Index <span class="optional">(zero-based)</span></label>
+          <input type="number" id="f-annot-del-index" value="0" min="0">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveAnnotation()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-annot-del">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-annot-del-status"></span>
+          <span class="response-time" id="resp-annot-del-time"></span>
+        </div>
+        <div class="response-body" id="resp-annot-del-body"></div>
+      </div>
     </div>
   </div>
 
@@ -1892,6 +2225,26 @@
         all shapes&raquo; sidebar command performs.</p>
         <p><strong>Errors:</strong> invalid connection id &rarr; <code>400</code>; unknown connection
         &rarr; <code>404</code>; missing <code>Ticker</code> &rarr; <code>400</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-annot-delall-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-annot-delall-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendRemoveAllAnnotations()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-annot-del-all">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-annot-del-all-status"></span>
+          <span class="response-time" id="resp-annot-del-all-time"></span>
+        </div>
+        <div class="response-body" id="resp-annot-del-all-body"></div>
       </div>
     </div>
   </div>
@@ -1942,6 +2295,46 @@
         suppress the equivalent native pop-up. Treat delivery as feed-level, not UI-visibility-level.</p>
         <p><strong>Errors:</strong> unknown <code>connectionId</code> &rarr; <code>404 Connection {id} not
         found</code>.</p>
+      </div>
+      <div class="form-grid triple">
+        <div class="form-group">
+          <label>Event type <span class="optional">(optional)</span></label>
+          <input type="text" id="f-notif-eventtype" value="My alert" placeholder="(omit &mdash; empty cell)">
+        </div>
+        <div class="form-group">
+          <label>Ticker <span class="optional">(optional)</span></label>
+          <input type="text" id="f-notif-ticker" value="BTCUSDT" placeholder="(omit &mdash; empty cell)">
+        </div>
+        <div class="form-group">
+          <label>Connection ID <span class="optional">(optional)</span></label>
+          <input type="number" id="f-notif-conn" value="" min="1" placeholder="(omit &mdash; empty cells)">
+        </div>
+        <div class="form-group">
+          <label>Price <span class="optional">(optional)</span></label>
+          <input type="number" id="f-notif-price" value="" step="any" placeholder="(omit &mdash; empty cell)">
+        </div>
+        <div class="form-group">
+          <label>Size <span class="optional">(optional)</span></label>
+          <input type="number" id="f-notif-size" value="" step="any" placeholder="(omit &mdash; empty cell)">
+        </div>
+        <div class="form-group">
+          <label>Tab name <span class="optional">(optional)</span></label>
+          <input type="text" id="f-notif-tabname" value="" placeholder="(omit &mdash; empty cell)">
+        </div>
+        <div class="form-group">
+          <label>Time <span class="optional">(optional, ISO-8601)</span></label>
+          <input type="text" id="f-notif-time" value="" placeholder="(omit &mdash; server UTC now)">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendInjectNotification()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-notif-inject">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-notif-inject-status"></span>
+          <span class="response-time" id="resp-notif-inject-time"></span>
+        </div>
+        <div class="response-body" id="resp-notif-inject-body"></div>
       </div>
     </div>
   </div>
@@ -2040,6 +2433,16 @@
 
         <p>Success &rarr; <code>200</code> with the object above.</p>
       </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetUiState()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-state">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-state-status"></span>
+          <span class="response-time" id="resp-ui-state-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-state-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2058,6 +2461,22 @@
         <p><strong>Errors:</strong> a non-numeric <code>windowId</code> &rarr;
         <code>400 Invalid window ID</code>; an unknown window &rarr;
         <code>404 Window {id} not found</code>.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Window ID</label>
+          <input type="number" id="f-ui-window-id" value="1" min="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetUiWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-window-status"></span>
+          <span class="response-time" id="resp-ui-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-window-body"></div>
       </div>
     </div>
   </div>
@@ -2089,6 +2508,26 @@
         a missing/omitted <code>linkNumber</code> &rarr; <code>400</code>; a non-positive value &rarr;
         <code>400</code>; an unknown document &rarr; <code>404 Document {externalId} not found</code>
         (nothing is written).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>External ID <span class="optional">(document GUID)</span></label>
+          <input type="text" id="f-ui-link-extid" value="" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+        </div>
+        <div class="form-group">
+          <label>Link number</label>
+          <input type="number" id="f-ui-link-number" value="1" min="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSetLinkNumber()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-linknumber">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-linknumber-status"></span>
+          <span class="response-time" id="resp-ui-linknumber-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-linknumber-body"></div>
       </div>
     </div>
   </div>
@@ -2122,6 +2561,30 @@
         a missing <code>ticker</code> &rarr; <code>400</code>; an unknown document &rarr;
         <code>404 Document {externalId} not found</code>; a document with no current connection and no
         supplied <code>connectionId</code> &rarr; <code>400</code>.</p>
+      </div>
+      <div class="form-grid triple">
+        <div class="form-group">
+          <label>External ID <span class="optional">(document GUID)</span></label>
+          <input type="text" id="f-ui-ticker-extid" value="" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-ui-ticker-ticker" value="BTCUSDT" placeholder="e.g. ETHUSDT">
+        </div>
+        <div class="form-group">
+          <label>Connection ID <span class="optional">(optional)</span></label>
+          <input type="number" id="f-ui-ticker-conn" value="" min="1" placeholder="(omit &mdash; keep current)">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSetDocumentTicker()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-doc-ticker">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-doc-ticker-status"></span>
+          <span class="response-time" id="resp-ui-doc-ticker-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-doc-ticker-body"></div>
       </div>
     </div>
   </div>
@@ -3203,6 +3666,261 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('obsnap', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('obsnap', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Signal Levels (update) ---
+  async function sendUpdateSignalLevel() {
+    const connId = document.getElementById('f-sl-update-conn').value;
+    const slId = document.getElementById('f-sl-update-id').value;
+    const priceRaw = document.getElementById('f-sl-update-price').value.trim();
+    const rule = document.getElementById('f-sl-update-rule').value;
+    const payload = {};
+    if (priceRaw !== '') payload.price = parseFloat(priceRaw);
+    if (rule) payload.triggerRule = rule;
+    try {
+      const { status, data, ms } = await apiCall('PUT', `/api/connections/${connId}/signal-levels/${slId}`, payload);
+      showResponse('sl-update', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('sl-update', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- User Levels ---
+  async function sendGetUserLevels() {
+    const id = document.getElementById('f-ul-get-conn').value;
+    const ticker = document.getElementById('f-ul-get-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/user-levels?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('ul-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ul-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendPlaceUserLevel() {
+    const id = document.getElementById('f-ul-place-conn').value;
+    const payload = {
+      ticker: document.getElementById('f-ul-place-ticker').value.trim(),
+      price: parseFloat(document.getElementById('f-ul-place-price').value)
+    };
+    const name = document.getElementById('f-ul-place-name').value.trim();
+    const dateRaw = document.getElementById('f-ul-place-date').value.trim();
+    if (name) payload.name = name;
+    if (dateRaw !== '') payload.date = parseInt(dateRaw, 10);
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/connections/${id}/user-levels`, payload);
+      showResponse('ul-place', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ul-place', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendUpdateUserLevel() {
+    const connId = document.getElementById('f-ul-update-conn').value;
+    const ulId = document.getElementById('f-ul-update-id').value;
+    const priceRaw = document.getElementById('f-ul-update-price').value.trim();
+    const name = document.getElementById('f-ul-update-name').value.trim();
+    const dateRaw = document.getElementById('f-ul-update-date').value.trim();
+    const payload = {};
+    if (priceRaw !== '') payload.price = parseFloat(priceRaw);
+    if (name) payload.name = name;
+    if (dateRaw !== '') payload.date = parseInt(dateRaw, 10);
+    try {
+      const { status, data, ms } = await apiCall('PUT', `/api/connections/${connId}/user-levels/${ulId}`, payload);
+      showResponse('ul-update', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ul-update', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveUserLevel() {
+    const connId = document.getElementById('f-ul-remove-conn').value;
+    const ulId = document.getElementById('f-ul-remove-id').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${connId}/user-levels/${ulId}`);
+      showResponse('ul-remove', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ul-remove', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveAllUserLevels() {
+    const id = document.getElementById('f-ul-removeall-conn').value;
+    const ticker = document.getElementById('f-ul-removeall-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${id}/user-levels?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('ul-remove-all', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ul-remove-all', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Chart Annotations ---
+  const annotExamples = {
+    put: {
+      'lines': '[{"x1": "2026-08-11T10:00:00Z", "x2": "2026-08-11T12:00:00Z", "y1": 65000, "y2": 66000}]',
+      'horizontal-lines': '[{"y": 65000}]',
+      'horizontal-rays': '[{"y": 65000, "x1": "2026-08-11T10:00:00Z"}]'
+    },
+    post: {
+      'lines': '{"x1": "2026-08-11T10:00:00Z", "x2": "2026-08-11T12:00:00Z", "y1": 65000, "y2": 66000}',
+      'horizontal-lines': '{"y": 65000}',
+      'horizontal-rays': '{"y": 65000, "x1": "2026-08-11T10:00:00Z"}'
+    }
+  };
+
+  function annotSetExample(kind) {
+    const type = document.getElementById(`f-annot-${kind}-type`).value;
+    document.getElementById(`f-annot-${kind}-body`).value = annotExamples[kind][type];
+  }
+
+  function parseJsonBody(text, prefix) {
+    try {
+      return { ok: true, value: JSON.parse(text) };
+    } catch (e) {
+      showResponse(prefix, 'ERR', 'status-err', 'Invalid JSON in request body: ' + e.message, 0);
+      return { ok: false };
+    }
+  }
+
+  async function sendGetAnnotations() {
+    const id = document.getElementById('f-annot-get-conn').value;
+    const ticker = document.getElementById('f-annot-get-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/annotations?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('annot-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('annot-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendReplaceAnnotations() {
+    const id = document.getElementById('f-annot-put-conn').value;
+    const ticker = document.getElementById('f-annot-put-ticker').value.trim();
+    const type = document.getElementById('f-annot-put-type').value;
+    const parsed = parseJsonBody(document.getElementById('f-annot-put-body').value.trim(), 'annot-put');
+    if (!parsed.ok) return;
+    if (!Array.isArray(parsed.value)) {
+      showResponse('annot-put', 'ERR', 'status-err', 'PUT replaces the whole list: the body must be a JSON array (e.g. ' + annotExamples.put[type] + ').', 0);
+      return;
+    }
+    try {
+      const { status, data, ms } = await apiCall('PUT', `/api/connections/${id}/annotations/${type}?Ticker=${encodeURIComponent(ticker)}`, parsed.value);
+      showResponse('annot-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('annot-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppendAnnotation() {
+    const id = document.getElementById('f-annot-post-conn').value;
+    const ticker = document.getElementById('f-annot-post-ticker').value.trim();
+    const type = document.getElementById('f-annot-post-type').value;
+    const parsed = parseJsonBody(document.getElementById('f-annot-post-body').value.trim(), 'annot-post');
+    if (!parsed.ok) return;
+    if (Array.isArray(parsed.value) || typeof parsed.value !== 'object' || parsed.value === null) {
+      showResponse('annot-post', 'ERR', 'status-err', 'POST appends one item: the body must be a single JSON object (e.g. ' + annotExamples.post[type] + ').', 0);
+      return;
+    }
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/connections/${id}/annotations/${type}?Ticker=${encodeURIComponent(ticker)}`, parsed.value);
+      showResponse('annot-post', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('annot-post', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveAnnotation() {
+    const id = document.getElementById('f-annot-del-conn').value;
+    const ticker = document.getElementById('f-annot-del-ticker').value.trim();
+    const type = document.getElementById('f-annot-del-type').value;
+    const index = document.getElementById('f-annot-del-index').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${id}/annotations/${type}/${index}?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('annot-del', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('annot-del', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendRemoveAllAnnotations() {
+    const id = document.getElementById('f-annot-delall-conn').value;
+    const ticker = document.getElementById('f-annot-delall-ticker').value.trim();
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/connections/${id}/annotations?Ticker=${encodeURIComponent(ticker)}`);
+      showResponse('annot-del-all', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('annot-del-all', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Notifications ---
+  async function sendInjectNotification() {
+    const payload = {};
+    const time = document.getElementById('f-notif-time').value.trim();
+    const connRaw = document.getElementById('f-notif-conn').value.trim();
+    const ticker = document.getElementById('f-notif-ticker').value.trim();
+    const eventType = document.getElementById('f-notif-eventtype').value.trim();
+    const sizeRaw = document.getElementById('f-notif-size').value.trim();
+    const priceRaw = document.getElementById('f-notif-price').value.trim();
+    const tabName = document.getElementById('f-notif-tabname').value.trim();
+    if (time) payload.time = time;
+    if (connRaw !== '') payload.connectionId = parseInt(connRaw, 10);
+    if (ticker) payload.ticker = ticker;
+    if (eventType) payload.eventType = eventType;
+    if (sizeRaw !== '') payload.size = parseFloat(sizeRaw);
+    if (priceRaw !== '') payload.price = parseFloat(priceRaw);
+    if (tabName) payload.tabName = tabName;
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/notifications', payload);
+      showResponse('notif-inject', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('notif-inject', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- UI inventory & control ---
+  async function sendGetUiState() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/ui/state');
+      showResponse('ui-state', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-state', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetUiWindow() {
+    const id = document.getElementById('f-ui-window-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/ui/windows/${id}`);
+      showResponse('ui-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSetLinkNumber() {
+    const extId = document.getElementById('f-ui-link-extid').value.trim();
+    const linkNumber = parseInt(document.getElementById('f-ui-link-number').value, 10);
+    try {
+      const { status, data, ms } = await apiCall('PUT', `/api/ui/documents/${encodeURIComponent(extId)}/link-number`, { linkNumber });
+      showResponse('ui-linknumber', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-linknumber', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSetDocumentTicker() {
+    const extId = document.getElementById('f-ui-ticker-extid').value.trim();
+    const payload = { ticker: document.getElementById('f-ui-ticker-ticker').value.trim() };
+    const connRaw = document.getElementById('f-ui-ticker-conn').value.trim();
+    if (connRaw !== '') payload.connectionId = parseInt(connRaw, 10);
+    try {
+      const { status, data, ms } = await apiCall('PUT', `/api/ui/documents/${encodeURIComponent(extId)}/ticker`, payload);
+      showResponse('ui-doc-ticker', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-doc-ticker', 'ERR', 'status-net', e.message, 0);
     }
   }
 
