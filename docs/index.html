@@ -799,6 +799,12 @@
     <div class="endpoint-body">
       <div class="docs">
         <p>Opens a combo layout for the specified ticker in the MetaScalp UI.</p>
+        <p>Two mutually exclusive payload shapes are accepted &mdash; the shape decides the behaviour, there is no request flag:</p>
+        <ul>
+          <li><code>{ "ticker": "BTCUSDT" }</code> &mdash; opens one combo layout for a single ticker (unchanged behaviour).</li>
+          <li><code>{ "tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"] }</code> &mdash; opens one combo layout per ticker, <strong>in the order given</strong>.</li>
+        </ul>
+        <p>The <code>tickers</code> form is a write validated as all-or-nothing: the whole list is validated first, and if <em>any</em> ticker resolves on no eligible connection, <strong>nothing is opened</strong> and the request returns <code>400</code> naming the rejected tickers. Supplying <em>both</em> <code>ticker</code> and <code>tickers</code>, or an empty <code>tickers</code> array with no <code>ticker</code>, also returns <code>400</code>.</p>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -976,6 +982,127 @@
           <span class="response-time" id="resp-ex-orders-time"></span>
         </div>
         <div class="response-body" id="resp-ex-orders-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/connections/{id}/leverage-limits (GET) -->
+  <div class="endpoint" id="ep-ex-leverage-limits">
+    <div class="endpoint-header" onclick="toggle('ep-ex-leverage-limits')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/leverage-limits?Ticker=...</span>
+      <span class="endpoint-desc">Get leverage limits</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Read-only. Reports, live from the venue, the maximum leverage the venue allows and the maximum
+          position size available for a ticker at the current (or an explicitly supplied) leverage. Values come
+          from the venue's own risk-limit tiers &mdash; nothing is locally computed, cached or defaulted.
+          The <code>Ticker</code> query parameter is required.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>Connection ID</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>Trading pair</td></tr>
+          <tr><td><code>leverage</code></td><td>decimal</td><td>The leverage the max position is reported for &mdash; the supplied <code>leverage</code> query param if given, otherwise the venue's current leverage for this ticker</td></tr>
+          <tr><td><code>maxLeverage</code></td><td>decimal?</td><td>Highest leverage the venue allows for this ticker. <code>null</code> means the venue reports no cap (e.g. a spot market with no leverage tiers) &mdash; never <code>0</code></td></tr>
+          <tr><td><code>maxPosition</code></td><td>decimal?</td><td>Maximum position size available at the reported <code>leverage</code> (re-read per leverage). <code>null</code> means the venue reports no cap &mdash; never <code>0</code></td></tr>
+        </table>
+        <table>
+          <tr><th>Query</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>Ticker</code></td><td>string</td><td>Required. Trading pair.</td></tr>
+          <tr><td><code>Leverage</code></td><td>decimal</td><td>Optional. Report the max position at this leverage instead of the venue's current leverage. Must be greater than 0.</td></tr>
+        </table>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-leverage-limits-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-leverage-limits-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Leverage (optional)</label>
+          <input type="text" id="f-leverage-limits-leverage" placeholder="e.g. 10">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetLeverageLimits()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ex-leverage-limits">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ex-leverage-limits-status"></span>
+          <span class="response-time" id="resp-ex-leverage-limits-time"></span>
+        </div>
+        <div class="response-body" id="resp-ex-leverage-limits-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/link-groups/{groupId}/orderbook-snapshots (GET) -->
+  <div class="endpoint" id="ep-linkgroup-orderbooks">
+    <div class="endpoint-header" onclick="toggle('ep-linkgroup-orderbooks')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/link-groups/{groupId}/orderbook-snapshots</span>
+      <span class="endpoint-desc">Order books of a link group</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Read-only. Returns a fresh REST order-book snapshot for every panel currently in link group
+          <code>groupId</code>. The membership is read LIVE from the UI's own grouping &mdash; a panel
+          unlinked or closed a moment ago is already absent, and nothing about linking is changed by this
+          request. A link group is a number (the link value the UI shows), not a stored entity: an in-range
+          group with no live members is a legitimate empty result (<code>200</code> with an empty
+          <code>members</code> list), NOT a <code>404</code>. Valid group ids are <code>1</code>&ndash;<code>500</code>.</p>
+        <p><strong>Partial failure never fails the whole response.</strong> Each member is reported
+          independently: a good book carries <code>ok: true</code> and a <code>book</code> object; a member
+          that could not be snapshotted carries <code>ok: false</code> and a stable machine-readable
+          <code>reason</code> token. One failing book never turns into a <code>500</code>.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>groupId</code></td><td>integer</td><td>The link group (binding) id, 1&ndash;500</td></tr>
+          <tr><td><code>members</code></td><td>array</td><td>One entry per panel currently live in the group (empty when the group has no live members)</td></tr>
+          <tr><td><code>members[].externalId</code></td><td>guid</td><td>The panel's document id</td></tr>
+          <tr><td><code>members[].kind</code></td><td>string?</td><td><code>orderBook</code> or <code>chart</code> (null when the document could not be resolved)</td></tr>
+          <tr><td><code>members[].connectionId</code></td><td>integer?</td><td>The panel's connection id (null when unset/unresolved)</td></tr>
+          <tr><td><code>members[].ticker</code></td><td>string?</td><td>The panel's ticker (null when unset/unresolved)</td></tr>
+          <tr><td><code>members[].ok</code></td><td>boolean</td><td><code>true</code> when a snapshot was returned, else <code>false</code></td></tr>
+          <tr><td><code>members[].book</code></td><td>object</td><td>Present only when <code>ok: true</code>. Same shape as <code>orderbook-snapshot</code>: <code>updateId</code>, <code>asks</code>, <code>bids</code>, <code>bestAsk</code>, <code>bestBid</code></td></tr>
+          <tr><td><code>members[].reason</code></td><td>string</td><td>Present only when <code>ok: false</code>. A machine-readable token (see below)</td></tr>
+        </table>
+        <table>
+          <tr><th><code>reason</code> token</th><th>Meaning</th></tr>
+          <tr><td><code>resolve_failed</code></td><td>The document could not be resolved from the layout</td></tr>
+          <tr><td><code>not_an_order_book</code></td><td>The member is a chart (no order book to snapshot)</td></tr>
+          <tr><td><code>no_connection</code></td><td>The panel has no connection set</td></tr>
+          <tr><td><code>no_ticker</code></td><td>The panel has no ticker set</td></tr>
+          <tr><td><code>connection_not_open</code></td><td>The panel's connection is not currently open</td></tr>
+          <tr><td><code>market_service_unavailable</code></td><td>The connection has no active market service</td></tr>
+          <tr><td><code>unsupported_exchange</code></td><td>The exchange has no REST snapshot endpoint (e.g. the Bybit family)</td></tr>
+          <tr><td><code>snapshot_unavailable</code></td><td>The exchange returned no snapshot</td></tr>
+          <tr><td><code>snapshot_failed</code></td><td>Fetching the snapshot threw</td></tr>
+        </table>
+        <p>Status codes: <code>200</code> (including an empty group); <code>400</code> for a non-numeric or
+          out-of-range <code>groupId</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Group ID</label>
+          <input type="number" id="f-linkgroup-orderbooks-group" value="3" min="1" max="500">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetLinkGroupOrderBooks()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-linkgroup-orderbooks">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-linkgroup-orderbooks-status"></span>
+          <span class="response-time" id="resp-linkgroup-orderbooks-time"></span>
+        </div>
+        <div class="response-body" id="resp-linkgroup-orderbooks-body"></div>
       </div>
     </div>
   </div>
@@ -1269,7 +1396,11 @@
     <code>DELETE .../signal-levels/{signalLevelId}</code>, or all for a ticker with
     <code>DELETE .../signal-levels?Ticker=...</code>. <code>GET</code> returns each level as
     <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>,
-    <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>.</p>
+    <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>, plus
+    <strong>(MC-421)</strong> <code>note</code> and the seven appearance fields
+    <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>, <code>textSize</code>,
+    <code>textColor</code>, <code>textAlignment</code>, <code>textStyle</code> (each <code>null</code>
+    when unset; the enum-backed ones are emitted as their string name, e.g. <code>"Dashed"</code>).</p>
   </div>
 
   <!-- /api/connections/{id}/signal-levels (GET) -->
@@ -1284,7 +1415,13 @@
       <div class="docs">
         <p>Returns all signal levels for a specific ticker on a connection, each with the fields
         described above (<code>id</code>, <code>connectionId</code>, <code>ticker</code>,
-        <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>).</p>
+        <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>,
+        <code>note</code> and the seven appearance fields, <code>null</code> when unset).</p>
+        <p><strong>Read-modify-write:</strong> <code>id</code>, <code>connectionId</code>,
+        <code>ticker</code>, <code>isTriggered</code> and <code>triggerTime</code> are
+        <em>accepted and ignored</em> by the matching <code>PUT</code>, so the object returned here can
+        be edited and sent straight back. Trigger state is owned by the signal engine and is never
+        settable over the API.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1326,11 +1463,23 @@
           <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
           <tr><td><code>price</code></td><td>decimal</td><td>yes</td><td>Trigger price (must be &gt; 0)</td></tr>
           <tr><td><code>triggerRule</code></td><td>string</td><td>no</td><td>Firing direction: <code>LessThanEqual</code> (fires when a trade price &le; <code>price</code>) or <code>GreaterThanEqual</code> (fires when &ge; <code>price</code>), case-insensitive. <strong>Omitted &rarr; derived from best ask</strong> exactly as before: <code>price &le; bestAsk ? LessThanEqual : GreaterThanEqual</code>.</td></tr>
+          <tr><td><code>note</code></td><td>string</td><td>no</td><td>Free-text note/label for the level. Omitted &rarr; no note (unchanged).</td></tr>
+          <tr><td><code>lineThickness</code></td><td>number</td><td>no</td><td>Stroke thickness. Omitted &rarr; unset (today's theme-driven stroke).</td></tr>
+          <tr><td><code>lineStyle</code></td><td>string</td><td>no</td><td><code>Solid</code> / <code>Dashed</code> / <code>Dotted</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
+          <tr><td><code>lineColor</code></td><td>string</td><td>no</td><td>Line colour as a hex string. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textSize</code></td><td>number</td><td>no</td><td>Label font size. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textColor</code></td><td>string</td><td>no</td><td>Label colour as a hex string. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textAlignment</code></td><td>string</td><td>no</td><td><code>Left</code> / <code>Center</code> / <code>Right</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textStyle</code></td><td>string</td><td>no</td><td><code>Normal</code> / <code>Bold</code> / <code>Italic</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
         </table>
+        <p><strong>Appearance is additive and optional (MC-421):</strong> every appearance field defaults
+        to <em>unset</em> &mdash; a level created without them looks exactly as it does today.</p>
         <p><strong>Errors:</strong> missing <code>ticker</code>/<code>price</code> &rarr; <code>400</code>;
         <code>price &le; 0</code> &rarr; <code>400 Price must be greater than zero</code>; unknown
         <code>triggerRule</code> &rarr; <code>400 Invalid 'triggerRule'. Allowed values: LessThanEqual,
-        GreaterThanEqual.</code>; no order book data for the ticker &rarr; <code>400</code>; unknown
+        GreaterThanEqual.</code>; an invalid appearance enum value (<code>lineStyle</code> /
+        <code>textAlignment</code> / <code>textStyle</code>) &rarr; <code>400 Invalid '{field}'.</code>;
+        no order book data for the ticker &rarr; <code>400</code>; unknown
         connection &rarr; <code>404 Connection {id} not found</code>.</p>
       </div>
       <div class="form-grid">
@@ -1386,7 +1535,20 @@
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
           <tr><td><code>price</code></td><td>decimal</td><td>no</td><td>New trigger price (must be &gt; 0). Leaves <code>triggerRule</code> untouched.</td></tr>
           <tr><td><code>triggerRule</code></td><td>string</td><td>no</td><td><code>LessThanEqual</code> / <code>GreaterThanEqual</code>, case-insensitive. Leaves <code>price</code> untouched.</td></tr>
+          <tr><td><code>note</code></td><td>string</td><td>no</td><td>New note. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineThickness</code></td><td>number</td><td>no</td><td>New stroke thickness. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineStyle</code></td><td>string</td><td>no</td><td><code>Solid</code> / <code>Dashed</code> / <code>Dotted</code> (or the enum int). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineColor</code></td><td>string</td><td>no</td><td>New line colour (hex). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textSize</code></td><td>number</td><td>no</td><td>New label size. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textColor</code></td><td>string</td><td>no</td><td>New label colour (hex). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textAlignment</code></td><td>string</td><td>no</td><td><code>Left</code> / <code>Center</code> / <code>Right</code> (or the enum int). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textStyle</code></td><td>string</td><td>no</td><td><code>Normal</code> / <code>Bold</code> / <code>Italic</code> (or the enum int). Leaves the other fields untouched.</td></tr>
         </table>
+        <p><strong>Partial update (MC-421):</strong> the note and every appearance field follow the same
+        partial-apply rule as <code>price</code>/<code>triggerRule</code> &mdash; only the fields present
+        are written, the rest are left untouched. At least one of <code>price</code> /
+        <code>triggerRule</code> / <code>note</code> / an appearance field must be present. An invalid
+        appearance enum value &rarr; <code>400 Invalid '{field}'.</code></p>
         <p><strong>Re-arm on price move:</strong> if the level had already fired
         (<code>isTriggered = true</code>) and its <code>price</code> is changed, it is re-armed
         (<code>isTriggered</code> back to <code>false</code>, <code>triggerTime</code> cleared) so it can
@@ -1394,7 +1556,7 @@
         <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
         connection not open &rarr; <code>404 Connection {id} not found</code>; invalid level id &rarr;
         <code>400 Invalid signal level ID</code>; empty body / all fields null &rarr; <code>400 Request
-        body must set at least one of 'price' or 'triggerRule'.</code>; <code>price &le; 0</code> &rarr;
+        body must set at least one of 'price', 'triggerRule', 'note' or an appearance field.</code>; <code>price &le; 0</code> &rarr;
         <code>400 Price must be greater than zero</code>; unknown <code>triggerRule</code> &rarr;
         <code>400 Invalid 'triggerRule'. Allowed values: LessThanEqual, GreaterThanEqual.</code>; level
         not found &rarr; <code>404 Signal level {id} not found</code>.</p>
@@ -1691,8 +1853,23 @@
       <div class="docs">
         <p>Returns all user levels for a specific ticker on a connection, each with the fields
         described above (<code>id</code>, <code>connectionId</code>, <code>ticker</code>,
-        <code>price</code>, <code>name</code>, <code>date</code> &mdash; the <code>date</code> is
-        returned as a nullable ISO-8601 timestamp).</p>
+        <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code> &mdash; the
+        <code>date</code> is returned as a nullable ISO-8601 timestamp), plus the seven appearance
+        fields <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>,
+        <code>textSize</code>, <code>textColor</code>, <code>textAlignment</code>,
+        <code>textStyle</code> (each <code>null</code> when unset; the enum-backed ones are emitted as
+        their string name). <strong>(MC-421 Step 15)</strong>
+        <code>note</code> is the user level's own free-text note (<code>null</code> when unset), read
+        back exactly as sent &mdash; the same as on a signal level; it is distinct from <code>name</code>.
+        <br><br><strong>Read-modify-write:</strong> <code>id</code>, <code>connectionId</code> and
+        <code>ticker</code> are <em>accepted and ignored</em> by the matching <code>PUT</code>, so the
+        object returned here can be edited and sent straight back. One exception: a level whose
+        <code>date</code> is non-null is not round-trippable verbatim &mdash; <code>GET</code> emits
+        ISO-8601 while <code>PUT</code> takes raw epoch seconds.
+        <br><br><strong>&#9888; Stored and returned, but not drawn.</strong> Unlike a signal-level note,
+        a user-level note is <em>not</em> rendered on the order book or on either chart engine: a user
+        level has a single label slot and <code>name</code> already occupies it. The note is an API-level
+        attribute only until the layout question is settled.</p>
         <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
         unknown connection &rarr; <code>404 Connection {id} not found</code>; missing <code>Ticker</code>
         query &rarr; <code>400 Query parameter 'Ticker' is required</code>.</p>
@@ -1737,11 +1914,23 @@
           <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Trading pair symbol</td></tr>
           <tr><td><code>price</code></td><td>decimal</td><td>yes</td><td>Level price (must be &gt; 0)</td></tr>
           <tr><td><code>name</code></td><td>string</td><td>no</td><td>Label. <strong>Omitted &rarr; the exact hand-drawn default</strong> the app uses when a level is drawn by hand: today's date as <code>dd.MM.yyyy</code>.</td></tr>
+          <tr><td><code>note</code></td><td>string</td><td>no</td><td><strong>(MC-421 Step 15)</strong> The user level's own free-text note, stored and read back exactly as on a signal level. Omitted &rarr; <code>null</code> (no note). Distinct from <code>name</code>.</td></tr>
           <tr><td><code>date</code></td><td>integer (epoch seconds)</td><td>no</td><td>Optional timestamp (the hand-drawn horizontal ray stores the chart time here). Omitted &rarr; <code>null</code> (a plain level).</td></tr>
+          <tr><td><code>lineThickness</code></td><td>number</td><td>no</td><td>Stroke thickness. Omitted &rarr; unset (today's theme-driven stroke).</td></tr>
+          <tr><td><code>lineStyle</code></td><td>string</td><td>no</td><td><code>Solid</code> / <code>Dashed</code> / <code>Dotted</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
+          <tr><td><code>lineColor</code></td><td>string</td><td>no</td><td>Line colour as a hex string. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textSize</code></td><td>number</td><td>no</td><td>Label font size. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textColor</code></td><td>string</td><td>no</td><td>Label colour as a hex string. Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textAlignment</code></td><td>string</td><td>no</td><td><code>Left</code> / <code>Center</code> / <code>Right</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
+          <tr><td><code>textStyle</code></td><td>string</td><td>no</td><td><code>Normal</code> / <code>Bold</code> / <code>Italic</code> (case-insensitive, or the enum int). Omitted &rarr; unset.</td></tr>
         </table>
+        <p><strong>Appearance is additive and optional (MC-421):</strong> every appearance field defaults
+        to <em>unset</em> &mdash; a level created without them looks exactly as it does today.</p>
         <p><strong>Errors:</strong> missing <code>ticker</code>/<code>price</code> &rarr; <code>400 Invalid
         request body. 'ticker' and 'price' are required.</code>; <code>price &le; 0</code> &rarr;
-        <code>400 Price must be greater than zero</code>; invalid connection id &rarr; <code>400 Invalid
+        <code>400 Price must be greater than zero</code>; an invalid appearance enum value
+        (<code>lineStyle</code> / <code>textAlignment</code> / <code>textStyle</code>) &rarr;
+        <code>400 Invalid '{field}'.</code>; invalid connection id &rarr; <code>400 Invalid
         connection ID</code>; unknown connection &rarr; <code>404 Connection {id} not found</code>.</p>
       </div>
       <div class="form-grid">
@@ -1796,13 +1985,27 @@
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
           <tr><td><code>price</code></td><td>decimal</td><td>no</td><td>New price (must be &gt; 0). Leaves <code>name</code> / <code>date</code> untouched.</td></tr>
-          <tr><td><code>name</code></td><td>string</td><td>no</td><td>New label. Leaves <code>price</code> / <code>date</code> untouched.</td></tr>
-          <tr><td><code>date</code></td><td>integer (epoch seconds)</td><td>no</td><td>New timestamp. Leaves <code>price</code> / <code>name</code> untouched.</td></tr>
+          <tr><td><code>name</code></td><td>string</td><td>no</td><td>New label. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>note</code></td><td>string</td><td>no</td><td><strong>(MC-421 Step 15)</strong> New note (partial-update: supplied &rarr; overwrite, omitted &rarr; untouched). Distinct from <code>name</code>.</td></tr>
+          <tr><td><code>date</code></td><td>integer (epoch seconds)</td><td>no</td><td>New timestamp. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineThickness</code></td><td>number</td><td>no</td><td>New stroke thickness. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineStyle</code></td><td>string</td><td>no</td><td><code>Solid</code> / <code>Dashed</code> / <code>Dotted</code> (or the enum int). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>lineColor</code></td><td>string</td><td>no</td><td>New line colour (hex). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textSize</code></td><td>number</td><td>no</td><td>New label size. Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textColor</code></td><td>string</td><td>no</td><td>New label colour (hex). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textAlignment</code></td><td>string</td><td>no</td><td><code>Left</code> / <code>Center</code> / <code>Right</code> (or the enum int). Leaves the other fields untouched.</td></tr>
+          <tr><td><code>textStyle</code></td><td>string</td><td>no</td><td><code>Normal</code> / <code>Bold</code> / <code>Italic</code> (or the enum int). Leaves the other fields untouched.</td></tr>
         </table>
+        <p><strong>Partial update (MC-421):</strong> every appearance field follows the same partial-apply
+        rule &mdash; only the fields present are written, the rest are left untouched. At least one of
+        <code>price</code> / <code>name</code> / <code>note</code> / <code>date</code> / an appearance
+        field must be present.</p>
         <p><strong>Errors:</strong> invalid connection id &rarr; <code>400 Invalid connection ID</code>;
         connection not open &rarr; <code>404 Connection {id} not found</code>; invalid level id &rarr;
         <code>400 Invalid user level ID</code>; empty body / all fields null &rarr; <code>400 Request
-        body must set at least one of 'price', 'name' or 'date'.</code>; <code>price &le; 0</code> &rarr;
+        body must set at least one of 'price', 'name', 'date', 'note' or an appearance field.</code>;
+        an invalid appearance enum value &rarr; <code>400 Invalid '{field}'.</code>;
+        <code>price &le; 0</code> &rarr;
         <code>400 Price must be greater than zero</code>; level not found &rarr; <code>404 User level {id}
         not found</code>.</p>
       </div>
@@ -2249,6 +2452,240 @@
     </div>
   </div>
 
+  <!-- Screener templates -->
+  <div class="section-label">Screener templates</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>Manage the saved <strong>screener templates</strong> (the named sets of columns, filters and market
+    selections the market screener uses) without opening a window. Every open screener window listens to the
+    same <code>OnTemplatesChanged</code> broadcast the app raises internally, so a create / edit / delete made
+    here is reflected <strong>live</strong> in the window's template list &mdash; no reopen needed. The list
+    always includes the synthetic read-only <code>Default</code> template (id <code>-1</code>): it is
+    list-only and cannot be fetched, edited or deleted individually. Bodies are camelCase; the
+    <code>settings</code> object is the full template configuration and round-trips verbatim.</p>
+  </div>
+
+  <!-- /api/screener/templates (GET) -->
+  <div class="endpoint" id="ep-screener-templates-list">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-list')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/screener/templates</span>
+      <span class="endpoint-desc">List all screener templates</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>{ count, templates[] }</code>. Each template is
+        <code>{ id, name, settings }</code> where <code>settings</code> carries the whole configuration
+        (<code>columnSettings[]</code>, <code>columnFilters[]</code>, <code>marketFilters[]</code>,
+        <code>coinTags[]</code>, <code>numberOfRows</code>, <code>activeFilter</code>, the new-coin flags,
+        &hellip;). The synthetic <code>Default</code> template (id <code>-1</code>) is always first.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendListScreenerTemplates()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-list">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-list-status"></span>
+          <span class="response-time" id="resp-screener-templates-list-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-list-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/templates/{templateId} (GET) -->
+  <div class="endpoint" id="ep-screener-templates-get">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/screener/templates/{templateId}</span>
+      <span class="endpoint-desc">Read one template's resolved configuration</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns the single template <code>{ id, name, settings }</code>.</p>
+        <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400 Invalid template
+        ID</code>; unknown id (including the synthetic Default <code>-1</code>) &rarr; <code>404 Screener
+        template {id} not found</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-get-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-get-status"></span>
+          <span class="response-time" id="resp-screener-templates-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/templates (POST) -->
+  <div class="endpoint" id="ep-screener-templates-create">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-create')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/screener/templates</span>
+      <span class="endpoint-desc">Create a template (name + optional settings)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ name, settings? }</code>. <code>name</code> is required; <code>settings</code> is
+        optional &mdash; omit it and the template is created with the default configuration. The full
+        <code>settings</code> blob (columns / filters / market selections) is persisted, so a template
+        created here carries its filters and columns, not just its name. Returns the created
+        <code>{ id, name, settings }</code>.</p>
+        <p><strong>Errors:</strong> missing / blank <code>name</code> &rarr; <code>400 Request body must
+        carry a non-empty 'name'.</code>; body that is not valid JSON &rarr; <code>400 Request body is not
+        valid JSON.</code></p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-sct-create-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "My screener"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCreateScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-create">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-create-status"></span>
+          <span class="response-time" id="resp-screener-templates-create-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-create-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/templates/{templateId} (PUT) -->
+  <div class="endpoint" id="ep-screener-templates-update">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-update')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/screener/templates/{templateId}</span>
+      <span class="endpoint-desc">Edit a template (partial: null keeps current)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ name?, settings? }</code>. A <strong>null / omitted</strong> <code>name</code> keeps
+        the stored name and a null / omitted <code>settings</code> keeps the stored blob (partial update).
+        Returns the updated <code>{ id, name, settings }</code>.</p>
+        <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400</code>; body that
+        is not valid JSON &rarr; <code>400</code>; unknown id &rarr; <code>404 Screener template {id} not
+        found</code> (checked <em>before</em> any write).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-update-id" value="1">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-sct-update-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "Renamed screener"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-update">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-update-status"></span>
+          <span class="response-time" id="resp-screener-templates-update-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-update-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/templates/{templateId} (DELETE) -->
+  <div class="endpoint" id="ep-screener-templates-delete">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-delete')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/screener/templates/{templateId}</span>
+      <span class="endpoint-desc">Delete a template</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Removes the template. Returns <code>{ status: "ok" }</code>.</p>
+        <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400</code>; unknown id
+        (including the synthetic Default <code>-1</code>) &rarr; <code>404 Screener template {id} not
+        found</code> (checked <em>before</em> any write).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-delete-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendDeleteScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-delete">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-delete-status"></span>
+          <span class="response-time" id="resp-screener-templates-delete-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-delete-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/templates/{templateId}/data (GET) -->
+  <div class="endpoint" id="ep-screener-templates-data">
+    <div class="endpoint-header" onclick="toggle('ep-screener-templates-data')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/screener/templates/{templateId}/data</span>
+      <span class="endpoint-desc">Snapshot a template's full data (all rows, headless)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns ONE headless snapshot of the full row set of the given template &mdash; every row an open
+        screener window on the same template would show &mdash; <strong>without opening a screener window</strong>.
+        A fresh background screener socket is subscribed, the first complete frame captured, and the socket
+        disposed; there is no streaming. The synthetic Default (id <code>-1</code>) is answered too (it resolves
+        to the default configuration, exactly like an open window's fallback).</p>
+        <p>Response <code>{ templateId, count, rows[] }</code>. Each row:
+        <code>{ ticker, wireTicker, isNewCoin, exchange, listedExchanges[], columns[] }</code> where
+        <code>exchange</code> / <code>listedExchanges</code> are screener exchange keys
+        (<code>"binance_s"</code>, <code>"bybit_f"</code>, <code>"polymarket"</code>) and each
+        <code>columns[]</code> entry is <code>{ type, timeFrame, time, metric, value }</code>.</p>
+        <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400 Invalid template
+        ID</code>; unknown id &rarr; <code>404 Screener template {id} not found</code> (checked <em>before</em>
+        any subscribe). If the screener backend produces no rows within the deadline, <code>rows</code> is an
+        empty array (<code>count = 0</code>).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-data-id" value="-1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetScreenerTemplateData()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-data">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-data-status"></span>
+          <span class="response-time" id="resp-screener-templates-data-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-data-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notifications -->
   <div class="section-label">Notifications</div>
 
@@ -2431,6 +2868,21 @@
         chart windows not attached to any tab (<code>tabId == null</code>); each includes its own
         <code>chart.geometry</code> and never appears under a tab.</p>
 
+        <h3>Other open window families</h3>
+        <p>Alongside <code>windows</code> and <code>standaloneCharts</code>, the inventory lists every OTHER
+        open window family the open route (<code>POST /api/ui/windows</code>) can create. Every key is always
+        present; where a value is absent it is <code>null</code> (never omitted), and a family that fails to
+        read degrades to its own empty list / <code>null</code> object without blanking the rest.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Nullable</th><th>Description</th></tr>
+          <tr><td><code>watchlists</code></td><td>array</td><td>no</td><td>Open watchlist windows, each <code>{ id, externalId, geometry }</code>. A watchlist row has no visibility flag &mdash; every listed row is an open window.</td></tr>
+          <tr><td><code>screeners</code></td><td>array</td><td>no</td><td>Open screener windows, each <code>{ id, externalId, name, templateId, geometry }</code>. A screener row exists only while its window is open (created on open, removed on close), so every listed row is open.</td></tr>
+          <tr><td><code>lineNotifications</code></td><td>object</td><td>yes</td><td>The line-notifications singleton: <code>{ id, isOpen, geometry }</code>. The row is always persisted; <code>isOpen</code> is <code>true</code> only when the window is actually shown &mdash; a persisted-but-hidden singleton reads <code>isOpen: false</code>. <code>null</code> if the family could not be read.</td></tr>
+          <tr><td><code>finres</code></td><td>object</td><td>yes</td><td>The finres singleton, same shape/semantics as <code>lineNotifications</code>.</td></tr>
+          <tr><td><code>userTrades</code></td><td>object</td><td>yes</td><td>The user-trades singleton, same shape/semantics.</td></tr>
+          <tr><td><code>listing</code></td><td>object</td><td>yes</td><td>The listing singleton, same shape/semantics.</td></tr>
+        </table>
+
         <p>Success &rarr; <code>200</code> with the object above.</p>
       </div>
       <div class="actions-row">
@@ -2458,8 +2910,18 @@
       <div class="docs">
         <p>Returns exactly the same single-window object as that window's entry in
         <code>/api/ui/state</code> &mdash; same geometry, tabs and documents.</p>
+        <p><strong>Optional <code>?windowType=</code> query.</strong> The window ids returned by
+        <code>POST /api/ui/windows</code> are <em>per-surface</em>: a chart / watchlist / screener id is unique
+        only within its own surface, not against the workspace <code>Windows</code> table this route reads by
+        default. Supply <code>?windowType=</code> with one of <code>chart</code>, <code>tradingViewChart</code>,
+        <code>watchlist</code> or <code>screener</code> (case-insensitive) to resolve the id <em>within that
+        surface</em> instead &mdash; letting a client read a window back at the very address the create route
+        returned. The response is then <code>{ id, type, document | watchlist | screener }</code> (exactly one
+        of the three type blocks is populated). Omit the query for byte-for-byte today's <code>Windows</code>-table
+        lookup.</p>
         <p><strong>Errors:</strong> a non-numeric <code>windowId</code> &rarr;
-        <code>400 Invalid window ID</code>; an unknown window &rarr;
+        <code>400 Invalid window ID</code>; an unknown window (in the default table, or within the requested
+        <code>windowType</code> surface, or an unrecognised <code>windowType</code>) &rarr;
         <code>404 Window {id} not found</code>.</p>
       </div>
       <div class="form-grid single">
@@ -2528,6 +2990,197 @@
           <span class="response-time" id="resp-ui-linknumber-time"></span>
         </div>
         <div class="response-body" id="resp-ui-linknumber-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/windows (POST) -->
+  <div class="endpoint" id="ep-ui-open-window">
+    <div class="endpoint-header" onclick="toggle('ep-ui-open-window')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/windows</span>
+      <span class="endpoint-desc">Open a terminal window at a place/size</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Opens ONE terminal window of the requested type at an explicit position and size, on an explicit
+        monitor. <strong>Geometry is entirely optional</strong>: omit <code>top</code>/<code>left</code>/
+        <code>height</code>/<code>width</code> and the window lands exactly where it lands today for that type
+        &mdash; including MetaScalp's open-at-the-cursor placement where the app does that today (workspace,
+        watchlist, screener, line-notifications, finres, user-trades). A supplied rect is clamped to fit the
+        target monitor. Position is in virtual-desktop coordinates; <code>monitor</code> (0-based) selects the
+        screen.</p>
+        <p><strong>Request body:</strong></p>
+        <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "watchlist", "top": 100, "left": 200, "height": 450, "width": 300, "monitor": 0 }</code></pre>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>.</td></tr>
+          <tr><td><code>top</code></td><td>number</td><td>no</td><td>Virtual-desktop Y. Omit for today's default placement.</td></tr>
+          <tr><td><code>left</code></td><td>number</td><td>no</td><td>Virtual-desktop X. Omit for today's default placement.</td></tr>
+          <tr><td><code>height</code></td><td>number</td><td>no</td><td>Window height. Omit for the type's default.</td></tr>
+          <tr><td><code>width</code></td><td>number</td><td>no</td><td>Window width. Omit for the type's default.</td></tr>
+          <tr><td><code>monitor</code></td><td>integer</td><td>no</td><td>0-based target screen. Omit to place by virtual-desktop coordinate.</td></tr>
+          <tr><td><code>templateId</code></td><td>integer</td><td>no</td><td><strong>Screener only.</strong> Open the screener already showing this saved template's filters and rows &mdash; the same state the window's own template picker produces. Omit for today's Default view. The synthetic Default (id <code>-1</code>) is accepted and resolves to Default. Ignored for any non-screener <code>windowType</code>.</td></tr>
+        </table>
+        <p>Response <code>{ windowId, windowType, top, left, height, width }</code> &mdash; where the window
+        actually landed (post-clamp). For the four <strong>singleton</strong> types (<code>lineNotifications</code>,
+        <code>finres</code>, <code>userTrades</code>, <code>listing</code>) <code>windowId</code> is
+        <code>null</code>: each has a single fixed row (id <code>1</code>, which would collide with the main
+        workspace) and its close/activate routes ignore the id entirely, so there is no addressable per-surface
+        id to return. Every other type returns its real per-surface id.</p>
+        <p><strong>Opening the screener on a template.</strong> For <code>windowType: "screener"</code> a
+        supplied <code>templateId</code> is threaded onto the screener window so it loads that template exactly as
+        picking it by hand would; because the choice is persisted with the window, it also becomes the window's
+        template on the next launch. Omitting <code>templateId</code> is bit-for-bit today's behaviour (the app's
+        Default view).</p>
+        <p><strong>Errors:</strong> a malformed body &rarr; <code>400 Malformed request body.</code>; a missing
+        <code>windowType</code> &rarr; <code>400</code> with the supported list; an unknown or
+        unsupported-standalone type (e.g. <code>settings</code>, which is modal, or the full-screen chart,
+        which needs an existing chart) &rarr; <code>400</code> naming the supported list; an unknown screener
+        <code>templateId</code> &rarr; <code>404 Screener template {templateId} not found</code> &mdash; all
+        validated <em>before</em> any window is opened.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-ui-open-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"windowType": "watchlist", "top": 100, "left": 200, "height": 450, "width": 300, "monitor": 0}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendOpenWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-open-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-open-window-status"></span>
+          <span class="response-time" id="resp-ui-open-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-open-window-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/windows/{windowId}/close (POST) -->
+  <div class="endpoint" id="ep-ui-close-window">
+    <div class="endpoint-header" onclick="toggle('ep-ui-close-window')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/windows/{windowId}/close</span>
+      <span class="endpoint-desc">Close a terminal window</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes ONE terminal window through the app's OWN close path (the same path a manual X uses, so it
+        inherits today's close-confirmation-popup behaviour). <code>{windowId}</code> is the id WITHIN the surface
+        named by <code>windowType</code> &mdash; ids are <strong>not</strong> unique across surfaces (a workspace,
+        a chart, a screener and a watchlist can all be id 1), so the body's <code>windowType</code> is what routes
+        the id to the correct window. The singleton surfaces (<code>lineNotifications</code>, <code>finres</code>,
+        <code>userTrades</code>, <code>listing</code>) ignore the path id. <code>finres</code> is HIDDEN rather
+        than destroyed, matching its manual toggle.</p>
+        <p><strong>Request body:</strong></p>
+        <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "workspace" }</code></pre>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>.</td></tr>
+        </table>
+        <p>Response <code>{ windowType, windowId, closed, outcome }</code>.</p>
+        <p><strong>The main workspace can never be closed through the API</strong> &mdash; it would quit the
+        terminal. A <code>windowId</code> that resolves to the main workspace &rarr; <code>400 The main workspace
+        cannot be closed through the API.</code> (+ supported list).</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{windowId}</code> &rarr; <code>400 Invalid window ID</code>;
+        a malformed body &rarr; <code>400 Malformed request body.</code>; a missing / unknown / unsupported
+        <code>windowType</code> &rarr; <code>400</code> naming the supported list; an unknown window id &rarr;
+        <code>404</code> &mdash; all validated <em>before</em> any window is closed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Window ID</label>
+          <input type="number" id="f-ui-close-id" value="1">
+        </div>
+        <div class="form-group">
+          <label>Window type</label>
+          <select id="f-ui-close-type">
+            <option value="workspace">workspace</option>
+            <option value="lightWorkspace">lightWorkspace</option>
+            <option value="chart">chart</option>
+            <option value="tradingViewChart">tradingViewChart</option>
+            <option value="watchlist">watchlist</option>
+            <option value="screener">screener</option>
+            <option value="lineNotifications">lineNotifications</option>
+            <option value="finres">finres</option>
+            <option value="userTrades">userTrades</option>
+            <option value="listing">listing</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-close-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-close-window-status"></span>
+          <span class="response-time" id="resp-ui-close-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-close-window-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/windows/{windowId}/activate (POST) -->
+  <div class="endpoint" id="ep-ui-activate-window">
+    <div class="endpoint-header" onclick="toggle('ep-ui-activate-window')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/windows/{windowId}/activate</span>
+      <span class="endpoint-desc">Bring a terminal window to the front</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Brings ONE terminal window to the front on its own window thread. Same id-addressing as the close
+        route: <code>{windowId}</code> is the id within the surface named by <code>windowType</code>; singletons
+        ignore the id.</p>
+        <p><strong>Request body:</strong></p>
+        <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "chart" }</code></pre>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of the ten window types (see close).</td></tr>
+        </table>
+        <p>Response <code>{ windowType, windowId, activated, outcome }</code>.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{windowId}</code> &rarr; <code>400 Invalid window ID</code>;
+        a malformed body &rarr; <code>400</code>; a missing / unknown / unsupported <code>windowType</code> &rarr;
+        <code>400</code> naming the supported list; the main workspace &rarr; <code>400</code>; an unknown window
+        id &rarr; <code>404</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Window ID</label>
+          <input type="number" id="f-ui-activate-id" value="1">
+        </div>
+        <div class="form-group">
+          <label>Window type</label>
+          <select id="f-ui-activate-type">
+            <option value="workspace">workspace</option>
+            <option value="lightWorkspace">lightWorkspace</option>
+            <option value="chart">chart</option>
+            <option value="tradingViewChart">tradingViewChart</option>
+            <option value="watchlist">watchlist</option>
+            <option value="screener">screener</option>
+            <option value="lineNotifications">lineNotifications</option>
+            <option value="finres">finres</option>
+            <option value="userTrades">userTrades</option>
+            <option value="listing">listing</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendActivateWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-activate-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-activate-window-status"></span>
+          <span class="response-time" id="resp-ui-activate-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-activate-window-body"></div>
       </div>
     </div>
   </div>
@@ -2610,7 +3263,6 @@
           <tr><td><code>POST /api/ui/windows/{windowId}/order-books</code></td><td>Open an order book in a window's active tab</td></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/charts</code></td><td>Open a chart in a window's active tab</td></tr>
           <tr><td><code>DELETE /api/ui/documents/{externalId}</code></td><td>Close one addressed panel (with its DB delete)</td></tr>
-          <tr><td><code>POST /api/ui/windows/{windowId}/activate</code></td><td>Activate a window</td></tr>
           <tr><td><code>POST /api/ui/tabs/{tabId}/activate</code></td><td>Activate a tab</td></tr>
         </table>
       </div>
@@ -2706,8 +3358,8 @@
           <tr><td><code>signal_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>signal_levels_snapshot</code> follows immediately)</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
-          <tr><td><code>signal_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>signalLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
-          <tr><td><code>signal_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code></td></tr>
+          <tr><td><code>signal_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>signalLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>, and (MC-421) <code>note</code>, <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>, <code>textSize</code>, <code>textColor</code>, <code>textAlignment</code>, <code>textStyle</code> (null when unset)</td></tr>
+          <tr><td><code>signal_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>isTriggered</code>, <code>triggerTime</code>, <code>triggerRule</code>, and the same MC-421 <code>note</code> + appearance fields</td></tr>
           <tr><td><code>signal_level_updated</code></td><td>server &rarr; client</td><td>A level was modified in place (price and/or rule changed, identity preserved)</td><td>Same shape as <code>signal_level_placed</code></td></tr>
           <tr><td><code>signal_level_triggered</code></td><td>server &rarr; client</td><td>A level fired</td><td><code>id</code>, <code>triggerTime</code></td></tr>
           <tr><td><code>signal_level_removed</code></td><td>server &rarr; client</td><td>A level was deleted</td><td><code>id</code></td></tr>
@@ -2722,8 +3374,8 @@
           <tr><td><code>user_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
           <tr><td><code>user_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged</td><td>&mdash;</td></tr>
           <tr><td><code>user_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
-          <tr><td><code>user_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>userLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>date</code></td></tr>
-          <tr><td><code>user_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>date</code></td></tr>
+          <tr><td><code>user_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>userLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and (MC-421) <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>, <code>textSize</code>, <code>textColor</code>, <code>textAlignment</code>, <code>textStyle</code> (null when unset). <code>note</code> is a real stored field, distinct from <code>name</code></td></tr>
+          <tr><td><code>user_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and the same MC-421 appearance fields</td></tr>
           <tr><td><code>user_level_updated</code></td><td>server &rarr; client</td><td>A level was modified in place (identity preserved)</td><td>Same shape as <code>user_level_placed</code></td></tr>
           <tr><td><code>user_level_removed</code></td><td>server &rarr; client</td><td>One or more levels were deleted (covers <code>DELETE {id}</code> and <code>DELETE ?Ticker=</code>) &mdash; removal is a batch, so ids are carried as an array</td><td><code>ids[]</code></td></tr>
           <tr><td><code>user_levels_removed_all</code></td><td>server &rarr; client</td><td>All levels (globally) were cleared</td><td>&mdash;</td></tr>
@@ -3104,8 +3756,35 @@
   <div class="ref-section">
     <h2>Error responses</h2>
     <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Errors return HTTP <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">400</code> or <code style="background:var(--surface2);padding:2px 5px;border-radius:3px;font-size:12px;">404</code> with a JSON body.</p>
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;"><strong>Request body parsing (MC-421 Step 15, corrected in Step 16) &mdash; applies to every endpoint with a JSON body:</strong>
+    a body that is <strong>not valid JSON</strong> returns <code>400</code> immediately. A body carrying an
+    <strong>unknown property</strong> is <strong>rejected with <code>400</code></strong> naming the offending
+    field (previously the unknown property was silently discarded and the request answered <code>200</code>).
+    Two endpoint families answer with their own fixed wording instead of the shared text and are unchanged:
+    <code>/api/ui/windows/{windowId}/close</code> and <code>/activate</code> answer
+    <code>Malformed request body.</code>, and the screener-template routes answer
+    <code>Request body is not valid JSON.</code>.</p>
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;"><strong>&#9888; Breaking change for clients that send extra fields.</strong>
+    Before this change an unrecognised property was accepted and dropped. It is now a <code>400</code>, on
+    <em>every</em> body endpoint including <code>POST /api/connections/{id}/orders</code> and the cancel
+    routes &mdash; so an SDK or script that sends a field this reference does not list will stop working and
+    <strong>no order will be placed</strong>. Send only the documented fields.
+    <br><br>
+    <strong>Read-modify-write is supported.</strong> The identity and server-owned fields that a
+    <code>GET</code> emits are <em>accepted and ignored</em> on the matching <code>PUT</code>/<code>POST</code>,
+    so a client can send back the object it just read: <code>id</code>, <code>connectionId</code>,
+    <code>ticker</code> on user levels; those plus <code>isTriggered</code> and <code>triggerTime</code> on
+    signal levels; <code>id</code> on screener templates; <code>index</code> on all three annotation types.
+    A value supplied in one of these fields never re-keys, moves or re-triggers anything &mdash; the route
+    parameters remain authoritative. Two known exceptions that are <em>not</em> round-trippable: a user
+    level whose <code>date</code> is non-null (<code>GET</code> emits ISO-8601, <code>PUT</code> takes raw
+    epoch seconds &mdash; a deliberate asymmetry that predates this change), and the order-book settings
+    <code>PUT</code>, which takes the bare settings object rather than the <code>{connectionId, ticker,
+    settings}</code> envelope that <code>GET</code> returns.</p>
     <table>
       <tr><th>Endpoint</th><th>Condition</th><th>HTTP</th><th>Error message</th></tr>
+      <tr><td><code>(any endpoint with a JSON body)</code></td><td>Body is not valid JSON</td><td>400</td><td><code>Malformed request body: not valid JSON.</code></td></tr>
+      <tr><td><code>(any endpoint with a JSON body)</code></td><td>Unknown property in body</td><td>400</td><td><code>Unknown field '{field}' in request body.</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. Provide 'tickerPattern' or 'exchange'+'market'+'ticker'.</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Invalid pattern</td><td>400</td><td><code>Invalid ticker pattern: '{pattern}'</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Binding not found</td><td>400</td><td><code>Binding '{name}' not found. Available: {list}</code></td></tr>
@@ -3131,12 +3810,17 @@
       <tr><td><code>POST /api/connections/{id}/user-levels</code></td><td>Missing ticker/price</td><td>400</td><td><code>Invalid request body. 'ticker' and 'price' are required.</code></td></tr>
       <tr><td><code>POST/PUT .../user-levels</code></td><td>Price &lt;= 0</td><td>400</td><td><code>Price must be greater than zero</code></td></tr>
       <tr><td><code>PUT/DELETE .../user-levels/{userLevelId}</code></td><td>Invalid user level ID</td><td>400</td><td><code>Invalid user level ID</code></td></tr>
-      <tr><td><code>PUT .../user-levels/{userLevelId}</code></td><td>Empty body / all fields null</td><td>400</td><td><code>Request body must set at least one of 'price', 'name' or 'date'.</code></td></tr>
+      <tr><td><code>PUT .../user-levels/{userLevelId}</code></td><td>Empty body / all fields null</td><td>400</td><td><code>Request body must set at least one of 'price', 'name', 'date', 'note' or an appearance field.</code></td></tr>
       <tr><td><code>PUT .../user-levels/{userLevelId}</code></td><td>Level not found</td><td>404</td><td><code>User level {id} not found</code></td></tr>
       <tr><td><code>GET/DELETE .../user-levels</code></td><td>Missing Ticker query</td><td>400</td><td><code>Query parameter 'Ticker' is required</code></td></tr>
       <tr><td><code>POST /api/notifications</code></td><td>Unknown connectionId</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
       <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>Non-numeric window id</td><td>400</td><td><code>Invalid window ID</code></td></tr>
       <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>Unknown window</td><td>404</td><td><code>Window {id} not found</code></td></tr>
+      <tr><td><code>POST /api/ui/windows</code></td><td>Malformed body</td><td>400</td><td><code>Malformed request body.</code></td></tr>
+      <tr><td><code>POST /api/ui/windows</code></td><td>Missing windowType</td><td>400</td><td><code>POST /api/ui/windows requires 'windowType' in the body to know which window to open.</code> (+ supported list)</td></tr>
+      <tr><td><code>POST /api/ui/windows/{windowId}/close|activate</code></td><td>Missing windowType</td><td>400</td><td><code>POST /api/ui/windows/{windowId}/close|activate requires 'windowType' in the body: window ids are per-surface, so the type is what routes the id to the right window.</code> (+ supported list)</td></tr>
+      <tr><td><code>POST /api/ui/windows</code></td><td>Unknown / unsupported-standalone type</td><td>400</td><td><code>Unsupported windowType '…'.</code> (+ supported list)</td></tr>
+      <tr><td><code>POST /api/ui/windows</code></td><td>Unknown screener templateId</td><td>404</td><td><code>Screener template {templateId} not found</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Missing linkNumber</td><td>400</td><td><code>Request body must set 'linkNumber'.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-positive linkNumber</td><td>400</td><td><code>linkNumber must be a positive binding-group id (1-500, or 9999 to cancel).</code></td></tr>
@@ -3194,7 +3878,8 @@
         <tr><td><code>POST /api/connections/{id}/orders</code></td><td>Place or cancel orders on a connection</td></tr>
         <tr><td><code>POST /api/connections/{connectionId}/orders/cancel-all</code></td><td>Cancel <strong>all</strong> open orders for a ticker on a connection (body: <code>{ ticker }</code>) &rarr; <code>{ status, cancelledCount }</code></td></tr>
         <tr><td><code>GET /api/connections/{connectionId}/orderbook-snapshot</code></td><td>REST order-book snapshot for a ticker (optional <code>DepthLevels</code> / <code>DepthPercent</code>; <code>501</code> when the exchange has no REST snapshot)</td></tr>
-        <tr><td><code>GET/PUT /api/connections/{connectionId}/orderbook-settings</code></td><td>Read, and partially update (every field optional), the order-book settings set for a ticker &mdash; changes are pushed live to the running panels</td></tr>
+        <tr><td><code>GET /api/link-groups/{groupId}/orderbook-snapshots</code></td><td>Read-only order books of every panel currently in link group N (live membership; per-entry <code>reason</code> on partial failure)</td></tr>
+        <tr><td><code>GET/PUT /api/connections/{connectionId}/orderbook-settings</code></td><td>Read, and partially update (every field optional), the order-book settings set for a ticker &mdash; changes are pushed live to the running panels. Working volumes are stored as paired USD/coin mirrors (<code>tradeAmountUsd1..5</code> &harr; <code>tradeAmount1..5</code>): writing one side recomputes the other at the <strong>live</strong> best-ask (truncated to the ticker's size increment, floored at its min size), so the terminal's own volume buttons show USD and coin figures that agree with the current price. Writing both sides of a pair keeps the values you sent. If no order book is open for the connection+ticker there is no live price &rarr; <code>409</code> (open the order book so the conversion has a live price); unknown ticker &rarr; <code>404</code>; nothing is written in either case.</td></tr>
         <tr><td><code>GET /api/connections/{connectionId}/cluster-snapshot</code></td><td>Remote cluster (footprint) snapshot for a ticker at a timeframe (optional <code>ZoomIndex</code>)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/signal-levels</code></td><td>Read, create, modify (in place) and delete signal levels for a ticker</td></tr>
         <tr><td><code>DELETE /api/signal-levels/triggered</code></td><td>Remove all <em>triggered</em> signal levels (across every connection)</td></tr>
@@ -3203,6 +3888,7 @@
         <tr><td><code>POST /api/notifications</code></td><td>Inject a custom row into the notification feed (all fields optional, arbitrary event type)</td></tr>
         <tr><td><code>GET /api/ui/state</code></td><td>Full read-only inventory of the open UI: windows, tabs, order-book/chart documents and standalone charts (rebuilt from the saved layout)</td></tr>
         <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>The same inventory object for one window; unknown id &rarr; 404</td></tr>
+        <tr><td><code>POST /api/ui/windows</code></td><td>Open a terminal window at a requested place/size (and monitor); omitted geometry &rarr; today's default placement</td></tr>
         <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Set one panel's link (binding-group) number; unknown document &rarr; 404</td></tr>
         <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Re-point one addressed panel to a different market (that panel only)</td></tr>
       </table>
@@ -3305,8 +3991,8 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>signal_level_updated</code></td><td>Same shape as <code>signal_level_placed</code> (level modified in place)</td></tr>
         <tr><td><code>signal_level_triggered</code></td><td><code>id</code>, <code>triggerTime</code></td></tr>
         <tr><td><code>signal_level_removed</code></td><td><code>id</code></td></tr>
-        <tr><td><code>user_levels_snapshot</code></td><td><code>userLevels[]</code>: <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>date</code></td></tr>
-        <tr><td><code>user_level_placed</code></td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>date</code></td></tr>
+        <tr><td><code>user_levels_snapshot</code></td><td><code>userLevels[]</code>: <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code></td></tr>
+        <tr><td><code>user_level_placed</code></td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code></td></tr>
         <tr><td><code>user_level_updated</code></td><td>Same shape as <code>user_level_placed</code> (level modified in place)</td></tr>
         <tr><td><code>user_level_removed</code></td><td><code>ids[]</code> (batch removal)</td></tr>
         <tr><td><code>user_levels_removed_all</code></td><td>&mdash;</td></tr>
@@ -3483,6 +4169,30 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('ex-orders', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('ex-orders', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetLeverageLimits() {
+    const id = document.getElementById('f-leverage-limits-conn').value;
+    const ticker = document.getElementById('f-leverage-limits-ticker').value.trim();
+    const leverage = document.getElementById('f-leverage-limits-leverage').value.trim();
+    let url = `/api/connections/${id}/leverage-limits?Ticker=${encodeURIComponent(ticker)}`;
+    if (leverage) url += `&Leverage=${encodeURIComponent(leverage)}`;
+    try {
+      const { status, data, ms } = await apiCall('GET', url);
+      showResponse('ex-leverage-limits', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ex-leverage-limits', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetLinkGroupOrderBooks() {
+    const groupId = document.getElementById('f-linkgroup-orderbooks-group').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/link-groups/${groupId}/orderbook-snapshots`);
+      showResponse('linkgroup-orderbooks', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('linkgroup-orderbooks', 'ERR', 'status-net', e.message, 0);
     }
   }
 
@@ -3877,6 +4587,103 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('notif-inject', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('notif-inject', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Screener templates ---
+  async function sendListScreenerTemplates() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/screener/templates');
+      showResponse('screener-templates-list', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-list', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetScreenerTemplate() {
+    const id = document.getElementById('f-sct-get-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/screener/templates/${id}`);
+      showResponse('screener-templates-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCreateScreenerTemplate() {
+    const bodyText = document.getElementById('f-sct-create-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('POST', '/api/screener/templates', body);
+      showResponse('screener-templates-create', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-create', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendUpdateScreenerTemplate() {
+    const id = document.getElementById('f-sct-update-id').value;
+    const bodyText = document.getElementById('f-sct-update-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/screener/templates/${id}`, body);
+      showResponse('screener-templates-update', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-update', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendDeleteScreenerTemplate() {
+    const id = document.getElementById('f-sct-delete-id').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/screener/templates/${id}`);
+      showResponse('screener-templates-delete', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-delete', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetScreenerTemplateData() {
+    const id = document.getElementById('f-sct-data-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/screener/templates/${id}/data`);
+      showResponse('screener-templates-data', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-data', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- UI window lifecycle ---
+  async function sendOpenWindow() {
+    const bodyText = document.getElementById('f-ui-open-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('POST', '/api/ui/windows', body);
+      showResponse('ui-open-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-open-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseWindow() {
+    const id = document.getElementById('f-ui-close-id').value;
+    const windowType = document.getElementById('f-ui-close-type').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/windows/${id}/close`, { windowType });
+      showResponse('ui-close-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-close-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendActivateWindow() {
+    const id = document.getElementById('f-ui-activate-id').value;
+    const windowType = document.getElementById('f-ui-activate-type').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/windows/${id}/activate`, { windowType });
+      showResponse('ui-activate-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-activate-window', 'ERR', 'status-net', e.message, 0);
     }
   }
 
