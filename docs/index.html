@@ -2481,6 +2481,16 @@
         <code>coinTags[]</code>, <code>numberOfRows</code>, <code>activeFilter</code>, the new-coin flags,
         &hellip;). The synthetic <code>Default</code> template (id <code>-1</code>) is always first.</p>
       </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendListScreenerTemplates()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-list">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-list-status"></span>
+          <span class="response-time" id="resp-screener-templates-list-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-list-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2498,6 +2508,22 @@
         <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400 Invalid template
         ID</code>; unknown id (including the synthetic Default <code>-1</code>) &rarr; <code>404 Screener
         template {id} not found</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-get-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-get-status"></span>
+          <span class="response-time" id="resp-screener-templates-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-get-body"></div>
       </div>
     </div>
   </div>
@@ -2521,6 +2547,22 @@
         carry a non-empty 'name'.</code>; body that is not valid JSON &rarr; <code>400 Request body is not
         valid JSON.</code></p>
       </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-sct-create-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "My screener"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCreateScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-create">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-create-status"></span>
+          <span class="response-time" id="resp-screener-templates-create-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-create-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2541,6 +2583,28 @@
         is not valid JSON &rarr; <code>400</code>; unknown id &rarr; <code>404 Screener template {id} not
         found</code> (checked <em>before</em> any write).</p>
       </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-update-id" value="1">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-sct-update-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "Renamed screener"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendUpdateScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-update">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-update-status"></span>
+          <span class="response-time" id="resp-screener-templates-update-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-update-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2558,6 +2622,22 @@
         <p><strong>Errors:</strong> non-numeric <code>{templateId}</code> &rarr; <code>400</code>; unknown id
         (including the synthetic Default <code>-1</code>) &rarr; <code>404 Screener template {id} not
         found</code> (checked <em>before</em> any write).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-delete-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendDeleteScreenerTemplate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-delete">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-delete-status"></span>
+          <span class="response-time" id="resp-screener-templates-delete-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-delete-body"></div>
       </div>
     </div>
   </div>
@@ -2586,6 +2666,22 @@
         ID</code>; unknown id &rarr; <code>404 Screener template {id} not found</code> (checked <em>before</em>
         any subscribe). If the screener backend produces no rows within the deadline, <code>rows</code> is an
         empty array (<code>count = 0</code>).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Template ID</label>
+          <input type="number" id="f-sct-data-id" value="-1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendGetScreenerTemplateData()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-screener-templates-data">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-screener-templates-data-status"></span>
+          <span class="response-time" id="resp-screener-templates-data-time"></span>
+        </div>
+        <div class="response-body" id="resp-screener-templates-data-body"></div>
       </div>
     </div>
   </div>
@@ -2945,6 +3041,22 @@
         <code>templateId</code> &rarr; <code>404 Screener template {templateId} not found</code> &mdash; all
         validated <em>before</em> any window is opened.</p>
       </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-ui-open-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"windowType": "watchlist", "top": 100, "left": 200, "height": 450, "width": 300, "monitor": 0}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendOpenWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-open-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-open-window-status"></span>
+          <span class="response-time" id="resp-ui-open-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-open-window-body"></div>
+      </div>
     </div>
   </div>
 
@@ -2980,6 +3092,37 @@
         <code>windowType</code> &rarr; <code>400</code> naming the supported list; an unknown window id &rarr;
         <code>404</code> &mdash; all validated <em>before</em> any window is closed.</p>
       </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Window ID</label>
+          <input type="number" id="f-ui-close-id" value="1">
+        </div>
+        <div class="form-group">
+          <label>Window type</label>
+          <select id="f-ui-close-type">
+            <option value="workspace">workspace</option>
+            <option value="lightWorkspace">lightWorkspace</option>
+            <option value="chart">chart</option>
+            <option value="tradingViewChart">tradingViewChart</option>
+            <option value="watchlist">watchlist</option>
+            <option value="screener">screener</option>
+            <option value="lineNotifications">lineNotifications</option>
+            <option value="finres">finres</option>
+            <option value="userTrades">userTrades</option>
+            <option value="listing">listing</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-close-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-close-window-status"></span>
+          <span class="response-time" id="resp-ui-close-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-close-window-body"></div>
+      </div>
     </div>
   </div>
 
@@ -3007,6 +3150,37 @@
         a malformed body &rarr; <code>400</code>; a missing / unknown / unsupported <code>windowType</code> &rarr;
         <code>400</code> naming the supported list; the main workspace &rarr; <code>400</code>; an unknown window
         id &rarr; <code>404</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Window ID</label>
+          <input type="number" id="f-ui-activate-id" value="1">
+        </div>
+        <div class="form-group">
+          <label>Window type</label>
+          <select id="f-ui-activate-type">
+            <option value="workspace">workspace</option>
+            <option value="lightWorkspace">lightWorkspace</option>
+            <option value="chart">chart</option>
+            <option value="tradingViewChart">tradingViewChart</option>
+            <option value="watchlist">watchlist</option>
+            <option value="screener">screener</option>
+            <option value="lineNotifications">lineNotifications</option>
+            <option value="finres">finres</option>
+            <option value="userTrades">userTrades</option>
+            <option value="listing">listing</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendActivateWindow()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-activate-window">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-activate-window-status"></span>
+          <span class="response-time" id="resp-ui-activate-window-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-activate-window-body"></div>
       </div>
     </div>
   </div>
@@ -4413,6 +4587,103 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('notif-inject', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('notif-inject', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Screener templates ---
+  async function sendListScreenerTemplates() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/screener/templates');
+      showResponse('screener-templates-list', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-list', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetScreenerTemplate() {
+    const id = document.getElementById('f-sct-get-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/screener/templates/${id}`);
+      showResponse('screener-templates-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCreateScreenerTemplate() {
+    const bodyText = document.getElementById('f-sct-create-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('POST', '/api/screener/templates', body);
+      showResponse('screener-templates-create', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-create', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendUpdateScreenerTemplate() {
+    const id = document.getElementById('f-sct-update-id').value;
+    const bodyText = document.getElementById('f-sct-update-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/screener/templates/${id}`, body);
+      showResponse('screener-templates-update', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-update', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendDeleteScreenerTemplate() {
+    const id = document.getElementById('f-sct-delete-id').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/screener/templates/${id}`);
+      showResponse('screener-templates-delete', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-delete', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendGetScreenerTemplateData() {
+    const id = document.getElementById('f-sct-data-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/screener/templates/${id}/data`);
+      showResponse('screener-templates-data', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('screener-templates-data', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- UI window lifecycle ---
+  async function sendOpenWindow() {
+    const bodyText = document.getElementById('f-ui-open-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('POST', '/api/ui/windows', body);
+      showResponse('ui-open-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-open-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseWindow() {
+    const id = document.getElementById('f-ui-close-id').value;
+    const windowType = document.getElementById('f-ui-close-type').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/windows/${id}/close`, { windowType });
+      showResponse('ui-close-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-close-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendActivateWindow() {
+    const id = document.getElementById('f-ui-activate-id').value;
+    const windowType = document.getElementById('f-ui-activate-type').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/windows/${id}/activate`, { windowType });
+      showResponse('ui-activate-window', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-activate-window', 'ERR', 'status-net', e.message, 0);
     }
   }
 
