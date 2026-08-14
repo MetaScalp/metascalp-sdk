@@ -24,7 +24,9 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders/cancel` | Cancel a single order |
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
 | `GET /api/connections/{id}/orderbook-snapshot?Ticker=` | One-shot fresh order book snapshot from the exchange REST endpoint |
+| `GET /api/link-groups/{groupId}/orderbook-snapshots` | Read-only order books of every panel currently in link group N (live membership; per-entry `reason` on partial failure) |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
+| `GET /api/connections/{id}/leverage-limits?Ticker=` | Max leverage and max position size, live from the venue's own risk-limit tiers |
 | `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
 | `POST /api/connections/{id}/signal-levels` | Place a signal level |
 | `DELETE /api/connections/{id}/signal-levels/{slId}` | Remove a single signal level |
@@ -44,10 +46,19 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/notifications` | Inject a custom row into the notification feed |
 | `GET /api/ui/state` | Full read-only inventory of the open UI (windows, tabs, documents) |
 | `GET /api/ui/windows/{windowId}` | The same inventory object for one window |
+| `POST /api/ui/windows` | Open a terminal window of a given type at an explicit place/size/monitor |
+| `POST /api/ui/windows/{windowId}/close` | Close one terminal window through the app's own close path |
+| `POST /api/ui/windows/{windowId}/activate` | Bring one terminal window to the front |
 | `PUT /api/ui/documents/{externalId}/link-number` | Set one panel's link (binding-group) number |
 | `PUT /api/ui/documents/{externalId}/ticker` | Re-point one addressed panel to a different market |
 | `GET /api/connections/{id}/orderbook-settings?Ticker=` | Get order book settings for a ticker |
 | `PUT /api/connections/{id}/orderbook-settings?Ticker=` | Update order book settings (partial) |
+| `GET /api/screener/templates` | List saved screener templates (the synthetic Default, id `-1`, is always first) |
+| `GET /api/screener/templates/{templateId}` | Read one template's resolved configuration |
+| `POST /api/screener/templates` | Create a template (name + optional settings blob) |
+| `PUT /api/screener/templates/{templateId}` | Update a template (partial) |
+| `DELETE /api/screener/templates/{templateId}` | Delete a template |
+| `GET /api/screener/templates/{templateId}/data` | One headless snapshot of a template's full row set — no screener window is opened |
 
 ### WebSocket streaming
 
@@ -168,6 +179,44 @@ PUT  /api/connections/{id}/orderbook-settings?Ticker= → update orderbook setti
 
 > **Request/response casing.** Request body and query field names are matched **case-insensitively** — `ticker` and `Ticker` are both accepted. Responses are emitted with a fixed casing: envelope/wrapper keys (`status`, `error`, `connections`, `connectionId`, `count`, `tickers`, `orders`, …) are **camelCase**, while the objects inside the typed list fields (connection, ticker, order, position, balance, signal-level and user-level items) are **PascalCase**. The JSON examples below show the exact casing the server emits.
 
+### Request body parsing — applies to every endpoint with a JSON body
+
+| Condition | HTTP | Error message |
+|---|---|---|
+| Body is not valid JSON | `400` | `Malformed request body: not valid JSON.` |
+| Unknown property in body | `400` | `Unknown field '{field}' in request body.` |
+
+Two endpoint families answer with their own fixed wording instead of the shared text:
+`POST /api/ui/windows/{windowId}/close` and `/activate` answer `Malformed request body.`, and the
+screener-template routes answer `Request body is not valid JSON.`
+
+#### ⚠️ Breaking change for clients that send extra fields
+
+An unrecognised property used to be accepted and silently dropped. It is now a **`400`**, on *every*
+body endpoint — **including `POST /api/connections/{id}/orders` and the cancel routes**. An SDK or
+script that sends a field this reference does not list will stop working, and **no order will be
+placed**. Send only the documented fields.
+
+#### Read-modify-write is supported
+
+The identity and server-owned fields a `GET` emits are **accepted and ignored** on the matching
+`PUT`/`POST`, so a client can send back the object it just read:
+
+| Object | Accepted-and-ignored on write |
+|---|---|
+| User level | `id`, `connectionId`, `ticker` |
+| Signal level | `id`, `connectionId`, `ticker`, `isTriggered`, `triggerTime` |
+| Screener template | `id` |
+| Annotations (all three types) | `index` |
+
+A value supplied in one of these fields never re-keys, moves or re-triggers anything — the route
+parameters remain authoritative.
+
+Two known objects are **not** round-trippable verbatim: a user level whose `date` is non-null (`GET`
+emits ISO-8601, `PUT` takes raw epoch seconds — a deliberate, long-standing asymmetry), and the
+order-book settings `PUT`, which takes the bare settings object rather than the
+`{connectionId, ticker, settings}` envelope that `GET` returns.
+
 ### Discovery
 
 #### Ping
@@ -276,9 +325,17 @@ Content-Type: application/json
 
 **Request body**
 
-| Field    | Type   | Required | Description                           |
-|----------|--------|----------|---------------------------------------|
-| `Ticker` | string | yes      | Trading pair symbol (not a pattern), e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
+Two **mutually exclusive** payload shapes are accepted — the shape decides the behaviour, there is no
+request flag:
+
+| Field     | Type     | Description |
+|-----------|----------|-------------|
+| `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
+| `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
+
+The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
+*any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
+naming the rejected tickers.
 
 **Response**
 
@@ -292,13 +349,21 @@ Content-Type: application/json
 | Condition              | Error message                                    |
 |------------------------|--------------------------------------------------|
 | Missing or empty `Ticker` | `Invalid request body. 'ticker' is required.` |
+| Both `Ticker` and `Tickers` supplied, or an empty `Tickers` array with no `Ticker` | `400` |
+| One or more tickers resolve on no eligible connection | `400` naming the rejected tickers (nothing is opened) |
 
 **Example**
 
 ```bash
+# Single ticker
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Ticker": "BTCUSDT"}'
+
+# One combo per ticker, in order
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}'
 ```
 
 ---
@@ -667,6 +732,35 @@ curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel-all \
   -d '{"Ticker": "BTCUSDT"}'
 ```
 
+#### Get Leverage Limits
+
+Read-only. Reports, **live from the venue**, the maximum leverage the venue allows and the maximum
+position size available for a ticker at the current (or an explicitly supplied) leverage. Values come
+from the venue's own risk-limit tiers — nothing is locally computed, cached or defaulted.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/leverage-limits?Ticker=BTCUSDT
+```
+
+| Query Parameter | Type    | Required | Description |
+|-----------------|---------|----------|-------------|
+| `Ticker`        | string  | yes      | Trading pair symbol |
+| `Leverage`      | decimal | no       | Report the max position at this leverage instead of the venue's current leverage. Must be > 0. |
+
+**Response `200 OK`:**
+
+| Field         | Type      | Description |
+|---------------|-----------|-------------|
+| `connectionId`| integer   | Connection ID |
+| `ticker`      | string    | Trading pair |
+| `leverage`    | decimal   | The leverage the max position is reported for — the supplied `Leverage` query param if given, otherwise the venue's current leverage for this ticker |
+| `maxLeverage` | decimal?  | Highest leverage the venue allows for this ticker. `null` means the venue reports no cap (e.g. a spot market with no leverage tiers) — **never `0`** |
+| `maxPosition` | decimal?  | Maximum position size available at the reported `leverage` (re-read per leverage). `null` means the venue reports no cap — **never `0`** |
+
+```bash
+curl "http://127.0.0.1:17845/api/connections/1/leverage-limits?Ticker=BTCUSDT&Leverage=10"
+```
+
 ---
 
 ### Market data
@@ -796,6 +890,54 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"
 ```
 
+#### Order Books of a Link Group
+
+Read-only. Returns a fresh REST order-book snapshot for **every panel currently in link group
+`{groupId}`**. Membership is read **live** from the UI's own grouping — a panel unlinked or closed a
+moment ago is already absent — and nothing about linking is changed by this request.
+
+A link group is a **number** (the link value the UI shows), not a stored entity: an in-range group with
+no live members is a legitimate **empty result** (`200` with an empty `members` list), *not* a `404`.
+Valid group ids are `1`–`500`.
+
+```
+GET http://127.0.0.1:{port}/api/link-groups/{groupId}/orderbook-snapshots
+```
+
+**Partial failure never fails the whole response.** Each member is reported independently: a good book
+carries `ok: true` and a `book` object; a member that could not be snapshotted carries `ok: false` and
+a stable machine-readable `reason` token. One failing book never turns into a `500`.
+
+| Field | Type | Description |
+|---|---|---|
+| `groupId` | integer | The link group (binding) id, 1–500 |
+| `members` | array | One entry per panel currently live in the group (empty when the group has no live members) |
+| `members[].externalId` | guid | The panel's document id |
+| `members[].kind` | string? | `orderBook` or `chart` (`null` when the document could not be resolved) |
+| `members[].connectionId` | integer? | The panel's connection id (`null` when unset/unresolved) |
+| `members[].ticker` | string? | The panel's ticker (`null` when unset/unresolved) |
+| `members[].ok` | boolean | `true` when a snapshot was returned, else `false` |
+| `members[].book` | object | Present only when `ok: true`. Same shape as `orderbook-snapshot`: `updateId`, `asks`, `bids`, `bestAsk`, `bestBid` |
+| `members[].reason` | string | Present only when `ok: false`. A machine-readable token (below) |
+
+| `reason` token | Meaning |
+|---|---|
+| `resolve_failed` | The document could not be resolved from the layout |
+| `not_an_order_book` | The member is a chart (no order book to snapshot) |
+| `no_connection` | The panel has no connection set |
+| `no_ticker` | The panel has no ticker set |
+| `connection_not_open` | The panel's connection is not currently open |
+| `market_service_unavailable` | The connection has no active market service |
+| `unsupported_exchange` | The exchange has no REST snapshot endpoint (e.g. the Bybit family) |
+| `snapshot_unavailable` | The exchange returned no snapshot |
+| `snapshot_failed` | Fetching the snapshot threw |
+
+**Status codes:** `200` (including an empty group); `400` for a non-numeric or out-of-range `groupId`.
+
+```bash
+curl "http://127.0.0.1:17845/api/link-groups/3/orderbook-snapshots"
+```
+
 ---
 
 ### Signal Levels
@@ -803,6 +945,34 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 Signal levels are price alerts that trigger automatically when the market price crosses the specified threshold. Once triggered, the signal level is marked as triggered (not removed) and a notification is sent. Signal level updates are also pushed via WebSocket to subscribed clients.
 
 All signal level endpoints (except "Remove all triggered") require a valid `{ConnectionId}` in the URL path, subject to the same [connection validation errors](#trading-operations) as trading endpoints.
+
+<a name="level-note-and-appearance"></a>
+##### Note and appearance (both level types)
+
+Signal levels and user levels share one optional note + appearance block. Every field is optional on
+`POST` and `PUT`, every field is returned by `GET`, and **an omitted field keeps today's behaviour** —
+unset means the level is drawn exactly as the theme draws it now.
+
+| Field           | Type                    | Description |
+|-----------------|-------------------------|-------------|
+| `note`          | string                  | Free-text note stored on the level. `null` when unset. |
+| `lineThickness` | number                  | Stroke thickness. |
+| `lineStyle`     | string \| int           | Enum name (case-insensitive) or int, e.g. `"Dashed"`. |
+| `lineColor`     | string                  | Hex colour. |
+| `textSize`      | number                  | Label font size. |
+| `textColor`     | string                  | Hex colour. |
+| `textAlignment` | string \| int           | Enum name (case-insensitive) or int. |
+| `textStyle`     | string \| int           | Enum name (case-insensitive) or int. |
+
+`GET` emits the enum-backed fields as their **string name** (e.g. `"Dashed"`), and `null` for any field
+the level does not override. An invalid enum name or value on write → `400 Invalid '{field}'.` —
+validated before anything is stored.
+
+> **Where the note is drawn.** On a **signal** level the note is rendered as the level's label (a signal
+> level has no `name` of its own, so the slot is free — except on a level that has already fired, whose
+> label carries the trigger time instead). On a **user** level the note is currently **stored and
+> returned but never drawn**: a user level has a single label slot and `name` already occupies it. The
+> user-level note is an API-level attribute until that layout question is settled.
 
 #### Get Signal Levels
 
@@ -857,6 +1027,13 @@ Signal level fields:
 | `TriggerTime` | string (ISO)?| When the signal was triggered (null if not triggered) |
 | `TriggerRule` | string       | `"LessThanEqual"` or `"GreaterThanEqual"` |
 
+Each level additionally carries `Note` and the seven appearance fields — see
+[Note and appearance](#level-note-and-appearance). They are `null` when unset.
+
+> **Read-modify-write.** `Id`, `ConnectionId`, `Ticker`, `IsTriggered` and `TriggerTime` are
+> *accepted and ignored* by `PUT`, so the object returned here can be edited and PUT straight back.
+> Trigger state is owned by the signal engine and is never settable over the API.
+
 #### Place Signal Level
 
 Places a new signal level at a specific price. When no `TriggerRule` is supplied, the trigger rule is determined automatically from the current order book best ask — in that case the order book must be active for this ticker, and the request fails if no market data is available.
@@ -873,6 +1050,7 @@ Content-Type: application/json
 | `Ticker`      | string  | yes      | Trading pair symbol |
 | `Price`       | decimal | yes      | Price threshold (must be > 0) |
 | `TriggerRule` | string  | no       | Firing direction: `"LessThanEqual"` (fires when a trade price ≤ `Price`) or `"GreaterThanEqual"` (fires when ≥ `Price`), case-insensitive. Omitted → derived from the best ask: `Price ≤ bestAsk ? LessThanEqual : GreaterThanEqual`. |
+| `Note` + appearance | — | no | The optional note + 7 appearance fields — see [Note and appearance](#level-note-and-appearance). Omitted → unset. |
 
 **Response `200 OK`:**
 ```json
@@ -910,6 +1088,8 @@ Content-Type: application/json
 |---------------|---------|----------|-------------|
 | `Price`       | decimal | no       | New trigger price (must be > 0). Leaves `TriggerRule` untouched. |
 | `TriggerRule` | string  | no       | `"LessThanEqual"` / `"GreaterThanEqual"`, case-insensitive. Leaves `Price` untouched. |
+| `Note` + appearance | — | no | The optional note + 7 appearance fields — see [Note and appearance](#level-note-and-appearance). Supplied → overwritten; omitted → left untouched. |
+| `Id`, `ConnectionId`, `Ticker`, `IsTriggered`, `TriggerTime` | — | no | **Accepted and ignored** so a `GET` object can be PUT straight back. |
 
 > **Re-arm on price move.** If the level had already fired (`IsTriggered = true`) and its `Price` is changed, it is re-armed (`IsTriggered` back to `false`, `TriggerTime` cleared) so it can fire again at the new price.
 
@@ -923,9 +1103,10 @@ Content-Type: application/json
 | Condition | HTTP Status | Error message |
 |-----------|-------------|---------------|
 | Invalid signal level ID | `400` | `Invalid signal level ID` |
-| Empty body / all fields null | `400` | `Request body must set at least one of 'price' or 'triggerRule'.` |
+| Empty body / all fields null | `400` | `Request body must set at least one of 'price', 'triggerRule', 'note' or an appearance field.` |
 | Price <= 0 | `400` | `Price must be greater than zero` |
 | Unknown `TriggerRule` | `400` | `Invalid 'triggerRule'. Allowed values: LessThanEqual, GreaterThanEqual.` |
+| Invalid appearance value | `400` | `Invalid '{field}'.` |
 | Level not found | `404` | `Signal level {id} not found` |
 
 #### Remove Signal Level
@@ -1002,7 +1183,15 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/user-levels?Ticker=BT
       "Ticker": "BTCUSDT",
       "Price": 95000.00,
       "Name": "13.04.2026",
-      "Date": null
+      "Note": "watch this one",
+      "Date": null,
+      "LineThickness": 2.0,
+      "LineStyle": "Dashed",
+      "LineColor": "#FFAA00",
+      "TextSize": null,
+      "TextColor": null,
+      "TextAlignment": null,
+      "TextStyle": null
     }
   ]
 }
@@ -1017,7 +1206,15 @@ User level fields:
 | `Ticker`      | string       | Trading pair symbol |
 | `Price`       | decimal      | Level price |
 | `Name`        | string       | Label text |
+| `Note`        | string?      | The level's own free-text note (`null` when unset). **Distinct from `Name`** — see [Note and appearance](#level-note-and-appearance). |
 | `Date`        | string (ISO)?| Optional timestamp (null for a plain level) |
+
+Each level additionally carries the seven appearance fields — see
+[Note and appearance](#level-note-and-appearance). They are `null` when unset.
+
+> **Read-modify-write.** `Id`, `ConnectionId` and `Ticker` are *accepted and ignored* by `PUT`, so the
+> object returned here can be edited and PUT straight back. One exception: a level whose `Date` is
+> non-null is not round-trippable verbatim — `GET` emits ISO-8601 while `PUT` takes raw epoch seconds.
 
 #### Place User Level
 
@@ -1036,6 +1233,7 @@ Content-Type: application/json
 | `Price`  | decimal | yes      | Level price (must be > 0) |
 | `Name`   | string  | no       | Label. Omitted → the exact hand-drawn default the app uses: today's date as `dd.MM.yyyy`. |
 | `Date`   | integer (epoch seconds) | no | Optional timestamp (the hand-drawn horizontal ray stores the chart time here). Omitted → `null` (a plain level). |
+| `Note` + appearance | — | no | The optional note + 7 appearance fields — see [Note and appearance](#level-note-and-appearance). Omitted → unset. `Note` is a real stored field, **not** an alias of `Name`. |
 
 **Response `200 OK`:**
 ```json
@@ -1065,6 +1263,8 @@ Content-Type: application/json
 | `Price`  | decimal | no       | New price (must be > 0). Leaves `Name` / `Date` untouched. |
 | `Name`   | string  | no       | New label. Leaves `Price` / `Date` untouched. |
 | `Date`   | integer (epoch seconds) | no | New timestamp. Leaves `Price` / `Name` untouched. |
+| `Note` + appearance | — | no | The optional note + 7 appearance fields — see [Note and appearance](#level-note-and-appearance). Supplied → overwritten; omitted → left untouched. |
+| `Id`, `ConnectionId`, `Ticker` | — | no | **Accepted and ignored** so a `GET` object can be PUT straight back. A different value never re-keys or moves the level. |
 
 **Response `200 OK`:**
 ```json
@@ -1076,8 +1276,9 @@ Content-Type: application/json
 | Condition | HTTP Status | Error message |
 |-----------|-------------|---------------|
 | Invalid user level ID | `400` | `Invalid user level ID` |
-| Empty body / all fields null | `400` | `Request body must set at least one of 'price', 'name' or 'date'.` |
+| Empty body / all fields null | `400` | `Request body must set at least one of 'price', 'name', 'date', 'note' or an appearance field.` |
 | Price <= 0 | `400` | `Price must be greater than zero` |
+| Invalid appearance value | `400` | `Invalid '{field}'.` |
 | Level not found | `404` | `User level {id} not found` |
 
 #### Remove User Level
@@ -1447,16 +1648,116 @@ Asynchronous with respect to the UI thread: the API resolves the document and di
 | No connection to inherit | `400` | `connectionId is required: the document has no current connection to inherit.` |
 | Unknown document | `404` | `Document {externalId} not found` |
 
-#### Deferred UI lifecycle routes
+#### Window addressing
 
-Opening/closing a panel and switching the active window or tab are **not yet available** — they require calling MetaScalp's own window-thread methods, and the local API layer has no reachable window-id → dispatcher lookup to marshal onto. The following routes therefore do **not** exist yet:
+The three window lifecycle routes below address a window by **`{windowId}` *plus* `windowType`**.
+Window ids are **per-surface, not global**: a workspace, a chart, a screener and a watchlist can all be
+id `1`, so the body's `windowType` is what routes the id to the correct window.
+
+`windowType` is one of: `workspace`, `lightWorkspace`, `chart`, `tradingViewChart`, `watchlist`,
+`screener`, `lineNotifications`, `finres`, `userTrades`, `listing`.
+
+The four **singleton** surfaces (`lineNotifications`, `finres`, `userTrades`, `listing`) ignore the
+path id entirely — each has one fixed row.
+
+#### Open a Window
+
+Opens ONE terminal window of the requested type at an explicit position and size, on an explicit
+monitor. **Geometry is entirely optional**: omit `top` / `left` / `height` / `width` and the window
+lands exactly where it lands today for that type — including MetaScalp's open-at-the-cursor placement
+where the app does that today. A supplied rect is **clamped** to fit the target monitor. Position is in
+virtual-desktop coordinates; `monitor` (0-based) selects the screen.
+
+```
+POST http://127.0.0.1:{port}/api/ui/windows
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `windowType` | string | yes | One of the ten types above. |
+| `top` | number | no | Virtual-desktop Y. Omit for today's default placement. |
+| `left` | number | no | Virtual-desktop X. Omit for today's default placement. |
+| `height` | number | no | Window height. Omit for the type's default. |
+| `width` | number | no | Window width. Omit for the type's default. |
+| `monitor` | integer | no | 0-based target screen. Omit to place by virtual-desktop coordinate. |
+| `templateId` | integer | no | **Screener only.** Open the screener already showing this saved template's filters and rows. Omit for today's Default view. The synthetic Default (`-1`) is accepted. Ignored for any non-screener `windowType`. |
+
+**Response `200 OK`:** `{ windowId, windowType, top, left, height, width }` — where the window
+*actually* landed (post-clamp). For the four singleton types `windowId` is `null`: each has a single
+fixed row (id `1`, which would collide with the main workspace) and its close/activate routes ignore
+the id, so there is no addressable per-surface id to return.
+
+> **Opening the screener on a template.** For `windowType: "screener"` a supplied `templateId` is
+> threaded onto the window so it loads that template exactly as picking it by hand would; because the
+> choice is persisted with the window, it also becomes the window's template on the next launch.
+> Omitting `templateId` is bit-for-bit today's behaviour.
+
+**Errors:** malformed body → `400 Malformed request body.`; missing `windowType` → `400` with the
+supported list; an unknown or unsupported-standalone type (e.g. `settings`, which is modal, or the
+full-screen chart, which needs an existing chart) → `400` naming the supported list; an unknown screener
+`templateId` → `404 Screener template {templateId} not found`. All validated **before** any window opens.
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/ui/windows \
+  -H "Content-Type: application/json" \
+  -d '{"windowType": "watchlist", "top": 100, "left": 200, "height": 450, "width": 300, "monitor": 0}'
+```
+
+#### Close a Window
+
+Closes ONE terminal window through the app's **own** close path (the same path a manual ✕ uses, so it
+inherits today's close-confirmation-popup behaviour). `finres` is **hidden** rather than destroyed,
+matching its manual toggle.
+
+```
+POST http://127.0.0.1:{port}/api/ui/windows/{windowId}/close
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `windowType` | string | yes | One of the ten types above. |
+
+**Response `200 OK`:** `{ windowType, windowId, closed, outcome }`.
+
+> **The main workspace can never be closed through the API** — it would quit the terminal. A `windowId`
+> that resolves to the main workspace → `400 The main workspace cannot be closed through the API.`
+
+**Errors:** non-numeric `{windowId}` → `400 Invalid window ID`; malformed body →
+`400 Malformed request body.`; missing / unknown / unsupported `windowType` → `400` naming the
+supported list; unknown window id → `404`. All validated **before** any window is closed.
+
+#### Activate a Window
+
+Brings ONE terminal window to the front on its own window thread. Same id-addressing as close.
+
+```
+POST http://127.0.0.1:{port}/api/ui/windows/{windowId}/activate
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `windowType` | string | yes | One of the ten types above. |
+
+**Response `200 OK`:** `{ windowType, windowId, activated, outcome }`.
+
+**Errors:** non-numeric `{windowId}` → `400 Invalid window ID`; malformed body → `400`; missing /
+unknown / unsupported `windowType` → `400` naming the supported list; the main workspace → `400`;
+unknown window id → `404`.
+
+#### Still-deferred UI lifecycle routes
+
+Opening/closing an individual **panel** and switching the active **tab** are still not available — they
+require calling MetaScalp's own window-thread methods with no reachable lookup to marshal onto. These
+routes do **not** exist:
 
 | Route | Intent |
 |-------|--------|
 | `POST /api/ui/windows/{windowId}/order-books` | Open an order book in a window's active tab |
 | `POST /api/ui/windows/{windowId}/charts` | Open a chart in a window's active tab |
 | `DELETE /api/ui/documents/{externalId}` | Close one addressed panel |
-| `POST /api/ui/windows/{windowId}/activate` | Activate a window |
 | `POST /api/ui/tabs/{tabId}/activate` | Activate a tab |
 
 ---
@@ -1466,6 +1767,15 @@ Opening/closing a panel and switching the active window or tab are **not yet ava
 Read and update order book display and trading settings for a specific ticker on a connection. The update endpoint uses partial semantics — only send the fields you want to change; omitted fields keep their current values.
 
 All order book settings endpoints require a valid `{ConnectionId}` in the URL path, subject to the same [connection validation errors](#trading-operations) as trading endpoints.
+
+> **Working volumes are paired USD/coin mirrors.** `tradeAmountUsd1..5` ↔ `tradeAmount1..5`: writing
+> **one** side recomputes the other at the **live best ask** (truncated to the ticker's size increment,
+> floored at its min size), so the terminal's own volume buttons show USD and coin figures that agree
+> with the current price. Writing **both** sides of a pair keeps the values you sent.
+>
+> The conversion needs a live price, so it needs an **open order book** for that connection + ticker.
+> If none is open → **`409`** (open the order book so the conversion has a live price); unknown ticker →
+> `404`. **Nothing is written in either case.**
 
 #### Get Order Book Settings
 
@@ -1636,6 +1946,107 @@ curl "http://127.0.0.1:17845/api/connections/1/orderbook-settings?Ticker=BTCUSDT
 curl -X PUT http://127.0.0.1:17845/api/connections/1/orderbook-settings?Ticker=BTCUSDT \
   -H "Content-Type: application/json" \
   -d '{"LargeAmountUsd": 50000, "RowHeight": 14, "Autoscroll": true}'
+```
+
+---
+
+### Screener Templates
+
+A screener template is a saved screener configuration — its columns, filters and market selections.
+Templates are addressed by numeric id. A **synthetic Default** template with id `-1` always exists and
+is always returned first by the list route; it resolves to the default configuration exactly like an
+open screener window's fallback.
+
+#### List Templates
+
+```
+GET http://127.0.0.1:{port}/api/screener/templates
+```
+
+Returns `{ count, templates[] }`. Each template is `{ id, name, settings }`, where `settings` carries
+the whole configuration (`columnSettings[]`, `columnFilters[]`, `marketFilters[]`, `coinTags[]`,
+`numberOfRows`, `activeFilter`, the new-coin flags, …).
+
+#### Get One Template
+
+```
+GET http://127.0.0.1:{port}/api/screener/templates/{templateId}
+```
+
+Returns the single `{ id, name, settings }`.
+
+**Errors:** non-numeric `{templateId}` → `400 Invalid template ID`; unknown id (including the synthetic
+Default `-1`) → `404 Screener template {id} not found`.
+
+#### Create Template
+
+```
+POST http://127.0.0.1:{port}/api/screener/templates
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Template name. |
+| `settings` | object | no | The full settings blob. Omit and the template is created with the default configuration. |
+
+The full `settings` blob (columns / filters / market selections) is persisted, so a template created
+here carries its filters and columns, not just its name. Returns the created `{ id, name, settings }`.
+
+**Errors:** missing / blank `name` → `400 Request body must carry a non-empty 'name'.`; a body that is
+not valid JSON → `400 Request body is not valid JSON.`
+
+#### Update Template
+
+```
+PUT http://127.0.0.1:{port}/api/screener/templates/{templateId}
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no | A null / omitted `name` keeps the stored name. |
+| `settings` | object | no | A null / omitted `settings` keeps the stored blob. |
+| `id` | integer | no | **Accepted and ignored** so a `GET` object can be PUT straight back. The template is addressed by `{templateId}`. |
+
+Returns the updated `{ id, name, settings }`.
+
+**Errors:** non-numeric `{templateId}` → `400`; a body that is not valid JSON → `400`; unknown id →
+`404 Screener template {id} not found` (checked **before** any write).
+
+#### Delete Template
+
+```
+DELETE http://127.0.0.1:{port}/api/screener/templates/{templateId}
+```
+
+Returns `{ status: "ok" }`.
+
+**Errors:** non-numeric `{templateId}` → `400`; unknown id (including the synthetic Default `-1`) →
+`404 Screener template {id} not found`.
+
+#### Snapshot a Template's Data (headless)
+
+Returns **ONE headless snapshot** of the full row set of the given template — every row an open screener
+window on the same template would show — **without opening a screener window**. A fresh background
+screener socket is subscribed, the first complete frame captured, and the socket disposed. **There is no
+streaming.** The synthetic Default (`-1`) is answered too.
+
+```
+GET http://127.0.0.1:{port}/api/screener/templates/{templateId}/data
+```
+
+**Response `200 OK`:** `{ templateId, count, rows[] }`. Each row is
+`{ ticker, wireTicker, isNewCoin, exchange, listedExchanges[], columns[] }`, where `exchange` /
+`listedExchanges` are screener exchange keys (`"binance_s"`, `"bybit_f"`, `"polymarket"`) and each
+`columns[]` entry is `{ type, timeFrame, time, metric, value }`.
+
+**Errors:** non-numeric `{templateId}` → `400 Invalid template ID`; unknown id →
+`404 Screener template {id} not found` (checked **before** any subscribe). If the screener backend
+produces no rows within the deadline, `rows` is an empty array (`count = 0`).
+
+```bash
+curl "http://127.0.0.1:17845/api/screener/templates/-1/data"
 ```
 
 ---
@@ -2110,7 +2521,7 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `color` | string | Connection color |
 | `date` | string (ISO) | When the event occurred |
 
-**Signal levels snapshot** — sent once after `signal_level_subscribe`, contains all signal levels:
+**Signal levels snapshot** — sent once after `signal_level_subscribe`, contains all signal levels. Every level also carries `note` and the seven appearance fields (`null` when unset) — see [Note and appearance](#level-note-and-appearance):
 
 ```json
 {
@@ -2124,7 +2535,15 @@ These are pushed automatically after subscribing. You only receive updates for c
         "price": 95000.00,
         "isTriggered": false,
         "triggerTime": null,
-        "triggerRule": "GreaterThanEqual"
+        "triggerRule": "GreaterThanEqual",
+        "note": "breakout watch",
+        "lineThickness": 2.0,
+        "lineStyle": "Dashed",
+        "lineColor": "#FFAA00",
+        "textSize": null,
+        "textColor": null,
+        "textAlignment": null,
+        "textStyle": null
       }
     ]
   }
@@ -2143,7 +2562,15 @@ These are pushed automatically after subscribing. You only receive updates for c
     "price": 95000.00,
     "isTriggered": false,
     "triggerTime": null,
-    "triggerRule": "GreaterThanEqual"
+    "triggerRule": "GreaterThanEqual",
+    "note": "breakout watch",
+    "lineThickness": 2.0,
+    "lineStyle": "Dashed",
+    "lineColor": "#FFAA00",
+    "textSize": null,
+    "textColor": null,
+    "textAlignment": null,
+    "textStyle": null
   }
 }
 ```
@@ -2160,7 +2587,15 @@ These are pushed automatically after subscribing. You only receive updates for c
     "price": 96000.00,
     "isTriggered": false,
     "triggerTime": null,
-    "triggerRule": "GreaterThanEqual"
+    "triggerRule": "GreaterThanEqual",
+    "note": "breakout watch",
+    "lineThickness": 2.0,
+    "lineStyle": "Dashed",
+    "lineColor": "#FFAA00",
+    "textSize": null,
+    "textColor": null,
+    "textAlignment": null,
+    "textStyle": null
   }
 }
 ```
@@ -2213,8 +2648,9 @@ These are pushed automatically after subscribing. You only receive updates for c
 | `isTriggered` | boolean | Whether the signal has been triggered |
 | `triggerTime` | string (ISO)? | When triggered (null if not triggered) |
 | `triggerRule` | string | `"LessThanEqual"` or `"GreaterThanEqual"` |
+| `note` + appearance | — | The note and the seven appearance fields, `null` when unset — see [Note and appearance](#level-note-and-appearance) |
 
-**User levels snapshot** — sent once after `user_level_subscribe`, contains all user levels. `date` is a nullable ISO-8601 timestamp:
+**User levels snapshot** — sent once after `user_level_subscribe`, contains all user levels. `date` is a nullable ISO-8601 timestamp. Every level also carries `note` and the seven appearance fields (`null` when unset) — see [Note and appearance](#level-note-and-appearance):
 
 ```json
 {
@@ -2227,7 +2663,15 @@ These are pushed automatically after subscribing. You only receive updates for c
         "ticker": "BTCUSDT",
         "price": 95000.00,
         "name": "13.04.2026",
-        "date": null
+        "note": "watch this one",
+        "date": null,
+        "lineThickness": 2.0,
+        "lineStyle": "Dashed",
+        "lineColor": "#FFAA00",
+        "textSize": null,
+        "textColor": null,
+        "textAlignment": null,
+        "textStyle": null
       }
     ]
   }
@@ -2245,7 +2689,15 @@ These are pushed automatically after subscribing. You only receive updates for c
     "ticker": "BTCUSDT",
     "price": 95000.00,
     "name": "13.04.2026",
-    "date": null
+    "note": "watch this one",
+    "date": null,
+    "lineThickness": 2.0,
+    "lineStyle": "Dashed",
+    "lineColor": "#FFAA00",
+    "textSize": null,
+    "textColor": null,
+    "textAlignment": null,
+    "textStyle": null
   }
 }
 ```
