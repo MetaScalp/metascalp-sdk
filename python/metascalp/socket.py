@@ -237,6 +237,146 @@ class MetaScalpSocket:
         """Unsubscribe from signal level events."""
         self._send("signal_level_unsubscribe", {})
 
+    # ---- MetaBroker analytics streams ----
+    # Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
+    # backend (the same data the terminal's analytics windows show). No connection_id required.
+    # One subscription per feed per socket: re-subscribing REPLACES the config.
+
+    def subscribe_density_map(
+        self,
+        exchange_markets: list[dict],
+        large_coefficient: float | None = None,
+        medium_coefficient: float | None = None,
+        small_coefficient: float | None = None,
+        large_lifetime_minutes: int | None = None,
+        medium_lifetime_minutes: int | None = None,
+        small_lifetime_minutes: int | None = None,
+        included_quote_assets: list[str] | None = None,
+    ) -> None:
+        """Subscribe to the MetaBroker density map notifications stream.
+
+        Order book walls, each reported exactly once on first sight of its id.
+
+        exchange_markets is required and must be non-empty; each entry is a dict like
+        {"exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000}
+        (bdsMode/bdsValue optional — default manual / 1 000 000 USD). All other arguments
+        default to the terminal's Density Map window defaults (coefficients 3/2/1,
+        lifetimes 5 min, quote assets ["USDT"]; valid assets: USDT, USDC, OTHER).
+        Re-subscribing replaces the config without replaying already-notified walls.
+
+        Events: 'density_map_snapshot' (after the ack; may be empty — it resolves the
+        loading state), then 'density_map_update' (continuous).
+        """
+        data: dict = {"exchangeMarkets": exchange_markets}
+        if large_coefficient is not None:
+            data["largeCoefficient"] = large_coefficient
+        if medium_coefficient is not None:
+            data["mediumCoefficient"] = medium_coefficient
+        if small_coefficient is not None:
+            data["smallCoefficient"] = small_coefficient
+        if large_lifetime_minutes is not None:
+            data["largeLifetimeMinutes"] = large_lifetime_minutes
+        if medium_lifetime_minutes is not None:
+            data["mediumLifetimeMinutes"] = medium_lifetime_minutes
+        if small_lifetime_minutes is not None:
+            data["smallLifetimeMinutes"] = small_lifetime_minutes
+        if included_quote_assets is not None:
+            data["includedQuoteAssets"] = included_quote_assets
+        self._send("density_map_subscribe", data)
+
+    def unsubscribe_density_map(self) -> None:
+        """Stop the density map stream (tears down the upstream feed)."""
+        self._send("density_map_unsubscribe", {})
+
+    def subscribe_large_trades(
+        self,
+        exchange_markets: list[dict],
+        aggregation_ms: int | None = None,
+        min_amount_usd: float | None = None,
+        large_coefficient: float | None = None,
+        medium_coefficient: float | None = None,
+        small_coefficient: float | None = None,
+        included_quote_assets: list[str] | None = None,
+    ) -> None:
+        """Subscribe to the MetaBroker large trades stream.
+
+        Aggregated trade prints, final and append-only — no snapshot; history starts at
+        subscribe time. exchange_markets uses the same shape and defaults as
+        subscribe_density_map(). aggregation_ms is 0-60000 (default 500; 0 = every raw
+        print individually); quote assets default to ["USDT", "USDC", "OTHER"].
+        Re-subscribing replaces the config.
+
+        Event: 'large_trades_update'
+        """
+        data: dict = {"exchangeMarkets": exchange_markets}
+        if aggregation_ms is not None:
+            data["aggregationMs"] = aggregation_ms
+        if min_amount_usd is not None:
+            data["minAmountUsd"] = min_amount_usd
+        if large_coefficient is not None:
+            data["largeCoefficient"] = large_coefficient
+        if medium_coefficient is not None:
+            data["mediumCoefficient"] = medium_coefficient
+        if small_coefficient is not None:
+            data["smallCoefficient"] = small_coefficient
+        if included_quote_assets is not None:
+            data["includedQuoteAssets"] = included_quote_assets
+        self._send("large_trades_subscribe", data)
+
+    def unsubscribe_large_trades(self) -> None:
+        """Stop the large trades stream."""
+        self._send("large_trades_unsubscribe", {})
+
+    def subscribe_liquidations(
+        self,
+        exchanges: list[str],
+        min_notional_usd: float | None = None,
+        min_impact_bps: float | None = None,
+        asset_class: str | None = None,
+        side: str | None = None,
+        coin: str | None = None,
+        window: str | None = None,
+        backfill: int | None = None,
+    ) -> None:
+        """Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
+
+        REQUIRES the MetaBroker login in the terminal — without it the subscribe is
+        refused with an 'error' frame.
+
+        exchanges is required and must be non-empty; valid names: binance, bybit, okx,
+        bitget, gate, htx, aster, lighter. asset_class: 'all' | 'crypto' | 'tradfi'
+        (default all). side filters by the side of the LIQUIDATED position: 'all' |
+        'long' | 'short' (default all). coin is a case-insensitive prefix on the
+        resolved coin ('BTC', not 'BTCUSDT'). window ('m5'|'m15'|'h1'|'h4'|'h24',
+        default h1) affects totals / top tokens only, never the rows. backfill is the
+        snapshot row count, 0-500 (default 200). Re-subscribing replaces the filters
+        and the server re-sends a snapshot.
+
+        Events: 'liquidations_snapshot' (after every subscribe/replace),
+        'liquidations_update' (live rows, newest first), 'liquidations_metadata'
+        (totals + top tokens, ~2 s cadence).
+        """
+        data: dict = {"exchanges": exchanges}
+        if min_notional_usd is not None:
+            data["minNotionalUsd"] = min_notional_usd
+        if min_impact_bps is not None:
+            data["minImpactBps"] = min_impact_bps
+        if asset_class is not None:
+            data["assetClass"] = asset_class
+        if side is not None:
+            data["side"] = side
+        if coin is not None:
+            data["coin"] = coin
+        if window is not None:
+            data["window"] = window
+        if backfill is not None:
+            data["backfill"] = backfill
+        self._send("liquidations_subscribe", data)
+
+    def unsubscribe_liquidations(self) -> None:
+        """Stop the liquidations stream."""
+        self._send("liquidations_unsubscribe", {})
+
     # ---- Event handling ----
 
     def on(self, event: str) -> Callable:

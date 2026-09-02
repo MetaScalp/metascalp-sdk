@@ -1,4 +1,9 @@
-import type { SocketEventMap } from './types';
+import type {
+  DensityMapSubscribeOptions,
+  LargeTradesSubscribeOptions,
+  LiquidationsSubscribeOptions,
+  SocketEventMap,
+} from './types';
 
 const WS_PORT_START = 17845;
 const WS_PORT_END = 17855;
@@ -267,6 +272,71 @@ export class MetaScalpSocket {
 
   unsubscribeSignalLevels(): void {
     this.send('signal_level_unsubscribe', {});
+  }
+
+  // ---- MetaBroker analytics streams ----
+  // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
+  // backend (the same data the terminal's analytics windows show). No connectionId required.
+  // One subscription per feed per socket: re-subscribing REPLACES the config.
+
+  /**
+   * Subscribe to the MetaBroker density map notifications stream — order book walls, each
+   * reported exactly once on first sight of its id. `exchangeMarkets` is required and must
+   * be non-empty; everything else defaults to the terminal's Density Map window defaults
+   * (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
+   * config without replaying already-notified walls.
+   *
+   * Events: `density_map_snapshot` (after the ack; may be empty — it resolves the loading
+   * state), then `density_map_update` (continuous).
+   */
+  subscribeDensityMap(options: DensityMapSubscribeOptions): void {
+    this.send('density_map_subscribe', { ...options });
+  }
+
+  /**
+   * Stop the density map stream (tears down the upstream feed).
+   */
+  unsubscribeDensityMap(): void {
+    this.send('density_map_unsubscribe', {});
+  }
+
+  /**
+   * Subscribe to the MetaBroker large trades stream — aggregated trade prints, final and
+   * append-only (no snapshot; history starts at subscribe time). `exchangeMarkets` is
+   * required and must be non-empty; `aggregationMs` defaults to 500 (0 = every raw print).
+   * Re-subscribing replaces the config.
+   *
+   * Event: `large_trades_update`
+   */
+  subscribeLargeTrades(options: LargeTradesSubscribeOptions): void {
+    this.send('large_trades_subscribe', { ...options });
+  }
+
+  /**
+   * Stop the large trades stream.
+   */
+  unsubscribeLargeTrades(): void {
+    this.send('large_trades_unsubscribe', {});
+  }
+
+  /**
+   * Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
+   * REQUIRES the MetaBroker login in the terminal — without it the subscribe is refused
+   * with an `error` frame. `exchanges` is required and must be non-empty. Re-subscribing
+   * replaces the filters and the server re-sends a snapshot.
+   *
+   * Events: `liquidations_snapshot` (after every subscribe/replace), `liquidations_update`
+   * (live rows, newest first), `liquidations_metadata` (totals + top tokens, ~2 s cadence).
+   */
+  subscribeLiquidations(options: LiquidationsSubscribeOptions): void {
+    this.send('liquidations_subscribe', { ...options });
+  }
+
+  /**
+   * Stop the liquidations stream.
+   */
+  unsubscribeLiquidations(): void {
+    this.send('liquidations_unsubscribe', {});
   }
 
   // ---- Event handling ----

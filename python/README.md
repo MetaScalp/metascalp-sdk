@@ -154,8 +154,6 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `GET` | `/api/connections/{id}/cluster-snapshot` | Cluster (volume profile) snapshot data |
-| `GET` | `/api/connections/{id}/leverage-limits?Ticker=X` | Max leverage / max position, live from the venue's risk-limit tiers |
-| `GET` | `/api/link-groups/{groupId}/orderbook-snapshots` | Order books of every panel currently in a link group |
 | `POST` | `/api/connections/{id}/orders` | Place an order |
 | `POST` | `/api/connections/{id}/orders/cancel` | Cancel an order |
 | `POST` | `/api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
@@ -165,8 +163,6 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
-| `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
-| `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout |

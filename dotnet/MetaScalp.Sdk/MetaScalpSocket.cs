@@ -69,6 +69,27 @@ public class MetaScalpSocket : IDisposable
     public event Action? OnSignalLevelsRemovedAll;
     public event Action? OnSignalLevelsRemovedTriggered;
 
+    // MetaBroker analytics events — fired after calling SubscribeDensityMap(),
+    // SubscribeLargeTrades() or SubscribeLiquidations(). App-wide (not scoped to a connection).
+
+    /// <summary>Fired once after SubscribeDensityMap() with the first-seen walls of the initial upstream
+    /// snapshot (may be empty — it resolves the loading state).</summary>
+    public event Action<DensityMapSnapshotData>? OnDensityMapSnapshot;
+    /// <summary>Fired with newly seen density walls (each wall reported exactly once, on first sight of
+    /// its id). Requires SubscribeDensityMap().</summary>
+    public event Action<DensityMapUpdateData>? OnDensityMapUpdate;
+    /// <summary>Fired with finished large-trade aggregates — final, append-only rows (the feed has no
+    /// snapshot). Requires SubscribeLargeTrades().</summary>
+    public event Action<LargeTradesUpdateData>? OnLargeTradesUpdate;
+    /// <summary>Fired after every SubscribeLiquidations() (including a config replace) with the backfill
+    /// rows + aggregates; may be empty. Requires SubscribeLiquidations().</summary>
+    public event Action<LiquidationsSnapshotData>? OnLiquidationsSnapshot;
+    /// <summary>Fired with live liquidation rows, batched newest first. Requires SubscribeLiquidations().</summary>
+    public event Action<LiquidationsUpdateData>? OnLiquidationsUpdate;
+    /// <summary>Fired ~every 2 s with the totals + top tokens for the configured window. Requires
+    /// SubscribeLiquidations().</summary>
+    public event Action<LiquidationsMetadataData>? OnLiquidationsMetadata;
+
     // Connection lifecycle events
     public event Action<string>? OnError;
     public event Action? OnConnected;
@@ -283,6 +304,60 @@ public class MetaScalpSocket : IDisposable
     public void UnsubscribeSignalLevels()
         => Send("signal_level_unsubscribe", new { });
 
+    // ---- MetaBroker analytics streams ----
+    // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
+    // backend (the same data the terminal's analytics windows show). No connectionId required.
+    // One subscription per feed per socket: re-subscribing REPLACES the config.
+
+    /// <summary>
+    /// Subscribe to the MetaBroker density map notifications stream — order book walls, each
+    /// reported exactly once on first sight of its id. <c>ExchangeMarkets</c> is required and must
+    /// be non-empty; everything else defaults to the terminal's Density Map window defaults
+    /// (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
+    /// config without replaying already-notified walls.
+    /// Events: OnDensityMapSnapshot (after the ack), then OnDensityMapUpdate (continuous).
+    /// </summary>
+    public void SubscribeDensityMap(DensityMapSubscribeOptions options)
+        => Send("density_map_subscribe", options);
+
+    /// <summary>
+    /// Stop the density map stream (tears down the upstream feed).
+    /// </summary>
+    public void UnsubscribeDensityMap()
+        => Send("density_map_unsubscribe", new { });
+
+    /// <summary>
+    /// Subscribe to the MetaBroker large trades stream — aggregated trade prints, final and
+    /// append-only (no snapshot; history starts at subscribe time). <c>ExchangeMarkets</c> is
+    /// required and must be non-empty; <c>AggregationMs</c> defaults to 500 (0 = every raw print).
+    /// Re-subscribing replaces the config. Event: OnLargeTradesUpdate.
+    /// </summary>
+    public void SubscribeLargeTrades(LargeTradesSubscribeOptions options)
+        => Send("large_trades_subscribe", options);
+
+    /// <summary>
+    /// Stop the large trades stream.
+    /// </summary>
+    public void UnsubscribeLargeTrades()
+        => Send("large_trades_unsubscribe", new { });
+
+    /// <summary>
+    /// Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
+    /// REQUIRES the MetaBroker login in the terminal — without it the subscribe is refused with
+    /// an error frame. <c>Exchanges</c> is required and must be non-empty. Re-subscribing replaces
+    /// the filters and the server re-sends a snapshot.
+    /// Events: OnLiquidationsSnapshot (after every subscribe/replace), OnLiquidationsUpdate
+    /// (live rows, newest first), OnLiquidationsMetadata (totals + top tokens, ~2 s cadence).
+    /// </summary>
+    public void SubscribeLiquidations(LiquidationsSubscribeOptions options)
+        => Send("liquidations_subscribe", options);
+
+    /// <summary>
+    /// Stop the liquidations stream.
+    /// </summary>
+    public void UnsubscribeLiquidations()
+        => Send("liquidations_unsubscribe", new { });
+
     // ---- Internals ----
 
     private void Send(string type, object data)
@@ -389,6 +464,24 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "signal_levels_removed_triggered":
                     OnSignalLevelsRemovedTriggered?.Invoke();
+                    break;
+                case "density_map_snapshot":
+                    OnDensityMapSnapshot?.Invoke(data.ToObject<DensityMapSnapshotData>()!);
+                    break;
+                case "density_map_update":
+                    OnDensityMapUpdate?.Invoke(data.ToObject<DensityMapUpdateData>()!);
+                    break;
+                case "large_trades_update":
+                    OnLargeTradesUpdate?.Invoke(data.ToObject<LargeTradesUpdateData>()!);
+                    break;
+                case "liquidations_snapshot":
+                    OnLiquidationsSnapshot?.Invoke(data.ToObject<LiquidationsSnapshotData>()!);
+                    break;
+                case "liquidations_update":
+                    OnLiquidationsUpdate?.Invoke(data.ToObject<LiquidationsUpdateData>()!);
+                    break;
+                case "liquidations_metadata":
+                    OnLiquidationsMetadata?.Invoke(data.ToObject<LiquidationsMetadataData>()!);
                     break;
                 case "error":
                     OnError?.Invoke(data["Error"]?.ToString() ?? json);
