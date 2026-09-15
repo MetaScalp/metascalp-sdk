@@ -830,7 +830,7 @@ curl "http://127.0.0.1:17845/api/connections/1/orderbook-snapshot?Ticker=BTCUSDT
 
 #### Cluster snapshot
 
-Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass `Columns` to fill more history.
+Returns the current cluster (volume profile / footprint) data for a ticker on a connection. Each time column holds bid/ask volumes at every price level; columns are ordered oldest first, newest last. Without `Columns` the response has the classic shape: 100 time columns of which only the newest 10 carry data (the cluster backend's default page), the rest are empty time slots. With `Columns=N` the response holds exactly N columns (the newest N), all filled from backend history.
 
 ```
 GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&ZoomIndex=1
@@ -843,7 +843,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 | `Ticker`    | string | yes      |         | Trading pair symbol |
 | `TimeFrame` | string | yes      |         | Cluster timeframe — see [ClusterTimeFrame values](#clustertimeframe-values) |
 | `ZoomIndex` | int    | no       | `1`     | Price aggregation factor. `1` = no aggregation (raw price levels). Higher values group price levels into buckets of `ZoomIndex * PriceIncrement`. |
-| `Columns`   | int    | no       | `0`     | History depth: how many columns to fill with data, counted back from the newest (1 = newest). `0` / omitted = the backend default page (10 columns). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer. |
+| `Columns`   | int    | no       | `0`     | Number of columns to return, counted back from the newest (1 = newest). `0` / omitted keeps the classic 100-column response with the backend default page (10) filled. A positive value returns exactly that many columns, all filled from backend history. Values above 100 are clamped to 100. History is fetched in pages of 5 columns, so larger values take longer. |
 
 **Response `200 OK`:**
 
@@ -868,7 +868,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 }
 ```
 
-- `Columns` — always 100 time-period columns, ordered chronologically (oldest first, newest last); only the newest `Columns` (default 10) carry data, the rest are empty time slots with `AsksSum`/`BidsSum` = 0 and no `Items`
+- `Columns` — time-period columns ordered chronologically (oldest first, newest last). Without the `Columns` parameter: 100 columns, the newest 10 filled, the rest empty time slots with `AsksSum`/`BidsSum` = 0 and no `Items`. With `Columns=N`: exactly N columns, all filled
 - `Items` — price levels within each column, ordered by price descending (highest first)
 - `AsksSum` / `BidsSum` — total ask/bid volume for the column
 - `AskSize` / `BidSize` — volume at each price level (ask = seller-initiated, bid = buyer-initiated)

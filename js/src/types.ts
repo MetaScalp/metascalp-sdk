@@ -371,9 +371,9 @@ export interface GetClusterSnapshotOptions {
     /** Price aggregation factor. `1` (default) = raw price levels; `> 1` = bucket into `zoomIndex × PriceIncrement` and sum sizes. */
     zoomIndex?: number;
     /**
-     * History depth: how many columns to fill with data, counted back from the newest column (1 = newest).
-     * Omitted / `0` = the cluster backend's default page (10 columns). Values above 100 are clamped to 100.
-     * The response always holds 100 columns; the ones beyond the fetched depth are empty time slots.
+     * Number of columns to return, counted back from the newest column (1 = newest).
+     * Omitted / `0` = the classic 100-column response with only the backend default page (10 columns) filled.
+     * A positive value returns exactly that many columns, all filled from backend history; values above 100 are clamped to 100.
      */
     columns?: number;
 }

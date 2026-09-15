@@ -299,9 +299,9 @@ class MetaScalpClient:
         time_frame is one of S30, M1, M5, M10, M15, M30, H1, H4, D1.
         zoom_index > 1 groups price levels into buckets of zoom_index * PriceIncrement.
 
-        The response always holds 100 time columns, oldest first. By default only the newest
-        10 carry data (the cluster backend's default page); pass columns (up to 100) to fill
-        more history. Each extra 5 columns is one more backend request, so deep fills take
+        Columns are ordered oldest first, newest last. Without columns the response holds 100
+        columns with only the newest 10 filled (the cluster backend's default page); with
+        columns=N (up to 100) it holds exactly the newest N columns, all filled from backend history. Each extra 5 columns is one more backend request, so deep fills take
         longer.
 
         Returns a dict with keys: Ticker, TimeFrame, ZoomIndex, PriceIncrement, Columns

@@ -1334,13 +1334,13 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass <code>Columns</code> to fill more history.</p>
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. Each time column holds bid/ask volumes at every price level; columns are ordered oldest first, newest last. Without <code>Columns</code> the response has the classic shape: 100 time columns of which only the newest 10 carry data (the cluster backend's default page), the rest are empty time slots. With <code>Columns=N</code> the response holds exactly N columns (the newest N), all filled from backend history.</p>
         <table>
           <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
           <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
           <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, H4, D1</td></tr>
           <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
-          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of history columns to fill, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the backend default page (10). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer.</td></tr>
+          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of columns to return, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the classic 100-column response with the backend default page (10) filled. A positive value returns exactly that many columns, all filled from backend history. Values above 100 are clamped to 100. History is fetched in pages of 5 columns, so larger values take longer.</td></tr>
         </table>
         <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
       </div>

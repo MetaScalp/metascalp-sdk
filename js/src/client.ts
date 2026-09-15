@@ -156,9 +156,9 @@ export class MetaScalpClient {
 
   /**
    * Fetches the cluster (volume profile / footprint) snapshot for a ticker at a timeframe.
-   * The response always holds 100 time columns, oldest first. By default only the newest 10
-   * carry data (the cluster backend's default page); pass `options.columns` (up to 100) to fill
-   * more history. Each extra 5 columns is one more backend request, so deep fills take longer.
+   * Columns are ordered oldest first, newest last. Without `options.columns` the response holds 100 columns
+   * with only the newest 10 filled (the cluster backend's default page); with `options.columns = N` (up to 100)
+   * it holds exactly the newest N columns, all filled from backend history. Each extra 5 columns is one more backend request, so deep fills take longer.
    */
   async getClusterSnapshot(
     connectionId: number,
