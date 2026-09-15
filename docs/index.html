@@ -1334,12 +1334,13 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.</p>
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass <code>Columns</code> to fill more history.</p>
         <table>
           <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
           <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
           <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, H4, D1</td></tr>
           <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
+          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of history columns to fill, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the backend default page (10). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer.</td></tr>
         </table>
         <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
       </div>
@@ -1369,6 +1370,10 @@
         <div class="form-group">
           <label>ZoomIndex</label>
           <input type="number" id="f-cluster-zoom" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Columns (optional)</label>
+          <input type="number" id="f-cluster-columns" value="0" min="0" max="100">
         </div>
       </div>
       <div class="actions-row">
@@ -3923,7 +3928,7 @@
         <tr><td><code>GET /api/connections/{connectionId}/orderbook-snapshot</code></td><td>REST order-book snapshot for a ticker (optional <code>DepthLevels</code> / <code>DepthPercent</code>; <code>501</code> when the exchange has no REST snapshot)</td></tr>
         <tr><td><code>GET /api/link-groups/{groupId}/orderbook-snapshots</code></td><td>Read-only order books of every panel currently in link group N (live membership; per-entry <code>reason</code> on partial failure)</td></tr>
         <tr><td><code>GET/PUT /api/connections/{connectionId}/orderbook-settings</code></td><td>Read, and partially update (every field optional), the order-book settings set for a ticker &mdash; changes are pushed live to the running panels. Working volumes are stored as paired USD/coin mirrors (<code>tradeAmountUsd1..5</code> &harr; <code>tradeAmount1..5</code>): writing one side recomputes the other at the <strong>live</strong> best-ask (truncated to the ticker's size increment, floored at its min size), so the terminal's own volume buttons show USD and coin figures that agree with the current price. Writing both sides of a pair keeps the values you sent. If no order book is open for the connection+ticker there is no live price &rarr; <code>409</code> (open the order book so the conversion has a live price); unknown ticker &rarr; <code>404</code>; nothing is written in either case.</td></tr>
-        <tr><td><code>GET /api/connections/{connectionId}/cluster-snapshot</code></td><td>Remote cluster (footprint) snapshot for a ticker at a timeframe (optional <code>ZoomIndex</code>)</td></tr>
+        <tr><td><code>GET /api/connections/{connectionId}/cluster-snapshot</code></td><td>Remote cluster (footprint) snapshot for a ticker at a timeframe (optional <code>ZoomIndex</code>, <code>Columns</code> = history depth up to 100)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/signal-levels</code></td><td>Read, create, modify (in place) and delete signal levels for a ticker</td></tr>
         <tr><td><code>DELETE /api/signal-levels/triggered</code></td><td>Remove all <em>triggered</em> signal levels (across every connection)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/user-levels</code></td><td>Read, create, modify (in place) and delete user (plain) levels for a ticker</td></tr>
@@ -4328,7 +4333,9 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     const ticker = document.getElementById('f-cluster-ticker').value.trim();
     const timeFrame = document.getElementById('f-cluster-timeframe').value;
     const zoomIndex = document.getElementById('f-cluster-zoom').value;
+    const columns = parseInt(document.getElementById('f-cluster-columns').value, 10);
     const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+    if (!isNaN(columns) && columns > 0) params.set('Columns', columns);
     try {
       const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/cluster-snapshot?${params}`);
       showResponse('cluster-snapshot', status, statusClass(status), data, ms);

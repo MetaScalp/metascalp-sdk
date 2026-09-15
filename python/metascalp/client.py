@@ -283,3 +283,35 @@ class MetaScalpClient:
         return await self._get(
             f"/api/connections/{connection_id}/orderbook-snapshot?{'&'.join(qs)}"
         )
+
+    # ---- Clusters ----
+
+    async def get_cluster_snapshot(
+        self,
+        connection_id: int,
+        ticker: str,
+        time_frame: str,
+        zoom_index: int = 1,
+        columns: int | None = None,
+    ) -> dict:
+        """Fetch the cluster (volume profile / footprint) snapshot for a ticker at a timeframe.
+
+        time_frame is one of S30, M1, M5, M10, M15, M30, H1, H4, D1.
+        zoom_index > 1 groups price levels into buckets of zoom_index * PriceIncrement.
+
+        The response always holds 100 time columns, oldest first. By default only the newest
+        10 carry data (the cluster backend's default page); pass columns (up to 100) to fill
+        more history. Each extra 5 columns is one more backend request, so deep fills take
+        longer.
+
+        Returns a dict with keys: Ticker, TimeFrame, ZoomIndex, PriceIncrement, Columns
+        (each column: StartTime, AsksSum, BidsSum, Items[Price, AskSize, BidSize]).
+        """
+        qs = [f"Ticker={ticker}", f"TimeFrame={time_frame}"]
+        if zoom_index > 1:
+            qs.append(f"ZoomIndex={zoom_index}")
+        if columns is not None and columns > 0:
+            qs.append(f"Columns={columns}")
+        return await self._get(
+            f"/api/connections/{connection_id}/cluster-snapshot?{'&'.join(qs)}"
+        )
