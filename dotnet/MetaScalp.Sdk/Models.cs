@@ -227,6 +227,37 @@ public class OrderBookSnapshotResponse
     public OrderBookOrderDto? BestBid { get; set; }
 }
 
+// ---- Cluster (footprint) snapshot ----
+
+/// <summary>One price level of a cluster column.</summary>
+public class ClusterItemDto
+{
+    public decimal Price { get; set; }
+    /// <summary>Seller-initiated volume at this price.</summary>
+    public decimal AskSize { get; set; }
+    /// <summary>Buyer-initiated volume at this price.</summary>
+    public decimal BidSize { get; set; }
+}
+
+public class ClusterColumnDto
+{
+    public DateTimeOffset StartTime { get; set; }
+    public decimal AsksSum { get; set; }
+    public decimal BidsSum { get; set; }
+    /// <summary>Price levels ordered by price descending (highest first).</summary>
+    public List<ClusterItemDto> Items { get; set; } = new();
+}
+
+/// <summary>Response of <c>GetClusterSnapshotAsync</c>. <see cref="Columns"/> is chronological: oldest first, newest last.</summary>
+public class ClusterSnapshotResponse
+{
+    public string Ticker { get; set; } = "";
+    public string TimeFrame { get; set; } = "";
+    public int ZoomIndex { get; set; }
+    public decimal PriceIncrement { get; set; }
+    public List<ClusterColumnDto> Columns { get; set; } = new();
+}
+
 public class OrderBookUpdateData
 {
     public long ConnectionId { get; set; }

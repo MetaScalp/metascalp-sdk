@@ -830,7 +830,7 @@ curl "http://127.0.0.1:17845/api/connections/1/orderbook-snapshot?Ticker=BTCUSDT
 
 #### Cluster snapshot
 
-Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.
+Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass `Columns` to fill more history.
 
 ```
 GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&ZoomIndex=1
@@ -843,6 +843,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 | `Ticker`    | string | yes      |         | Trading pair symbol |
 | `TimeFrame` | string | yes      |         | Cluster timeframe — see [ClusterTimeFrame values](#clustertimeframe-values) |
 | `ZoomIndex` | int    | no       | `1`     | Price aggregation factor. `1` = no aggregation (raw price levels). Higher values group price levels into buckets of `ZoomIndex * PriceIncrement`. |
+| `Columns`   | int    | no       | `0`     | History depth: how many columns to fill with data, counted back from the newest (1 = newest). `0` / omitted = the backend default page (10 columns). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer. |
 
 **Response `200 OK`:**
 
@@ -867,7 +868,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 }
 ```
 
-- `Columns` — up to 10 time-period columns (rolling window), ordered chronologically
+- `Columns` — always 100 time-period columns, ordered chronologically (oldest first, newest last); only the newest `Columns` (default 10) carry data, the rest are empty time slots with `AsksSum`/`BidsSum` = 0 and no `Items`
 - `Items` — price levels within each column, ordered by price descending (highest first)
 - `AsksSum` / `BidsSum` — total ask/bid volume for the column
 - `AskSize` / `BidSize` — volume at each price level (ask = seller-initiated, bid = buyer-initiated)
@@ -889,6 +890,9 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 
 # Get 1-hour clusters with 5x price aggregation
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"
+
+# Fill the whole 100-column history (20 backend pages of 5 columns)
+curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&Columns=100"
 ```
 
 #### Order Books of a Link Group
@@ -3150,8 +3154,9 @@ async function cancelAllOrders(port, ConnectionId, ticker) {
   return r.json();
 }
 
-async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomIndex = 1) {
+async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomIndex = 1, columns = 0) {
   const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+  if (columns > 0) params.set("Columns", columns); // history depth, up to 100 (default: backend page of 10)
   const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/cluster-snapshot?${params}`);
   return r.json();
 }
@@ -3303,9 +3308,12 @@ def cancel_all_orders(port, connection_id, ticker):
                       json=payload)
     return r.json()
 
-def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1):
+def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1, columns=0):
+    params = {"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index}
+    if columns > 0:
+        params["Columns"] = columns  # history depth, up to 100 (default: backend page of 10)
     r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/cluster-snapshot",
-                     params={"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index})
+                     params=params)
     return r.json()
 
 def get_signal_levels(port, connection_id, ticker):

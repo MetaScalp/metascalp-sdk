@@ -113,6 +113,26 @@ public class MetaScalpClient : IDisposable
         return GetAsync<OrderBookSnapshotResponse>($"/api/connections/{connectionId}/orderbook-snapshot?{string.Join("&", qs)}", ct);
     }
 
+    // ---- Clusters ----
+
+    /// <summary>
+    /// Fetches the cluster (volume profile / footprint) snapshot for a ticker at a timeframe.
+    /// The response always holds 100 time columns, oldest first. By default only the newest 10 carry data
+    /// (the cluster backend's default page); pass <paramref name="columns"/> (up to 100) to fill more history.
+    /// Each extra 5 columns is one more backend request, so deep fills take longer.
+    /// </summary>
+    /// <param name="timeFrame">One of <c>S30</c>, <c>M1</c>, <c>M5</c>, <c>M10</c>, <c>M15</c>, <c>M30</c>, <c>H1</c>, <c>H4</c>, <c>D1</c>.</param>
+    /// <param name="zoomIndex">Price aggregation factor. <c>1</c> = raw price levels; <c>&gt; 1</c> = bucket into <c>zoomIndex × PriceIncrement</c> and sum sizes.</param>
+    /// <param name="columns">History depth counted back from the newest column (1 = newest). <c>null</c>/<c>0</c> = the backend default page (10). Values above 100 are clamped by the server.</param>
+    public Task<ClusterSnapshotResponse> GetClusterSnapshotAsync(long connectionId, string ticker, string timeFrame,
+        int zoomIndex = 1, int? columns = null, CancellationToken ct = default)
+    {
+        var qs = new List<string> { $"Ticker={Uri.EscapeDataString(ticker)}", $"TimeFrame={timeFrame}" };
+        if (zoomIndex > 1) qs.Add($"ZoomIndex={zoomIndex}");
+        if (columns is > 0) qs.Add($"Columns={columns}");
+        return GetAsync<ClusterSnapshotResponse>($"/api/connections/{connectionId}/cluster-snapshot?{string.Join("&", qs)}", ct);
+    }
+
     // ---- Signal Levels ----
 
     public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)

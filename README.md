@@ -153,7 +153,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
-| `GET` | `/api/connections/{id}/cluster-snapshot` | Cluster (volume profile) snapshot data |
+| `GET` | `/api/connections/{id}/cluster-snapshot?Ticker=X&TimeFrame=M5` | Cluster (volume profile) snapshot; `Columns=1..100` fills more history than the default 10 columns |
 | `GET` | `/api/connections/{id}/leverage-limits?Ticker=X` | Max leverage / max position, live from the venue's risk-limit tiers |
 | `GET` | `/api/link-groups/{groupId}/orderbook-snapshots` | Order books of every panel currently in a link group |
 | `POST` | `/api/connections/{id}/orders` | Place an order |

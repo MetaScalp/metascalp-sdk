@@ -362,6 +362,49 @@ export interface OrderBookSnapshotResponse {
     bestBid: OrderBookOrder | null;
 }
 
+// ============ Cluster (footprint) snapshot ============
+
+/** Cluster timeframes accepted by `MetaScalpClient.getClusterSnapshot`. */
+export type ClusterTimeFrame = 'S30' | 'M1' | 'M5' | 'M10' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
+
+export interface GetClusterSnapshotOptions {
+    /** Price aggregation factor. `1` (default) = raw price levels; `> 1` = bucket into `zoomIndex × PriceIncrement` and sum sizes. */
+    zoomIndex?: number;
+    /**
+     * History depth: how many columns to fill with data, counted back from the newest column (1 = newest).
+     * Omitted / `0` = the cluster backend's default page (10 columns). Values above 100 are clamped to 100.
+     * The response always holds 100 columns; the ones beyond the fetched depth are empty time slots.
+     */
+    columns?: number;
+}
+
+/** One price level of a cluster column. Keys are PascalCase: this endpoint serializes its DTO as-is. */
+export interface ClusterItem {
+    Price: number;
+    /** Seller-initiated volume at this price. */
+    AskSize: number;
+    /** Buyer-initiated volume at this price. */
+    BidSize: number;
+}
+
+export interface ClusterColumn {
+    /** ISO-8601 start of the time column. */
+    StartTime: string;
+    AsksSum: number;
+    BidsSum: number;
+    /** Price levels ordered by price descending (highest first). */
+    Items: ClusterItem[];
+}
+
+/** Response from `MetaScalpClient.getClusterSnapshot`. `Columns` is chronological: oldest first, newest last. */
+export interface ClusterSnapshotResponse {
+    Ticker: string;
+    TimeFrame: string;
+    ZoomIndex: number;
+    PriceIncrement: number;
+    Columns: ClusterColumn[];
+}
+
 // ============ MetaBroker Analytics Types ============
 // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
 // backend (the same data the terminal's analytics windows show). No connectionId required.
