@@ -242,7 +242,11 @@ class MetaScalpClient:
         )
 
     async def update_orderbook_settings(self, connection_id: int, ticker: str, **settings) -> dict:
-        """Update order book settings (partial update). Only provided fields are changed."""
+        """Update order book settings (partial update). Only provided fields are changed.
+
+        Any settings key is passed straight through, e.g.
+        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip).
+        """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",
             settings,

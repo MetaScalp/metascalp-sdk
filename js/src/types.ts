@@ -326,6 +326,8 @@ export interface OrderBookSettings {
     ticksLargeAmountUsd?: number;
     sizeType?: string;
     notificationTradeHasBeenMadeTicks?: boolean;
+    /** Paint the terminal's own executed-order overlay (fill chips + position-size chip) on the tape. Default on; absent = on. */
+    showExecutedOrders?: boolean;
 
     // Clusters
     showClusters?: boolean;
