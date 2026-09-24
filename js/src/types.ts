@@ -312,6 +312,8 @@ export interface OrderBookSettings {
     largeAmountDetectionMaxValue?: number;
     showRuler?: string;
     zoomType?: string;
+    /** Linear | Logarithmic — how one wheel notch moves the compression. Null on a row saved before the field existed (treated as Linear). */
+    zoomStepMode?: string;
     autoZoom?: boolean;
     zoomPercent?: number;
     rowHeight?: number;
