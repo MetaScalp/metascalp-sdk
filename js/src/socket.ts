@@ -284,7 +284,7 @@ export class MetaScalpSocket {
    * reported exactly once on first sight of its id. `exchangeMarkets` is required and must
    * be non-empty; everything else defaults to the terminal's Density Map window defaults
    * (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
-   * config without replaying already-notified walls.
+   * config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
    *
    * Events: `density_map_snapshot` (after the ack; may be empty — it resolves the loading
    * state), then `density_map_update` (continuous).
