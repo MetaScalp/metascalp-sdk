@@ -166,10 +166,11 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
+| `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages

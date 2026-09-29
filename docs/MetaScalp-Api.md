@@ -17,8 +17,10 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
+| `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
+| `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
 | `GET /api/connections` | List all active exchange connections |
 | `GET /api/connections/{id}/...` | Query tickers, orders, positions, balances for a connection |
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
@@ -334,10 +336,18 @@ request flag:
 |-----------|----------|-------------|
 | `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
+| `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
 naming the rejected tickers.
+
+`Activate` decides whether the newly opened combo takes focus:
+
+- `true` or omitted — the combo opens and becomes the active/focused layout (unchanged default). On the
+  `Tickers` form exactly one window (the last in the list) comes to the front, as today.
+- `false` — the combo opens **in the background**: whatever window/tab you were on stays active. On the
+  `Tickers` form *no* element of the list steals focus.
 
 **Response**
 
@@ -366,13 +376,18 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}'
+
+# Open in the background (the current window/tab keeps focus)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Activate": false}'
 ```
 
 ---
 
 ### Close Last Tab
 
-Closes the **last** tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.
+Closes the **last** tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body. It is a fixed-target convenience route (no id) — to close a **specific** tab by id use [`POST /api/ui/tabs/{tabId}/close`](#close-a-tab).
 
 ```
 POST http://127.0.0.1:{port}/api/close-last-tab
@@ -1773,18 +1788,69 @@ Content-Type: application/json
 unknown / unsupported `windowType` → `400` naming the supported list; the main workspace → `400`;
 unknown window id → `404`.
 
+#### Close a Tab
+
+Closes the ONE tab addressed by `{tabId}` through the app's **own** tab-close path (the same teardown
+the tab's own ✕ runs — every document in the tab is torn down and its DB rows deleted). `{tabId}` is
+the `id` a tab carries under `GET /api/ui/state` (Window → Tab). Tab ids are **globally unique**, so no
+window type is needed: the id alone addresses the tab, and the window it belongs to and its sibling tabs
+stay open.
+
+```
+POST http://127.0.0.1:{port}/api/ui/tabs/{tabId}/close
+```
+
+**No request body is required** (an empty body or `{}` is accepted; a malformed body or an unknown
+property → `400`).
+
+**Response `200 OK`:** `{ tabId, closed, outcome }`.
+
+> **Unlike a hand-close, the API path raises NO confirmation prompt** (a modal would block the HTTP
+> response); the interactive prompt — and its «Show a warning when closing windows and tabs» setting —
+> is unchanged.
+
+> **A window's ONLY tab cannot be closed** → `400` with a message (it would leave an empty workspace);
+> there is no silent no-op.
+
+**Errors:** non-numeric `{tabId}` → `400 Invalid tab ID`; malformed body / unknown body property →
+`400`; an id no open window hosts → `404 Tab {tabId} not found.` All validated **before** any tab is
+closed.
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/ui/tabs/42/close
+```
+
+#### Activate a Tab
+
+Makes the tab addressed by `{tabId}` the selected one in its window, by driving the SAME header
+selection a user's tab click drives (which also persists it). Same id-addressing as close; no request
+body is required. Idempotent when the tab is already selected.
+
+```
+POST http://127.0.0.1:{port}/api/ui/tabs/{tabId}/activate
+```
+
+**Response `200 OK`:** `{ tabId, activated, outcome }`.
+
+**Errors:** non-numeric `{tabId}` → `400 Invalid tab ID`; malformed body / unknown body property →
+`400`; an id no open window hosts → `404 Tab {tabId} not found.`
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/ui/tabs/42/activate
+```
+
 #### Still-deferred UI lifecycle routes
 
-Opening/closing an individual **panel** and switching the active **tab** are still not available — they
-require calling MetaScalp's own window-thread methods with no reachable lookup to marshal onto. These
-routes do **not** exist:
+Opening/closing an individual **panel** (a single order book or chart inside a tab) is still not
+available. Whole-window lifecycle and per-**tab** close/activate ARE available (see above); only the
+panel-level routes below remain deferred — faking them by writing the database directly would diverge
+the on-screen layout from the saved model. These routes do **not** exist:
 
 | Route | Intent |
 |-------|--------|
 | `POST /api/ui/windows/{windowId}/order-books` | Open an order book in a window's active tab |
 | `POST /api/ui/windows/{windowId}/charts` | Open a chart in a window's active tab |
 | `DELETE /api/ui/documents/{externalId}` | Close one addressed panel |
-| `POST /api/ui/tabs/{tabId}/activate` | Activate a tab |
 
 ---
 
