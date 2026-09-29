@@ -1763,6 +1763,7 @@
       <div class="docs">
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
         <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1777,7 +1778,7 @@
       <div class="form-grid single">
         <div class="form-group">
           <label>Request body (JSON)</label>
-          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true}</textarea>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true, "showExecutedOrders": false}</textarea>
         </div>
       </div>
       <div class="actions-row">

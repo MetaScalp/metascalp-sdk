@@ -282,6 +282,9 @@ class MetaScalpClient:
         ZoomStepMode="Linear" | "Logarithmic" (Linear moves the compression by one unit
         per wheel notch, Logarithmic by one rung of the 1, 2, 5, 10, 20, 50 ... ladder;
         a row saved before the field existed reads back null and behaves as Linear).
+
+        Any settings key is passed straight through, e.g.
+        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip).
         """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",

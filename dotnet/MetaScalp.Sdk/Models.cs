@@ -374,6 +374,8 @@ public class OrderBookSettingsDto
     public decimal? TicksLargeAmountUsd { get; set; }
     public string? SizeType { get; set; }
     public bool? NotificationTradeHasBeenMadeTicks { get; set; }
+    /// <summary>Paint the terminal's own executed-order overlay (fill chips + position-size chip) on the tape. Default on; absent = on.</summary>
+    public bool? ShowExecutedOrders { get; set; }
 
     // Clusters
     public bool? ShowClusters { get; set; }

@@ -162,7 +162,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/signal-levels[/{slId}]` | Full signal-level CRUD (+ `DELETE /api/signal-levels/triggered`) |
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
 | `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
-| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`) |
+| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle) |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |

@@ -1922,6 +1922,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "TicksLargeAmountUsd": 0.0,
     "SizeType": "Coin",
     "NotificationTradeHasBeenMadeTicks": false,
+    "ShowExecutedOrders": true,
     "ShowClusters": false,
     "ClusterTimeFrame": "M1",
     "SoundNotification": true
@@ -1981,6 +1982,7 @@ Settings field reference:
 | `TicksLargeAmount` | decimal | Large tick highlight threshold (base asset) |
 | `TicksLargeAmountUsd` | decimal | Large tick highlight threshold (USD) |
 | `NotificationTradeHasBeenMadeTicks` | boolean | Notify on large ticks |
+| `ShowExecutedOrders` | boolean | Paint the terminal's own executed-order overlay (fill chips + position-size chip) on the tape. Default `true`; absent behaves as `true` |
 
 **Clusters**
 
