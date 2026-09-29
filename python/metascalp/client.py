@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import aiohttp
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 HTTP_PORT_START = 17845
 HTTP_PORT_END = 17855
@@ -198,9 +198,42 @@ class MetaScalpClient:
             body["binding"] = binding
         return await self._post("/api/change-ticker", body)
 
-    async def open_combo(self, ticker: str) -> dict:
-        """Open a combo layout for a ticker."""
-        return await self._post("/api/combo", {"ticker": ticker})
+    async def open_combo(
+        self,
+        ticker: Optional[str] = None,
+        *,
+        tickers: Optional[List[str]] = None,
+        activate: bool = True,
+    ) -> dict:
+        """Open a combo layout.
+
+        Pass either ``ticker`` (one combo) or ``tickers`` (one combo per ticker, in order,
+        validated all-or-nothing) -- never both. ``activate=False`` opens the combo(s) in the
+        background: the window/tab you are on keeps focus.
+        """
+        body: dict = {}
+        if not activate:
+            body["activate"] = False  # omitted == true; only sent when false so older terminals (strict body) still accept the call
+        if ticker is not None:
+            body["ticker"] = ticker
+        if tickers is not None:
+            body["tickers"] = tickers
+        return await self._post("/api/combo", body)
+
+    async def close_last_tab(self) -> dict:
+        """Close the main window's last tab (test surface; {"status": "skipped"} when only one tab remains)."""
+        return await self._post("/api/close-last-tab", {})
+
+    async def close_tab(self, tab_id: int) -> dict:
+        """Close ONE tab by id (the ``id`` a tab carries under GET /api/ui/state); no confirmation prompt.
+
+        400 for a window's only tab, 404 for an unknown id. Returns {"tabId", "closed", "outcome"}.
+        """
+        return await self._post(f"/api/ui/tabs/{tab_id}/close", {})
+
+    async def activate_tab(self, tab_id: int) -> dict:
+        """Make ONE tab (by id) the selected tab of its window. Returns {"tabId", "activated", "outcome"}."""
+        return await self._post(f"/api/ui/tabs/{tab_id}/activate", {})
 
     # ---- Signal Levels ----
 
@@ -243,6 +276,12 @@ class MetaScalpClient:
 
     async def update_orderbook_settings(self, connection_id: int, ticker: str, **settings) -> dict:
         """Update order book settings (partial update). Only provided fields are changed.
+
+        Enum-valued fields take their string name, e.g. ShowRuler="Percent",
+        ZoomType="Absolute" | "Percentage", SizeType="Coin" | "Usd" and
+        ZoomStepMode="Linear" | "Logarithmic" (Linear moves the compression by one unit
+        per wheel notch, Logarithmic by one rung of the 1, 2, 5, 10, 20, 50 ... ladder;
+        a row saved before the field existed reads back null and behaves as Linear).
 
         Any settings key is passed straight through, e.g.
         ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip).

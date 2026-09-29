@@ -284,7 +284,7 @@ export class MetaScalpSocket {
    * reported exactly once on first sight of its id. `exchangeMarkets` is required and must
    * be non-empty; everything else defaults to the terminal's Density Map window defaults
    * (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
-   * config without replaying already-notified walls.
+   * config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
    *
    * Events: `density_map_snapshot` (after the ack; may be empty — it resolves the loading
    * state), then `density_map_update` (continuous).
@@ -321,12 +321,12 @@ export class MetaScalpSocket {
 
   /**
    * Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
-   * REQUIRES the MetaBroker login in the terminal — without it the subscribe is refused
-   * with an `error` frame. `exchanges` is required and must be non-empty. Re-subscribing
+   * No MetaBroker login is needed: the upstream is the screener-v2 hub signed with the shared
+   * service key. `exchanges` is required and must be non-empty. Re-subscribing
    * replaces the filters and the server re-sends a snapshot.
    *
    * Events: `liquidations_snapshot` (after every subscribe/replace), `liquidations_update`
-   * (live rows, newest first), `liquidations_metadata` (totals + top tokens, ~2 s cadence).
+   * (live rows, newest first), `liquidations_metadata` (totals + top tokens, sub-second cadence).
    */
   subscribeLiquidations(options: LiquidationsSubscribeOptions): void {
     this.send('liquidations_subscribe', { ...options });

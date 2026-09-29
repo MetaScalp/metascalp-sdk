@@ -162,14 +162,16 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/signal-levels[/{slId}]` | Full signal-level CRUD (+ `DELETE /api/signal-levels/triggered`) |
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
 | `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
-| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ShowExecutedOrders` — the tape's executed-order overlay toggle) |
+| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle) |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
+| `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background) |
+| `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
 
@@ -200,7 +202,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `ui_subscribe` | `ui_snapshot`, then `ui_update` on UI changes |
 | `density_map_subscribe` | `density_map_snapshot`, then `density_map_update` — MetaBroker order-book walls, one notification per wall |
 | `large_trades_subscribe` | `large_trades_update` — MetaBroker aggregated large trade prints (append-only, no snapshot) |
-| `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (requires the MetaBroker login) |
+| `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (no MetaBroker login needed) |
 
 > **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship.
 

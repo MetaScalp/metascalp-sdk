@@ -358,6 +358,8 @@ public class OrderBookSettingsDto
     public decimal? LargeAmountDetectionMaxValue { get; set; }
     public string? ShowRuler { get; set; }
     public string? ZoomType { get; set; }
+    /// <summary>Linear | Logarithmic — how one wheel notch moves the compression. Null on a row saved before the field existed (treated as Linear).</summary>
+    public string? ZoomStepMode { get; set; }
     public bool? AutoZoom { get; set; }
     public decimal? ZoomPercent { get; set; }
     public decimal? RowHeight { get; set; }

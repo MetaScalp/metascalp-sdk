@@ -11,6 +11,8 @@ import type {
   CancelOrderRequest,
   ChangeTickerRequest,
   ComboRequest,
+  CloseTabResponse,
+  ActivateTabResponse,
   SignalLevelsResponse,
   PlaceSignalLevelRequest,
   OrderBookSettingsResponse,
@@ -114,6 +116,24 @@ export class MetaScalpClient {
 
   async openCombo(request: ComboRequest): Promise<{ status: string }> {
     return this.post('/api/combo', request);
+  }
+
+  /** Closes the main window's last tab (test surface). Resolves to { status: 'skipped' } when only one tab remains. */
+  async closeLastTab(): Promise<{ status: string }> {
+    return this.post('/api/close-last-tab', {});
+  }
+
+  /**
+   * Closes ONE tab by id (the `id` a tab carries under GET /api/ui/state). No confirmation prompt.
+   * Rejects with 400 for a window's only tab, 404 for an unknown id.
+   */
+  async closeTab(tabId: number): Promise<CloseTabResponse> {
+    return this.post(`/api/ui/tabs/${tabId}/close`, {});
+  }
+
+  /** Makes ONE tab (by id) the selected tab of its window. Idempotent when already selected; 404 for an unknown id. */
+  async activateTab(tabId: number): Promise<ActivateTabResponse> {
+    return this.post(`/api/ui/tabs/${tabId}/activate`, {});
   }
 
   // ---- Order Book Settings ----

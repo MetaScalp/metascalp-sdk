@@ -279,6 +279,18 @@
     border-top: 1px solid var(--border);
     margin: 16px 0;
   }
+  .ws-docs { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .ws-docs-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: var(--surface); cursor: pointer; user-select: none; font-size: 13px; font-weight: 600;
+  }
+  .ws-docs-header:hover { background: var(--surface2); }
+  .ws-docs-chevron { color: var(--text-muted); transition: transform .2s; font-size: 18px; }
+  .ws-docs.open .ws-docs-chevron { transform: rotate(90deg); }
+  .ws-docs-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .ws-docs-body { display: none; padding: 16px 16px 0; border-top: 1px solid var(--border); }
+  .ws-docs.open .ws-docs-body { display: block; }
+  .ws-docs-body .docs { margin-bottom: 0; }
 
   /* WebSocket styles */
   .method-ws { background: rgba(188,140,255,.15); color: var(--purple); }
@@ -805,6 +817,11 @@
           <li><code>{ "tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"] }</code> &mdash; opens one combo layout per ticker, <strong>in the order given</strong>.</li>
         </ul>
         <p>The <code>tickers</code> form is a write validated as all-or-nothing: the whole list is validated first, and if <em>any</em> ticker resolves on no eligible connection, <strong>nothing is opened</strong> and the request returns <code>400</code> naming the rejected tickers. Supplying <em>both</em> <code>ticker</code> and <code>tickers</code>, or an empty <code>tickers</code> array with no <code>ticker</code>, also returns <code>400</code>.</p>
+        <p>Both shapes accept an optional <code>activate</code> boolean (default <code>true</code>) that decides whether the newly opened combo takes focus:</p>
+        <ul>
+          <li><code>activate: true</code> or the field omitted &mdash; the combo opens and becomes the active/focused layout (unchanged default). On the <code>tickers</code> form, exactly one window (the last in the list) comes to the front, as today.</li>
+          <li><code>activate: false</code> &mdash; the combo opens <strong>in the background</strong>: whatever window/tab you were on stays active. On the <code>tickers</code> form, <em>no</em> element of the list steals focus.</li>
+        </ul>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -1334,13 +1351,13 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass <code>Columns</code> to fill more history.</p>
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. Each time column holds bid/ask volumes at every price level; columns are ordered oldest first, newest last. Without <code>Columns</code> the response has the classic shape: 100 time columns of which only the newest 10 carry data (the cluster backend's default page), the rest are empty time slots. With <code>Columns=N</code> the response holds exactly N columns (the newest N), all filled from backend history.</p>
         <table>
           <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
           <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
           <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, H4, D1</td></tr>
           <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
-          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of history columns to fill, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the backend default page (10). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer.</td></tr>
+          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of columns to return, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the classic 100-column response with the backend default page (10) filled. A positive value returns exactly that many columns, all filled from backend history. Values above 100 are clamped to 100. History is fetched in pages of 5 columns, so larger values take longer.</td></tr>
         </table>
         <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
       </div>
@@ -1745,7 +1762,7 @@
     <div class="endpoint-body">
       <div class="docs">
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
-        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
         <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
       </div>
       <div class="form-grid">
@@ -3191,6 +3208,118 @@
     </div>
   </div>
 
+  <!-- /api/ui/tabs/{tabId}/close (POST) -->
+  <div class="endpoint" id="ep-ui-close-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-close-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/close</span>
+      <span class="endpoint-desc">Close a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the ONE tab addressed by <code>{tabId}</code> through the app's OWN tab-close path (the same
+        teardown the tab's own <strong>&times;</strong> runs &mdash; every document in the tab is torn down and its
+        DB rows deleted). <code>{tabId}</code> is the <code>id</code> a tab carries under
+        <code>GET /api/ui/state</code> (Window &rarr; Tab). Tab ids are <strong>globally unique</strong>, so no
+        window type is needed &mdash; the id alone addresses the tab, and the window it belongs to and its sibling
+        tabs stay open.</p>
+        <p><strong>No request body is required</strong> (an empty body or <code>{}</code> is accepted).</p>
+        <p>Response <code>{ tabId, closed, outcome }</code>.</p>
+        <p><strong>Unlike a hand-close, the API path raises NO confirmation prompt</strong> (a modal would block
+        the HTTP response); the interactive prompt &mdash; and its <em>&laquo;Show a warning when closing windows
+        and tabs&raquo;</em> setting &mdash; is unchanged.</p>
+        <p><strong>A window's ONLY tab cannot be closed</strong> &rarr; <code>400</code> with a message (it would
+        leave an empty workspace); there is no silent no-op.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code> &mdash; all validated <em>before</em> any tab is closed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-close-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-close-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-close-tab-status"></span>
+          <span class="response-time" id="resp-ui-close-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-close-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/tabs/{tabId}/activate (POST) -->
+  <div class="endpoint" id="ep-ui-activate-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-activate-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/activate</span>
+      <span class="endpoint-desc">Switch to a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Makes the tab addressed by <code>{tabId}</code> the selected one in its window, by driving the SAME
+        header selection a user's tab click drives (which also persists it). Same id-addressing as the close route;
+        no request body is required. Idempotent when the tab is already selected.</p>
+        <p>Response <code>{ tabId, activated, outcome }</code>.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code></p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-activate-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendActivateTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-activate-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-activate-tab-status"></span>
+          <span class="response-time" id="resp-ui-activate-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-activate-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/close-last-tab (POST) -->
+  <div class="endpoint" id="ep-close-last-tab">
+    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/close-last-tab</span>
+      <span class="endpoint-desc">Close the main window's last tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the <strong>main workspace window's LAST tab</strong> through the tab's own close path (no
+        confirmation prompt). It never closes the only remaining tab. This is a fixed-target convenience route (no
+        id) &mdash; to close a SPECIFIC tab by id, use <code>POST /api/ui/tabs/{tabId}/close</code>.</p>
+        <p><strong>No request body is required.</strong> Response <code>{ status }</code> &mdash;
+        <code>"ok"</code> when a tab was closed, <code>"skipped"</code> when only one tab remained.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-close-last-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-close-last-tab-status"></span>
+          <span class="response-time" id="resp-close-last-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-close-last-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- /api/ui/documents/{externalId}/ticker (PUT) -->
   <div class="endpoint" id="ep-ui-doc-ticker">
     <div class="endpoint-header" onclick="toggle('ep-ui-doc-ticker')">
@@ -3258,18 +3387,17 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Opening/closing a panel and switching the active window or tab are <strong>not yet available</strong>.
-        They require calling MetaScalp's own window-thread methods, and the local API layer has no reachable
-        window&#8209;id&nbsp;&rarr;&nbsp;dispatcher lookup to marshal onto (it does not reference the WPF UI
-        project). Faking them by writing the database directly would diverge the on-screen layout from the
-        saved model, so they are deliberately deferred to a dedicated follow-up rather than shipped fragile.
-        The following routes therefore do <strong>not</strong> exist yet:</p>
+        <p>Opening/closing an individual <strong>panel</strong> (a single order book or chart inside a tab) is
+        <strong>not yet available</strong>. Whole-window lifecycle and per-<strong>tab</strong> close/activate ARE
+        available (see the routes above); only the panel-level routes below remain deferred. Faking them by writing
+        the database directly would diverge the on-screen layout from the saved model, so they are deliberately
+        deferred to a dedicated follow-up rather than shipped fragile. The following routes therefore do
+        <strong>not</strong> exist yet:</p>
         <table>
           <tr><th>Route</th><th>Intent</th></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/order-books</code></td><td>Open an order book in a window's active tab</td></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/charts</code></td><td>Open a chart in a window's active tab</td></tr>
           <tr><td><code>DELETE /api/ui/documents/{externalId}</code></td><td>Close one addressed panel (with its DB delete)</td></tr>
-          <tr><td><code>POST /api/ui/tabs/{tabId}/activate</code></td><td>Activate a tab</td></tr>
         </table>
       </div>
     </div>
@@ -3287,6 +3415,168 @@
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
+      <!-- Interactive testing panel -->
+      <div>
+        <div class="ws-controls">
+          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
+          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
+          <div class="ws-status" id="ws-status">
+            <span class="dot"></span>
+            <span id="ws-status-text">Disconnected</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Connection ID</label>
+            <input type="number" id="f-ws-conn" value="1" min="1">
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;">
+            <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
+            <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Ticker <span class="optional">(for market data)</span></label>
+            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="wsSendMarketData('trade_subscribe')" id="ws-trade-sub-btn" disabled>Trade Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Trade Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>OB Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>OB Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('mark_price_subscribe')" id="ws-mp-sub-btn" disabled>Mark Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('mark_price_unsubscribe')" id="ws-mp-unsub-btn" disabled>Mark Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('funding_subscribe')" id="ws-fund-sub-btn" disabled>Funding Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('funding_unsubscribe')" id="ws-fund-unsub-btn" disabled>Funding Unsub</button>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px;">OB ZoomIndex <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-zoom" min="0" placeholder="0" style="width:90px;">
+            </div>
+            <div>
+              <label style="font-size:11px;">OB DepthLevels <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-depth-levels" min="1" placeholder="50" style="width:90px;">
+            </div>
+            <div>
+              <label style="font-size:11px;">OB DepthPercent <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-depth-percent" min="0" step="0.1" placeholder="0.5" style="width:110px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Uncheck to skip the exchange REST snapshot fetch on subscribe">OB FetchSnapshot</label>
+              <label for="f-ws-ob-fetch-snapshot" style="display:inline-flex;align-items:center;justify-content:center;height:34px;width:34px;cursor:pointer;">
+                <input type="checkbox" id="f-ws-ob-fetch-snapshot" checked style="cursor:pointer;margin:0;width:16px;height:16px;">
+              </label>
+            </div>
+            <div>
+              <label style="font-size:11px;">Trade ZoomIndex <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-trade-zoom" min="0" placeholder="0" style="width:110px;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="wsSendNotification('notification_subscribe')" id="ws-notif-sub-btn" disabled>Subscribe Notifications</button>
+          <button class="btn btn-secondary" onclick="wsSendNotification('notification_unsubscribe')" id="ws-notif-unsub-btn" disabled>Unsubscribe Notifications</button>
+          <button class="btn btn-primary" onclick="wsSendNotification('signal_level_subscribe')" id="ws-sl-sub-btn" disabled>Subscribe Signal Levels</button>
+          <button class="btn btn-secondary" onclick="wsSendNotification('signal_level_unsubscribe')" id="ws-sl-unsub-btn" disabled>Unsubscribe Signal Levels</button>
+        </div>
+
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px;" title="Comma-separated exchange names. Density map / large trades: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, aster, lighter, xt. Liquidations: binance, bybit, okx, bitget, gate, htx, aster, lighter.">Analytics exchanges <span class="optional">(comma list)</span></label>
+              <input type="text" id="f-ws-an-exchanges" value="binance,bybit,okx" style="width:210px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Market for density map / large trades (liquidations are futures only)">Market</label>
+              <select id="f-ws-an-market" style="width:100px;">
+                <option value="futures" selected>futures</option>
+                <option value="spot">spot</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq minNotionalUsd <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-min-notional" min="0" placeholder="0" style="width:120px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Affects totals / topTokens only, never the rows">Liq window</label>
+              <select id="f-ws-liq-window" style="width:80px;">
+                <option value="m5">m5</option>
+                <option value="m15">m15</option>
+                <option value="h1" selected>h1</option>
+                <option value="h4">h4</option>
+                <option value="h24">h24</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq backfill <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-backfill" min="0" max="500" placeholder="200" style="width:90px;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="wsSendAnalytics('density_map_subscribe')" id="ws-dm-sub-btn" disabled>Density Map Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('density_map_unsubscribe')" id="ws-dm-unsub-btn" disabled>Density Map Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('large_trades_subscribe')" id="ws-lt-sub-btn" disabled>Large Trades Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('large_trades_unsubscribe')" id="ws-lt-unsub-btn" disabled>Large Trades Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('liquidations_subscribe')" id="ws-liq-sub-btn" disabled>Liquidations Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('liquidations_unsubscribe')" id="ws-liq-unsub-btn" disabled>Liquidations Unsub</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">MetaBroker analytics streams: app-wide, no connection ID, no MetaBroker login. Other options (coefficients, lifetimes, quote assets, <code>aggregationMs</code>, <code>side</code>, <code>coin</code>, <code>assetClass</code>) go through the custom message box &mdash; payloads are in the message reference below.</p>
+
+        <div class="form-grid single" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Custom message <span class="optional">(raw JSON)</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"connectionId":1}}' style="flex:1;">
+              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+          <label>Message Log &amp; Market Data</label>
+          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
+        </div>
+        <div class="ws-panels">
+          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
+          <div class="ob-panel" id="ob-panel">
+            <div class="ob-header">
+              <label>Order Book</label>
+            </div>
+            <div class="ob-tabs" id="ob-tabs"></div>
+            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
+            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
+          </div>
+          <div class="trades-panel" id="trades-panel">
+            <div class="trades-header">
+              <label>Trades</label>
+            </div>
+            <div class="trades-tabs" id="trades-tabs"></div>
+            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
+            <div class="trades-list" id="trades-list" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Message reference (collapsed by default) -->
+      <div class="ws-docs" id="ws-docs">
+        <div class="ws-docs-header" onclick="toggle('ws-docs')">
+          <span class="ws-docs-chevron">&#9656;</span>
+          <span>Message reference &amp; examples</span>
+          <span class="ws-docs-hint">connection, envelope, inbound / outbound messages, lifecycle, example payloads</span>
+        </div>
+        <div class="ws-docs-body">
       <div class="docs">
         <p>Connect via WebSocket to receive <strong>real-time updates</strong> for your exchange connections. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.</p>
 
@@ -3419,10 +3709,10 @@
           <tr><td><code>screener_frame</code></td><td>server &rarr; client</td><td>A full screener row set &mdash; the current snapshot on subscribe, then one per backend update</td><td><code>templateId</code>, <code>rows[]</code> &mdash; each with <code>ticker</code>, <code>wireTicker</code>, <code>isNewCoin</code>, <code>exchange</code>, <code>listedExchanges[]</code>, <code>columns[]</code> (<code>type</code>, <code>timeFrame</code>, <code>time</code>, <code>metric</code>, <code>value</code>; <code>fundingRate</code> is scaled &times;100 as in the window)</td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows. The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market", "bdsMode"?, "bdsValue"? }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures; <code>bdsMode</code>: manual | auto, default manual; <code>bdsValue</code> default 1000000 USD). On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) without replaying already-notified walls; each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market", "bdsMode"?, "bdsValue"? }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures; <code>bdsMode</code>: manual | auto, default manual; <code>bdsValue</code> default 1000000 USD). On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
+          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream &mdash; a repeat subscribe re-sends the snapshot for the new filters</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
           <tr><td><code>density_map_unsubscribe</code></td><td>client &rarr; server</td><td>Stop the stream (send <code>"data": {}</code>)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>density_map_snapshot</code> follows)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -3430,7 +3720,7 @@
           <tr><td><code>density_map_update</code></td><td>server &rarr; client</td><td>Newly seen walls (one notification per wall id, ever)</td><td>same <code>notifications[]</code> shape</td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Large trades stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>large trades</strong> feed (aggregated trade prints). No snapshot exists upstream &mdash; rows are final, append-only aggregates and history starts at subscribe time. The subscribe <code>data</code> uses the same building blocks as the density stream (<code>exchangeMarkets[]</code> required, same enum names) plus the aggregation window: <code>aggregationMs</code> (0&ndash;60000, default 500; <code>0</code> = every raw print individually) and an optional <code>minAmountUsd</code> floor; defaults are the window's: coefficients <code>3/2/1</code>, <code>includedQuoteAssets ["USDT","USDC","OTHER"]</code>. A repeat <code>large_trades_subscribe</code> <strong>replaces</strong> the config; if the upstream feed rejects a subscription after the ack, the standard <code>error</code> frame names <code>large_trades_subscribe</code> while the feed retries itself:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Large trades stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>large trades</strong> feed (aggregated trade prints). No snapshot exists upstream &mdash; rows are final, append-only aggregates and history starts at subscribe time. The subscribe <code>data</code> uses the same building blocks as the density stream (<code>exchangeMarkets[]</code> required, same enum names) plus the aggregation window: <code>aggregationMs</code> (0&ndash;60000, default 500 &mdash; out of range is refused with an <code>error</code> frame naming the field; <code>0</code> = every raw print individually) and an optional <code>minAmountUsd</code> floor; defaults are the window's: coefficients <code>3/2/1</code>, <code>includedQuoteAssets ["USDT","USDC","OTHER"]</code>. A repeat <code>large_trades_subscribe</code> <strong>replaces</strong> the config; if the upstream feed rejects a subscription after the ack, the standard <code>error</code> frame names <code>large_trades_subscribe</code> while the feed retries itself:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
           <tr><td><code>large_trades_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the large trades stream</td><td><code>exchangeMarkets[]</code> (required), <code>aggregationMs</code>, <code>minAmountUsd</code>, <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>includedQuoteAssets[]</code></td></tr>
@@ -3440,16 +3730,16 @@
           <tr><td><code>large_trades_update</code></td><td>server &rarr; client</td><td>Finished aggregates, batched (~100 ms upstream tick); append-only, never updated or removed</td><td><code>trades[]</code> &mdash; each with <code>id</code>, <code>exchange</code>, <code>exchangeLogo</code>, <code>market</code> (spot | futures), <code>ticker</code>, <code>side</code> (buy | sell), <code>minPrice</code>, <code>maxPrice</code>, <code>sizeUsd</code>, <code>tradeCount</code>, <code>category</code> (small | medium | large), <code>time</code></td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>Requires the MetaBroker login</strong>: the upstream socket authenticates with the user's JWT, so with no token the subscribe is refused with the standard <code>error</code> frame and opens nothing. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>No MetaBroker login is needed</strong>: the upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200; out of range is refused with an <code>error</code> frame naming the field). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>liquidations_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the liquidations stream &mdash; MetaBroker login required</td><td><code>exchanges[]</code> (required), <code>minNotionalUsd</code>, <code>minImpactBps</code>, <code>assetClass</code>, <code>side</code>, <code>coin</code>, <code>window</code>, <code>backfill</code></td></tr>
+          <tr><td><code>liquidations_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the liquidations stream &mdash; no MetaBroker login needed</td><td><code>exchanges[]</code> (required), <code>minNotionalUsd</code>, <code>minImpactBps</code>, <code>assetClass</code>, <code>side</code>, <code>coin</code>, <code>window</code>, <code>backfill</code></td></tr>
           <tr><td><code>liquidations_unsubscribe</code></td><td>client &rarr; server</td><td>Stop the stream (send <code>"data": {}</code>)</td><td>&mdash;</td></tr>
           <tr><td><code>liquidations_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>liquidations_snapshot</code> follows)</td><td>&mdash;</td></tr>
           <tr><td><code>liquidations_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
           <tr><td><code>liquidations_snapshot</code></td><td>server &rarr; client</td><td>Backfill rows + aggregates, after every subscribe/reconfigure; may be empty (it resolves the loading state)</td><td><code>liquidations[]</code> &mdash; each with <code>time</code>, <code>exchange</code>, <code>symbol</code>, <code>coin</code>, <code>side</code> (long | short), <code>assetClass</code> (crypto | tradfi), <code>price</code>, <code>size</code>, <code>notionalUsd</code>, <code>impactBps</code> (nullable); plus <code>totals</code> (<code>longUsd</code>, <code>shortUsd</code>, <code>longCount</code>, <code>shortCount</code>; nullable) and <code>topTokens[]</code> (<code>token</code> + the same four fields)</td></tr>
           <tr><td><code>liquidations_update</code></td><td>server &rarr; client</td><td>Live rows, batched (~250 ms upstream tick), newest first</td><td><code>liquidations[]</code> &mdash; same row shape</td></tr>
-          <tr><td><code>liquidations_metadata</code></td><td>server &rarr; client</td><td>Aggregates refresh (~2 s upstream tick) for the configured <code>window</code></td><td><code>totals</code>, <code>topTokens[]</code></td></tr>
+          <tr><td><code>liquidations_metadata</code></td><td>server &rarr; client</td><td>Aggregates refresh on every upstream map tick (sub-second) for the configured <code>window</code></td><td><code>totals</code>, <code>topTokens[]</code></td></tr>
         </table>
 
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>UI change events</strong> &mdash; subscribe (globally, no data payload) to observe the open UI. On subscribe the server acknowledges with <code>ui_subscribed</code> and immediately pushes a <code>ui_snapshot</code> whose <code>Data</code> is <strong>identical</strong> to <code>GET /api/ui/state</code> (same camelCase shape). After that, a <code>ui_update</code> is pushed per observed change. Read-only &mdash; the server never opens, closes or mutates any UI element here:</p>
@@ -3641,114 +3931,6 @@
 <span style="color:var(--text-muted);">// Error (invalid connection)</span>
 { "Type": "error", "Data": { "error": "Connection 999 not found or not active" } }</code></pre>
       </div>
-
-      <hr class="divider">
-
-      <!-- Interactive testing panel -->
-      <div>
-        <div class="ws-controls">
-          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
-          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
-          <div class="ws-status" id="ws-status">
-            <span class="dot"></span>
-            <span id="ws-status-text">Disconnected</span>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Connection ID</label>
-            <input type="number" id="f-ws-conn" value="1" min="1">
-          </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;">
-            <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
-            <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
-          </div>
-        </div>
-
-        <div class="form-grid" style="margin-top:8px;">
-          <div class="form-group">
-            <label>Ticker <span class="optional">(for market data)</span></label>
-            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
-          </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="wsSendMarketData('trade_subscribe')" id="ws-trade-sub-btn" disabled>Trade Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Trade Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>OB Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>OB Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('mark_price_subscribe')" id="ws-mp-sub-btn" disabled>Mark Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('mark_price_unsubscribe')" id="ws-mp-unsub-btn" disabled>Mark Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('funding_subscribe')" id="ws-fund-sub-btn" disabled>Funding Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('funding_unsubscribe')" id="ws-fund-unsub-btn" disabled>Funding Unsub</button>
-          </div>
-        </div>
-
-        <div class="form-grid" style="margin-top:8px;">
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <div>
-              <label style="font-size:11px;">OB ZoomIndex <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-zoom" min="0" placeholder="0" style="width:90px;">
-            </div>
-            <div>
-              <label style="font-size:11px;">OB DepthLevels <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-depth-levels" min="1" placeholder="50" style="width:90px;">
-            </div>
-            <div>
-              <label style="font-size:11px;">OB DepthPercent <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-depth-percent" min="0" step="0.1" placeholder="0.5" style="width:110px;">
-            </div>
-            <div>
-              <label style="font-size:11px;" title="Uncheck to skip the exchange REST snapshot fetch on subscribe">OB FetchSnapshot</label>
-              <label for="f-ws-ob-fetch-snapshot" style="display:inline-flex;align-items:center;justify-content:center;height:34px;width:34px;cursor:pointer;">
-                <input type="checkbox" id="f-ws-ob-fetch-snapshot" checked style="cursor:pointer;margin:0;width:16px;height:16px;">
-              </label>
-            </div>
-            <div>
-              <label style="font-size:11px;">Trade ZoomIndex <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-trade-zoom" min="0" placeholder="0" style="width:110px;">
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="wsSendNotification('notification_subscribe')" id="ws-notif-sub-btn" disabled>Subscribe Notifications</button>
-          <button class="btn btn-secondary" onclick="wsSendNotification('notification_unsubscribe')" id="ws-notif-unsub-btn" disabled>Unsubscribe Notifications</button>
-          <button class="btn btn-primary" onclick="wsSendNotification('signal_level_subscribe')" id="ws-sl-sub-btn" disabled>Subscribe Signal Levels</button>
-          <button class="btn btn-secondary" onclick="wsSendNotification('signal_level_unsubscribe')" id="ws-sl-unsub-btn" disabled>Unsubscribe Signal Levels</button>
-        </div>
-
-        <div class="form-grid single" style="margin-top:8px;">
-          <div class="form-group">
-            <label>Custom message <span class="optional">(raw JSON)</span></label>
-            <div style="display:flex;gap:8px;">
-              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"connectionId":1}}' style="flex:1;">
-              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
-          <label>Message Log &amp; Market Data</label>
-          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
-        </div>
-        <div class="ws-panels">
-          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
-          <div class="ob-panel" id="ob-panel">
-            <div class="ob-header">
-              <label>Order Book</label>
-            </div>
-            <div class="ob-tabs" id="ob-tabs"></div>
-            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
-            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
-          </div>
-          <div class="trades-panel" id="trades-panel">
-            <div class="trades-header">
-              <label>Trades</label>
-            </div>
-            <div class="trades-tabs" id="trades-tabs"></div>
-            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
-            <div class="trades-list" id="trades-list" style="display:none;"></div>
-          </div>
         </div>
       </div>
     </div>
@@ -4015,7 +4197,7 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>density_map_unsubscribe</code></td><td><code>{}</code></td><td>Stop the density map stream.</td></tr>
         <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>large_trades_unsubscribe</code></td><td><code>{}</code></td><td>Stop the large trades stream.</td></tr>
-        <tr><td><code>liquidations_subscribe</code></td><td><code>{ "exchanges": ["binance", "bybit", "okx"], "minNotionalUsd": 1000, "window": "h1", "backfill": 200 }</code></td><td>Start the MetaBroker cross-exchange liquidations stream (futures only). Requires the MetaBroker login. Re-subscribing replaces the filters and re-sends a snapshot.</td></tr>
+        <tr><td><code>liquidations_subscribe</code></td><td><code>{ "exchanges": ["binance", "bybit", "okx"], "minNotionalUsd": 1000, "window": "h1", "backfill": 200 }</code></td><td>Start the MetaBroker cross-exchange liquidations stream (futures only). No MetaBroker login is needed. Re-subscribing replaces the filters and replays a snapshot.</td></tr>
         <tr><td><code>liquidations_unsubscribe</code></td><td><code>{}</code></td><td>Stop the liquidations stream.</td></tr>
       </table>
 
@@ -4065,7 +4247,7 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>liquidations_unsubscribed</code></td><td>&mdash;</td></tr>
         <tr><td><code>liquidations_snapshot</code></td><td><code>liquidations[]</code>: <code>time</code>, <code>exchange</code>, <code>symbol</code>, <code>coin</code>, <code>side</code> (long | short), <code>assetClass</code> (crypto | tradfi), <code>price</code>, <code>size</code>, <code>notionalUsd</code>, <code>impactBps</code> (nullable); <code>totals</code>: <code>longUsd</code>, <code>shortUsd</code>, <code>longCount</code>, <code>shortCount</code> (nullable); <code>topTokens[]</code>: <code>token</code> + the same four totals fields</td></tr>
         <tr><td><code>liquidations_update</code></td><td><code>liquidations[]</code> &mdash; same row shape (batched, newest first)</td></tr>
-        <tr><td><code>liquidations_metadata</code></td><td><code>totals</code>, <code>topTokens[]</code> &mdash; aggregates refresh every ~2&nbsp;s for the configured <code>window</code></td></tr>
+        <tr><td><code>liquidations_metadata</code></td><td><code>totals</code>, <code>topTokens[]</code> &mdash; aggregates refresh on every upstream map tick (sub-second) for the configured <code>window</code></td></tr>
         <tr><td><code>error</code></td><td><code>error</code> (string message)</td></tr>
       </table>
 
@@ -4756,6 +4938,35 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     }
   }
 
+  async function sendCloseTab() {
+    const id = document.getElementById('f-ui-close-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/close`, {});
+      showResponse('ui-close-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-close-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendActivateTab() {
+    const id = document.getElementById('f-ui-activate-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/activate`, {});
+      showResponse('ui-activate-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-activate-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseLastTab() {
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
+      showResponse('close-last-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
   // --- UI inventory & control ---
   async function sendGetUiState() {
     try {
@@ -4890,6 +5101,9 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       slSubBtn.disabled = true;
       slUnsubBtn.disabled = true;
     }
+    for (const id of ['ws-dm-sub-btn', 'ws-dm-unsub-btn', 'ws-lt-sub-btn', 'ws-lt-unsub-btn', 'ws-liq-sub-btn', 'ws-liq-unsub-btn']) {
+      document.getElementById(id).disabled = !connected;
+    }
   }
 
   async function wsDiscover() {
@@ -4951,7 +5165,10 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
           tradesOnUnsubscribed(data.data.connectionId, data.data.ticker);
         }
         // Log everything except high-frequency order book updates
-        if (data.type !== 'orderbook_update' && data.type !== 'orderbook_snapshot' && data.type !== 'trade_update') {
+        const analyticsLine = wsAnalyticsCompactLine(data);
+        if (analyticsLine) {
+          wsLog(`&larr; ${analyticsLine}`, 'log-in');
+        } else if (data.type !== 'orderbook_update' && data.type !== 'orderbook_snapshot' && data.type !== 'trade_update') {
           const pretty = JSON.stringify(data, null, 2);
           wsLog(`&larr; ${pretty}`, data.type === 'error' ? 'log-err' : 'log-in');
         } else {
@@ -5043,6 +5260,77 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
 
   function wsSendNotification(type) {
     wsSend({ type: type, data: {} });
+  }
+
+  // ========== MetaBroker analytics streams (density map / large trades / liquidations) ==========
+
+  function wsAnalyticsExchanges() {
+    return document.getElementById('f-ws-an-exchanges').value
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function wsSendAnalytics(type) {
+    if (type.endsWith('_unsubscribe')) {
+      wsSend({ type: type, data: {} });
+      return;
+    }
+    const exchanges = wsAnalyticsExchanges();
+    if (!exchanges.length) {
+      wsLog('At least one exchange is required for the analytics streams', 'log-err');
+      return;
+    }
+    let data;
+    if (type === 'liquidations_subscribe') {
+      data = { exchanges: exchanges };
+      const minRaw = document.getElementById('f-ws-liq-min-notional').value;
+      const backfillRaw = document.getElementById('f-ws-liq-backfill').value;
+      if (minRaw !== '') data.minNotionalUsd = parseFloat(minRaw);
+      data.window = document.getElementById('f-ws-liq-window').value;
+      if (backfillRaw !== '') data.backfill = parseInt(backfillRaw);
+    } else {
+      const market = document.getElementById('f-ws-an-market').value;
+      data = { exchangeMarkets: exchanges.map(e => ({ exchange: e, market: market })) };
+    }
+    wsSend({ type: type, data: data });
+  }
+
+  function wsUsd(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return '?';
+    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+    return n.toFixed(0);
+  }
+
+  // One-line summaries for the analytics frames; null = log the full frame as usual.
+  function wsAnalyticsCompactLine(data) {
+    const t = data.type;
+    const d = data.data || {};
+    if (t === 'density_map_snapshot' || t === 'density_map_update') {
+      const rows = d.notifications || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange}/${first.market} ${first.ticker} ${first.side} @${first.price} $${wsUsd(first.sizeUsd)}` : '';
+      return `${t} (${rows.length} notification${rows.length !== 1 ? 's' : ''})${sample}`;
+    }
+    if (t === 'large_trades_update') {
+      const rows = d.trades || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange}/${first.market} ${first.ticker} ${first.side} ${first.minPrice}-${first.maxPrice} $${wsUsd(first.sizeUsd)}` : '';
+      return `${t} (${rows.length} trade${rows.length !== 1 ? 's' : ''})${sample}`;
+    }
+    if (t === 'liquidations_snapshot' || t === 'liquidations_update') {
+      const rows = d.liquidations || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange} ${first.symbol} ${first.side} @${first.price} $${wsUsd(first.notionalUsd)}` : '';
+      const tot = d.totals ? ` | totals long $${wsUsd(d.totals.longUsd)} / short $${wsUsd(d.totals.shortUsd)}` : '';
+      return `${t} (${rows.length} row${rows.length !== 1 ? 's' : ''})${sample}${tot}`;
+    }
+    if (t === 'liquidations_metadata') {
+      const tot = d.totals || {};
+      const top = (d.topTokens || []).slice(0, 3).map(x => x.token).join(', ');
+      return `${t} long $${wsUsd(tot.longUsd)} (${tot.longCount ?? '?'}) / short $${wsUsd(tot.shortUsd)} (${tot.shortCount ?? '?'})${top ? ' | top: ' + top : ''}`;
+    }
+    return null;
   }
 
   function wsSendRaw() {

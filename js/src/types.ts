@@ -119,7 +119,26 @@ export interface ChangeTickerRequest {
 }
 
 export interface ComboRequest {
-  ticker: string;
+  /** One combo for a single ticker (e.g. 'BTCUSDT'). Mutually exclusive with `tickers`. */
+  ticker?: string;
+  /** One combo per ticker, in the order given; validated all-or-nothing. Mutually exclusive with `ticker`. */
+  tickers?: string[];
+  /** Omitted or true: the combo takes focus (today's behaviour). false: it opens in the background. */
+  activate?: boolean;
+}
+
+/** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */
+export interface CloseTabResponse {
+  tabId: number;
+  closed: boolean;
+  outcome: number;
+}
+
+/** POST /api/ui/tabs/{tabId}/activate. `outcome` is the seam's enum as a number; on a 200 it is 0 (Activated). */
+export interface ActivateTabResponse {
+  tabId: number;
+  activated: boolean;
+  outcome: number;
 }
 
 // ============ Socket Types ============
@@ -312,6 +331,8 @@ export interface OrderBookSettings {
     largeAmountDetectionMaxValue?: number;
     showRuler?: string;
     zoomType?: string;
+    /** Linear | Logarithmic — how one wheel notch moves the compression. Null on a row saved before the field existed (treated as Linear). */
+    zoomStepMode?: string;
     autoZoom?: boolean;
     zoomPercent?: number;
     rowHeight?: number;

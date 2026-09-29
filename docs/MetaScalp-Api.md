@@ -17,7 +17,10 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background) |
+| `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
+| `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
+| `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
 | `GET /api/connections` | List all active exchange connections |
 | `GET /api/connections/{id}/...` | Query tickers, orders, positions, balances for a connection |
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
@@ -72,7 +75,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required)
 - **Chart annotation subscriptions:** Send `annotation_subscribe` with a connection ID + ticker to receive a one-shot `annotations_snapshot` of the current shapes
 - **UI change subscriptions:** Send `ui_subscribe` to receive a `ui_snapshot` of the open UI followed by `ui_update` events (no connection ID required)
-- **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; liquidations requires the MetaBroker login)
+- **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; no MetaBroker login needed)
 - You can subscribe to multiple connections and tickers simultaneously
 - All subscriptions are automatically cleaned up when you disconnect
 
@@ -333,10 +336,18 @@ request flag:
 |-----------|----------|-------------|
 | `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
+| `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
 naming the rejected tickers.
+
+`Activate` decides whether the newly opened combo takes focus:
+
+- `true` or omitted — the combo opens and becomes the active/focused layout (unchanged default). On the
+  `Tickers` form exactly one window (the last in the list) comes to the front, as today.
+- `false` — the combo opens **in the background**: whatever window/tab you were on stays active. On the
+  `Tickers` form *no* element of the list steals focus.
 
 **Response**
 
@@ -365,6 +376,31 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}'
+
+# Open in the background (the current window/tab keeps focus)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Activate": false}'
+```
+
+---
+
+### Close Last Tab
+
+Closes the **last** tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body. It is a fixed-target convenience route (no id) — to close a **specific** tab by id use [`POST /api/ui/tabs/{tabId}/close`](#close-a-tab).
+
+```
+POST http://127.0.0.1:{port}/api/close-last-tab
+```
+
+**Response**
+
+| Field | Value |
+|---|---|
+| `status` | `"ok"` when a tab was closed, `"skipped"` when only one tab remained (it is never closed) |
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/close-last-tab
 ```
 
 ---
@@ -1752,18 +1788,69 @@ Content-Type: application/json
 unknown / unsupported `windowType` → `400` naming the supported list; the main workspace → `400`;
 unknown window id → `404`.
 
+#### Close a Tab
+
+Closes the ONE tab addressed by `{tabId}` through the app's **own** tab-close path (the same teardown
+the tab's own ✕ runs — every document in the tab is torn down and its DB rows deleted). `{tabId}` is
+the `id` a tab carries under `GET /api/ui/state` (Window → Tab). Tab ids are **globally unique**, so no
+window type is needed: the id alone addresses the tab, and the window it belongs to and its sibling tabs
+stay open.
+
+```
+POST http://127.0.0.1:{port}/api/ui/tabs/{tabId}/close
+```
+
+**No request body is required** (an empty body or `{}` is accepted; a malformed body or an unknown
+property → `400`).
+
+**Response `200 OK`:** `{ tabId, closed, outcome }`.
+
+> **Unlike a hand-close, the API path raises NO confirmation prompt** (a modal would block the HTTP
+> response); the interactive prompt — and its «Show a warning when closing windows and tabs» setting —
+> is unchanged.
+
+> **A window's ONLY tab cannot be closed** → `400` with a message (it would leave an empty workspace);
+> there is no silent no-op.
+
+**Errors:** non-numeric `{tabId}` → `400 Invalid tab ID`; malformed body / unknown body property →
+`400`; an id no open window hosts → `404 Tab {tabId} not found.` All validated **before** any tab is
+closed.
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/ui/tabs/42/close
+```
+
+#### Activate a Tab
+
+Makes the tab addressed by `{tabId}` the selected one in its window, by driving the SAME header
+selection a user's tab click drives (which also persists it). Same id-addressing as close; no request
+body is required. Idempotent when the tab is already selected.
+
+```
+POST http://127.0.0.1:{port}/api/ui/tabs/{tabId}/activate
+```
+
+**Response `200 OK`:** `{ tabId, activated, outcome }`.
+
+**Errors:** non-numeric `{tabId}` → `400 Invalid tab ID`; malformed body / unknown body property →
+`400`; an id no open window hosts → `404 Tab {tabId} not found.`
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/ui/tabs/42/activate
+```
+
 #### Still-deferred UI lifecycle routes
 
-Opening/closing an individual **panel** and switching the active **tab** are still not available — they
-require calling MetaScalp's own window-thread methods with no reachable lookup to marshal onto. These
-routes do **not** exist:
+Opening/closing an individual **panel** (a single order book or chart inside a tab) is still not
+available. Whole-window lifecycle and per-**tab** close/activate ARE available (see above); only the
+panel-level routes below remain deferred — faking them by writing the database directly would diverge
+the on-screen layout from the saved model. These routes do **not** exist:
 
 | Route | Intent |
 |-------|--------|
 | `POST /api/ui/windows/{windowId}/order-books` | Open an order book in a window's active tab |
 | `POST /api/ui/windows/{windowId}/charts` | Open a chart in a window's active tab |
 | `DELETE /api/ui/documents/{externalId}` | Close one addressed panel |
-| `POST /api/ui/tabs/{tabId}/activate` | Activate a tab |
 
 ---
 
@@ -1822,6 +1909,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "LargeAmountDetectionMaxValue": 0.0,
     "ShowRuler": "Percent",
     "ZoomType": "Absolute",
+    "ZoomStepMode": "Logarithmic",
     "AutoZoom": false,
     "ZoomPercent": 2.0,
     "RowHeight": 12.0,
@@ -1875,6 +1963,7 @@ Settings field reference:
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
 | `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
 | `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
+| `ZoomStepMode` | string | How one mouse-wheel notch moves the compression: `"Linear"` (by one unit) or `"Logarithmic"` (to the next rung of the 1, 2, 5, 10, 20, 50 … ladder). `null` on a settings row saved before this field existed — the terminal treats that as `"Linear"` |
 | `AutoZoom` | boolean | Enable automatic zoom |
 | `ZoomPercent` | decimal | Zoom percentage value |
 | `RowHeight` | decimal | Order book row height in pixels |
@@ -1908,6 +1997,7 @@ Settings field reference:
 |-------|-------------|
 | `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
+| `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
 | `ClusterTimeFrame` | `"M1"`, `"M5"`, `"M15"`, `"M30"`, `"H1"`, `"H4"`, `"D1"` |
 
@@ -2153,15 +2243,15 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `ui_subscribe` | `{}` | Subscribe to UI change events. Receives a `ui_snapshot`, then `ui_update` events. Idempotent. |
 | `ui_unsubscribe` | `{}` | Stop receiving UI change events. Idempotent. |
 
-**MetaBroker analytics subscriptions (density map, large trades, liquidations)** — app-wide market-intelligence feeds relayed from the MetaBroker backend: the same data the terminal's Density Map, Large Trades and Liquidations windows show. No connection ID required. Each socket holds at most **one subscription per feed** — re-subscribing REPLACES the config (no unsubscribe needed to change filters), and each socket gets its own upstream feed, independent of the windows. The liquidations feed **requires the MetaBroker login** (the upstream socket authenticates with the user's token); without it the subscribe is refused with an `error` frame:
+**MetaBroker analytics subscriptions (density map, large trades, liquidations)** — app-wide market-intelligence feeds relayed from the MetaBroker backend: the same data the terminal's Density Map, Large Trades and Liquidations windows show. No connection ID required. Each socket holds at most **one subscription per feed** — re-subscribing REPLACES the config (no unsubscribe needed to change filters), and each socket gets its own upstream feed, independent of the windows. **No MetaBroker login is needed** for any of the three: the liquidations upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use:
 
 | Type | Data | Description |
 |---|---|---|
-| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000 }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures; `bdsMode`: manual \| auto (default manual; `bdsValue` default 1000000 USD). A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config without replaying already-notified walls. |
+| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000 }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id; a wall id is delivered at most once per subscription, in the snapshot or in an update, even when the feed removes and later re-broadcasts it). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures; `bdsMode`: manual \| auto (default manual; `bdsValue` default 1000000 USD). A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config: the server acks with `density_map_subscribed` and sends a fresh `density_map_snapshot` of the walls that match the new filters; walls already notified are not replayed as updates. |
 | `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
-| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
+| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
 | `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
-| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **Requires the MetaBroker login.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
+| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500; out of range is refused with an `error` frame naming the field) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
 | `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |
 
 #### Messages you receive
@@ -2864,7 +2954,7 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 `minPrice` / `maxPrice` span the prints merged into the aggregation window (`minPrice == maxPrice` and `tradeCount == 1` when `aggregationMs` is `0`); `category` is `small` / `medium` / `large` per the configured coefficients.
 
-**Liquidations snapshot / update / metadata** — `liquidations_snapshot` follows every subscribe/replace (backfill rows + aggregates; may be empty), `liquidations_update` carries live rows batched newest-first, and `liquidations_metadata` refreshes the aggregates every ~2 s for the configured `window`:
+**Liquidations snapshot / update / metadata** — `liquidations_snapshot` follows every subscribe/replace (backfill rows + aggregates; may be empty), `liquidations_update` carries live rows batched newest-first, and `liquidations_metadata` refreshes the aggregates on every upstream map tick (sub-second) for the configured `window`:
 
 ```json
 {
