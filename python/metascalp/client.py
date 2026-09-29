@@ -275,7 +275,14 @@ class MetaScalpClient:
         )
 
     async def update_orderbook_settings(self, connection_id: int, ticker: str, **settings) -> dict:
-        """Update order book settings (partial update). Only provided fields are changed."""
+        """Update order book settings (partial update). Only provided fields are changed.
+
+        Enum-valued fields take their string name, e.g. ShowRuler="Percent",
+        ZoomType="Absolute" | "Percentage", SizeType="Coin" | "Usd" and
+        ZoomStepMode="Linear" | "Logarithmic" (Linear moves the compression by one unit
+        per wheel notch, Logarithmic by one rung of the 1, 2, 5, 10, 20, 50 ... ladder;
+        a row saved before the field existed reads back null and behaves as Linear).
+        """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",
             settings,

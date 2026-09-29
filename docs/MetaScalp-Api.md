@@ -1909,6 +1909,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "LargeAmountDetectionMaxValue": 0.0,
     "ShowRuler": "Percent",
     "ZoomType": "Absolute",
+    "ZoomStepMode": "Logarithmic",
     "AutoZoom": false,
     "ZoomPercent": 2.0,
     "RowHeight": 12.0,
@@ -1961,6 +1962,7 @@ Settings field reference:
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
 | `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
 | `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
+| `ZoomStepMode` | string | How one mouse-wheel notch moves the compression: `"Linear"` (by one unit) or `"Logarithmic"` (to the next rung of the 1, 2, 5, 10, 20, 50 … ladder). `null` on a settings row saved before this field existed — the terminal treats that as `"Linear"` |
 | `AutoZoom` | boolean | Enable automatic zoom |
 | `ZoomPercent` | decimal | Zoom percentage value |
 | `RowHeight` | decimal | Order book row height in pixels |
@@ -1993,6 +1995,7 @@ Settings field reference:
 |-------|-------------|
 | `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
+| `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
 | `ClusterTimeFrame` | `"M1"`, `"M5"`, `"M15"`, `"M30"`, `"H1"`, `"H4"`, `"D1"` |
 
