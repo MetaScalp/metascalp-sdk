@@ -817,6 +817,11 @@
           <li><code>{ "tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"] }</code> &mdash; opens one combo layout per ticker, <strong>in the order given</strong>.</li>
         </ul>
         <p>The <code>tickers</code> form is a write validated as all-or-nothing: the whole list is validated first, and if <em>any</em> ticker resolves on no eligible connection, <strong>nothing is opened</strong> and the request returns <code>400</code> naming the rejected tickers. Supplying <em>both</em> <code>ticker</code> and <code>tickers</code>, or an empty <code>tickers</code> array with no <code>ticker</code>, also returns <code>400</code>.</p>
+        <p>Both shapes accept an optional <code>activate</code> boolean (default <code>true</code>) that decides whether the newly opened combo takes focus:</p>
+        <ul>
+          <li><code>activate: true</code> or the field omitted &mdash; the combo opens and becomes the active/focused layout (unchanged default). On the <code>tickers</code> form, exactly one window (the last in the list) comes to the front, as today.</li>
+          <li><code>activate: false</code> &mdash; the combo opens <strong>in the background</strong>: whatever window/tab you were on stays active. On the <code>tickers</code> form, <em>no</em> element of the list steals focus.</li>
+        </ul>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -833,32 +838,6 @@
           <span class="response-time" id="resp-combo-time"></span>
         </div>
         <div class="response-body" id="resp-combo-body"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- /api/close-last-tab -->
-  <div class="endpoint" id="ep-close-last-tab">
-    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
-      <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/close-last-tab</span>
-      <span class="endpoint-desc">Close the main window's last tab</span>
-      <span class="chevron">&#9656;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="docs">
-        <p>Closes the <strong>last</strong> tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.</p>
-        <p>Refuses to close the only remaining tab: the response is then <code>{ "status": "skipped" }</code> instead of <code>{ "status": "ok" }</code>.</p>
-      </div>
-      <div class="actions-row">
-        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
-      </div>
-      <div class="response-panel" id="resp-close-last-tab">
-        <div class="response-bar">
-          <span class="status-badge" id="resp-close-last-tab-status"></span>
-          <span class="response-time" id="resp-close-last-tab-time"></span>
-        </div>
-        <div class="response-body" id="resp-close-last-tab-body"></div>
       </div>
     </div>
   </div>
@@ -3228,6 +3207,118 @@
     </div>
   </div>
 
+  <!-- /api/ui/tabs/{tabId}/close (POST) -->
+  <div class="endpoint" id="ep-ui-close-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-close-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/close</span>
+      <span class="endpoint-desc">Close a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the ONE tab addressed by <code>{tabId}</code> through the app's OWN tab-close path (the same
+        teardown the tab's own <strong>&times;</strong> runs &mdash; every document in the tab is torn down and its
+        DB rows deleted). <code>{tabId}</code> is the <code>id</code> a tab carries under
+        <code>GET /api/ui/state</code> (Window &rarr; Tab). Tab ids are <strong>globally unique</strong>, so no
+        window type is needed &mdash; the id alone addresses the tab, and the window it belongs to and its sibling
+        tabs stay open.</p>
+        <p><strong>No request body is required</strong> (an empty body or <code>{}</code> is accepted).</p>
+        <p>Response <code>{ tabId, closed, outcome }</code>.</p>
+        <p><strong>Unlike a hand-close, the API path raises NO confirmation prompt</strong> (a modal would block
+        the HTTP response); the interactive prompt &mdash; and its <em>&laquo;Show a warning when closing windows
+        and tabs&raquo;</em> setting &mdash; is unchanged.</p>
+        <p><strong>A window's ONLY tab cannot be closed</strong> &rarr; <code>400</code> with a message (it would
+        leave an empty workspace); there is no silent no-op.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code> &mdash; all validated <em>before</em> any tab is closed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-close-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-close-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-close-tab-status"></span>
+          <span class="response-time" id="resp-ui-close-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-close-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/tabs/{tabId}/activate (POST) -->
+  <div class="endpoint" id="ep-ui-activate-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-activate-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/activate</span>
+      <span class="endpoint-desc">Switch to a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Makes the tab addressed by <code>{tabId}</code> the selected one in its window, by driving the SAME
+        header selection a user's tab click drives (which also persists it). Same id-addressing as the close route;
+        no request body is required. Idempotent when the tab is already selected.</p>
+        <p>Response <code>{ tabId, activated, outcome }</code>.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code></p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-activate-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendActivateTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-activate-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-activate-tab-status"></span>
+          <span class="response-time" id="resp-ui-activate-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-activate-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/close-last-tab (POST) -->
+  <div class="endpoint" id="ep-close-last-tab">
+    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/close-last-tab</span>
+      <span class="endpoint-desc">Close the main window's last tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the <strong>main workspace window's LAST tab</strong> through the tab's own close path (no
+        confirmation prompt). It never closes the only remaining tab. This is a fixed-target convenience route (no
+        id) &mdash; to close a SPECIFIC tab by id, use <code>POST /api/ui/tabs/{tabId}/close</code>.</p>
+        <p><strong>No request body is required.</strong> Response <code>{ status }</code> &mdash;
+        <code>"ok"</code> when a tab was closed, <code>"skipped"</code> when only one tab remained.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-close-last-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-close-last-tab-status"></span>
+          <span class="response-time" id="resp-close-last-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-close-last-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- /api/ui/documents/{externalId}/ticker (PUT) -->
   <div class="endpoint" id="ep-ui-doc-ticker">
     <div class="endpoint-header" onclick="toggle('ep-ui-doc-ticker')">
@@ -3295,18 +3386,17 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Opening/closing a panel and switching the active window or tab are <strong>not yet available</strong>.
-        They require calling MetaScalp's own window-thread methods, and the local API layer has no reachable
-        window&#8209;id&nbsp;&rarr;&nbsp;dispatcher lookup to marshal onto (it does not reference the WPF UI
-        project). Faking them by writing the database directly would diverge the on-screen layout from the
-        saved model, so they are deliberately deferred to a dedicated follow-up rather than shipped fragile.
-        The following routes therefore do <strong>not</strong> exist yet:</p>
+        <p>Opening/closing an individual <strong>panel</strong> (a single order book or chart inside a tab) is
+        <strong>not yet available</strong>. Whole-window lifecycle and per-<strong>tab</strong> close/activate ARE
+        available (see the routes above); only the panel-level routes below remain deferred. Faking them by writing
+        the database directly would diverge the on-screen layout from the saved model, so they are deliberately
+        deferred to a dedicated follow-up rather than shipped fragile. The following routes therefore do
+        <strong>not</strong> exist yet:</p>
         <table>
           <tr><th>Route</th><th>Intent</th></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/order-books</code></td><td>Open an order book in a window's active tab</td></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/charts</code></td><td>Open a chart in a window's active tab</td></tr>
           <tr><td><code>DELETE /api/ui/documents/{externalId}</code></td><td>Close one addressed panel (with its DB delete)</td></tr>
-          <tr><td><code>POST /api/ui/tabs/{tabId}/activate</code></td><td>Activate a tab</td></tr>
         </table>
       </div>
     </div>
@@ -4286,15 +4376,6 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     }
   }
 
-  async function sendCloseLastTab() {
-    try {
-      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
-      showResponse('close-last-tab', status, statusClass(status), data, ms);
-    } catch (e) {
-      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
-    }
-  }
-
   // --- Connections ---
   async function sendGetConnections() {
     try {
@@ -4853,6 +4934,35 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('ui-activate-window', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('ui-activate-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseTab() {
+    const id = document.getElementById('f-ui-close-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/close`, {});
+      showResponse('ui-close-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-close-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendActivateTab() {
+    const id = document.getElementById('f-ui-activate-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/activate`, {});
+      showResponse('ui-activate-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-activate-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseLastTab() {
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
+      showResponse('close-last-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
     }
   }
 
