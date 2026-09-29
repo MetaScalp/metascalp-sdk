@@ -279,6 +279,18 @@
     border-top: 1px solid var(--border);
     margin: 16px 0;
   }
+  .ws-docs { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .ws-docs-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: var(--surface); cursor: pointer; user-select: none; font-size: 13px; font-weight: 600;
+  }
+  .ws-docs-header:hover { background: var(--surface2); }
+  .ws-docs-chevron { color: var(--text-muted); transition: transform .2s; font-size: 18px; }
+  .ws-docs.open .ws-docs-chevron { transform: rotate(90deg); }
+  .ws-docs-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .ws-docs-body { display: none; padding: 16px 16px 0; border-top: 1px solid var(--border); }
+  .ws-docs.open .ws-docs-body { display: block; }
+  .ws-docs-body .docs { margin-bottom: 0; }
 
   /* WebSocket styles */
   .method-ws { background: rgba(188,140,255,.15); color: var(--purple); }
@@ -3286,6 +3298,168 @@
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
+      <!-- Interactive testing panel -->
+      <div>
+        <div class="ws-controls">
+          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
+          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
+          <div class="ws-status" id="ws-status">
+            <span class="dot"></span>
+            <span id="ws-status-text">Disconnected</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Connection ID</label>
+            <input type="number" id="f-ws-conn" value="1" min="1">
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;">
+            <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
+            <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Ticker <span class="optional">(for market data)</span></label>
+            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="wsSendMarketData('trade_subscribe')" id="ws-trade-sub-btn" disabled>Trade Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Trade Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>OB Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>OB Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('mark_price_subscribe')" id="ws-mp-sub-btn" disabled>Mark Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('mark_price_unsubscribe')" id="ws-mp-unsub-btn" disabled>Mark Unsub</button>
+            <button class="btn btn-primary" onclick="wsSendMarketData('funding_subscribe')" id="ws-fund-sub-btn" disabled>Funding Sub</button>
+            <button class="btn btn-secondary" onclick="wsSendMarketData('funding_unsubscribe')" id="ws-fund-unsub-btn" disabled>Funding Unsub</button>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px;">OB ZoomIndex <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-zoom" min="0" placeholder="0" style="width:90px;">
+            </div>
+            <div>
+              <label style="font-size:11px;">OB DepthLevels <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-depth-levels" min="1" placeholder="50" style="width:90px;">
+            </div>
+            <div>
+              <label style="font-size:11px;">OB DepthPercent <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-ob-depth-percent" min="0" step="0.1" placeholder="0.5" style="width:110px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Uncheck to skip the exchange REST snapshot fetch on subscribe">OB FetchSnapshot</label>
+              <label for="f-ws-ob-fetch-snapshot" style="display:inline-flex;align-items:center;justify-content:center;height:34px;width:34px;cursor:pointer;">
+                <input type="checkbox" id="f-ws-ob-fetch-snapshot" checked style="cursor:pointer;margin:0;width:16px;height:16px;">
+              </label>
+            </div>
+            <div>
+              <label style="font-size:11px;">Trade ZoomIndex <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-trade-zoom" min="0" placeholder="0" style="width:110px;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="wsSendNotification('notification_subscribe')" id="ws-notif-sub-btn" disabled>Subscribe Notifications</button>
+          <button class="btn btn-secondary" onclick="wsSendNotification('notification_unsubscribe')" id="ws-notif-unsub-btn" disabled>Unsubscribe Notifications</button>
+          <button class="btn btn-primary" onclick="wsSendNotification('signal_level_subscribe')" id="ws-sl-sub-btn" disabled>Subscribe Signal Levels</button>
+          <button class="btn btn-secondary" onclick="wsSendNotification('signal_level_unsubscribe')" id="ws-sl-unsub-btn" disabled>Unsubscribe Signal Levels</button>
+        </div>
+
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px;" title="Comma-separated exchange names. Density map / large trades: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, aster, lighter, xt. Liquidations: binance, bybit, okx, bitget, gate, htx, aster, lighter.">Analytics exchanges <span class="optional">(comma list)</span></label>
+              <input type="text" id="f-ws-an-exchanges" value="binance,bybit,okx" style="width:210px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Market for density map / large trades (liquidations are futures only)">Market</label>
+              <select id="f-ws-an-market" style="width:100px;">
+                <option value="futures" selected>futures</option>
+                <option value="spot">spot</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq minNotionalUsd <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-min-notional" min="0" placeholder="0" style="width:120px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Affects totals / topTokens only, never the rows">Liq window</label>
+              <select id="f-ws-liq-window" style="width:80px;">
+                <option value="m5">m5</option>
+                <option value="m15">m15</option>
+                <option value="h1" selected>h1</option>
+                <option value="h4">h4</option>
+                <option value="h24">h24</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq backfill <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-backfill" min="0" max="500" placeholder="200" style="width:90px;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="wsSendAnalytics('density_map_subscribe')" id="ws-dm-sub-btn" disabled>Density Map Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('density_map_unsubscribe')" id="ws-dm-unsub-btn" disabled>Density Map Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('large_trades_subscribe')" id="ws-lt-sub-btn" disabled>Large Trades Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('large_trades_unsubscribe')" id="ws-lt-unsub-btn" disabled>Large Trades Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('liquidations_subscribe')" id="ws-liq-sub-btn" disabled>Liquidations Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('liquidations_unsubscribe')" id="ws-liq-unsub-btn" disabled>Liquidations Unsub</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">MetaBroker analytics streams: app-wide, no connection ID, no MetaBroker login. Other options (coefficients, lifetimes, quote assets, <code>aggregationMs</code>, <code>side</code>, <code>coin</code>, <code>assetClass</code>) go through the custom message box &mdash; payloads are in the message reference below.</p>
+
+        <div class="form-grid single" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Custom message <span class="optional">(raw JSON)</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"connectionId":1}}' style="flex:1;">
+              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+          <label>Message Log &amp; Market Data</label>
+          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
+        </div>
+        <div class="ws-panels">
+          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
+          <div class="ob-panel" id="ob-panel">
+            <div class="ob-header">
+              <label>Order Book</label>
+            </div>
+            <div class="ob-tabs" id="ob-tabs"></div>
+            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
+            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
+          </div>
+          <div class="trades-panel" id="trades-panel">
+            <div class="trades-header">
+              <label>Trades</label>
+            </div>
+            <div class="trades-tabs" id="trades-tabs"></div>
+            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
+            <div class="trades-list" id="trades-list" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Message reference (collapsed by default) -->
+      <div class="ws-docs" id="ws-docs">
+        <div class="ws-docs-header" onclick="toggle('ws-docs')">
+          <span class="ws-docs-chevron">&#9656;</span>
+          <span>Message reference &amp; examples</span>
+          <span class="ws-docs-hint">connection, envelope, inbound / outbound messages, lifecycle, example payloads</span>
+        </div>
+        <div class="ws-docs-body">
       <div class="docs">
         <p>Connect via WebSocket to receive <strong>real-time updates</strong> for your exchange connections. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade and order book market data.</p>
 
@@ -3640,158 +3814,6 @@
 <span style="color:var(--text-muted);">// Error (invalid connection)</span>
 { "Type": "error", "Data": { "error": "Connection 999 not found or not active" } }</code></pre>
       </div>
-
-      <hr class="divider">
-
-      <!-- Interactive testing panel -->
-      <div>
-        <div class="ws-controls">
-          <button class="btn btn-purple" id="ws-connect-btn" onclick="wsConnect()">Connect</button>
-          <button class="btn btn-danger" id="ws-disconnect-btn" onclick="wsDisconnect()" disabled>Disconnect</button>
-          <div class="ws-status" id="ws-status">
-            <span class="dot"></span>
-            <span id="ws-status-text">Disconnected</span>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Connection ID</label>
-            <input type="number" id="f-ws-conn" value="1" min="1">
-          </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;">
-            <button class="btn btn-primary" onclick="wsSendSubscribe()" id="ws-sub-btn" disabled>Subscribe</button>
-            <button class="btn btn-secondary" onclick="wsSendUnsubscribe()" id="ws-unsub-btn" disabled>Unsubscribe</button>
-          </div>
-        </div>
-
-        <div class="form-grid" style="margin-top:8px;">
-          <div class="form-group">
-            <label>Ticker <span class="optional">(for market data)</span></label>
-            <input type="text" id="f-ws-ticker" value="BTCUSDT" placeholder="BTCUSDT">
-          </div>
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="wsSendMarketData('trade_subscribe')" id="ws-trade-sub-btn" disabled>Trade Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('trade_unsubscribe')" id="ws-trade-unsub-btn" disabled>Trade Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('orderbook_subscribe')" id="ws-ob-sub-btn" disabled>OB Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('orderbook_unsubscribe')" id="ws-ob-unsub-btn" disabled>OB Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('mark_price_subscribe')" id="ws-mp-sub-btn" disabled>Mark Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('mark_price_unsubscribe')" id="ws-mp-unsub-btn" disabled>Mark Unsub</button>
-            <button class="btn btn-primary" onclick="wsSendMarketData('funding_subscribe')" id="ws-fund-sub-btn" disabled>Funding Sub</button>
-            <button class="btn btn-secondary" onclick="wsSendMarketData('funding_unsubscribe')" id="ws-fund-unsub-btn" disabled>Funding Unsub</button>
-          </div>
-        </div>
-
-        <div class="form-grid" style="margin-top:8px;">
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <div>
-              <label style="font-size:11px;">OB ZoomIndex <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-zoom" min="0" placeholder="0" style="width:90px;">
-            </div>
-            <div>
-              <label style="font-size:11px;">OB DepthLevels <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-depth-levels" min="1" placeholder="50" style="width:90px;">
-            </div>
-            <div>
-              <label style="font-size:11px;">OB DepthPercent <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-ob-depth-percent" min="0" step="0.1" placeholder="0.5" style="width:110px;">
-            </div>
-            <div>
-              <label style="font-size:11px;" title="Uncheck to skip the exchange REST snapshot fetch on subscribe">OB FetchSnapshot</label>
-              <label for="f-ws-ob-fetch-snapshot" style="display:inline-flex;align-items:center;justify-content:center;height:34px;width:34px;cursor:pointer;">
-                <input type="checkbox" id="f-ws-ob-fetch-snapshot" checked style="cursor:pointer;margin:0;width:16px;height:16px;">
-              </label>
-            </div>
-            <div>
-              <label style="font-size:11px;">Trade ZoomIndex <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-trade-zoom" min="0" placeholder="0" style="width:110px;">
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="wsSendNotification('notification_subscribe')" id="ws-notif-sub-btn" disabled>Subscribe Notifications</button>
-          <button class="btn btn-secondary" onclick="wsSendNotification('notification_unsubscribe')" id="ws-notif-unsub-btn" disabled>Unsubscribe Notifications</button>
-          <button class="btn btn-primary" onclick="wsSendNotification('signal_level_subscribe')" id="ws-sl-sub-btn" disabled>Subscribe Signal Levels</button>
-          <button class="btn btn-secondary" onclick="wsSendNotification('signal_level_unsubscribe')" id="ws-sl-unsub-btn" disabled>Unsubscribe Signal Levels</button>
-        </div>
-
-        <div class="form-grid" style="margin-top:12px;">
-          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <div>
-              <label style="font-size:11px;" title="Comma-separated exchange names. Density map / large trades: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, aster, lighter, xt. Liquidations: binance, bybit, okx, bitget, gate, htx, aster, lighter.">Analytics exchanges <span class="optional">(comma list)</span></label>
-              <input type="text" id="f-ws-an-exchanges" value="binance,bybit,okx" style="width:210px;">
-            </div>
-            <div>
-              <label style="font-size:11px;" title="Market for density map / large trades (liquidations are futures only)">Market</label>
-              <select id="f-ws-an-market" style="width:100px;">
-                <option value="futures" selected>futures</option>
-                <option value="spot">spot</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:11px;">Liq minNotionalUsd <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-liq-min-notional" min="0" placeholder="0" style="width:120px;">
-            </div>
-            <div>
-              <label style="font-size:11px;" title="Affects totals / topTokens only, never the rows">Liq window</label>
-              <select id="f-ws-liq-window" style="width:80px;">
-                <option value="m5">m5</option>
-                <option value="m15">m15</option>
-                <option value="h1" selected>h1</option>
-                <option value="h4">h4</option>
-                <option value="h24">h24</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:11px;">Liq backfill <span class="optional">(opt)</span></label>
-              <input type="number" id="f-ws-liq-backfill" min="0" max="500" placeholder="200" style="width:90px;">
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="wsSendAnalytics('density_map_subscribe')" id="ws-dm-sub-btn" disabled>Density Map Sub</button>
-          <button class="btn btn-secondary" onclick="wsSendAnalytics('density_map_unsubscribe')" id="ws-dm-unsub-btn" disabled>Density Map Unsub</button>
-          <button class="btn btn-primary" onclick="wsSendAnalytics('large_trades_subscribe')" id="ws-lt-sub-btn" disabled>Large Trades Sub</button>
-          <button class="btn btn-secondary" onclick="wsSendAnalytics('large_trades_unsubscribe')" id="ws-lt-unsub-btn" disabled>Large Trades Unsub</button>
-          <button class="btn btn-primary" onclick="wsSendAnalytics('liquidations_subscribe')" id="ws-liq-sub-btn" disabled>Liquidations Sub</button>
-          <button class="btn btn-secondary" onclick="wsSendAnalytics('liquidations_unsubscribe')" id="ws-liq-unsub-btn" disabled>Liquidations Unsub</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">MetaBroker analytics streams (app-wide, no connection ID, no MetaBroker login). The buttons send the exchange list above with the documented defaults; for coefficients, lifetimes, quote assets, <code>aggregationMs</code>, <code>side</code>, <code>coin</code> or <code>assetClass</code> use the custom message box with a payload from the reference table below. Rows are logged as compact one-liners.</p>
-
-        <div class="form-grid single" style="margin-top:8px;">
-          <div class="form-group">
-            <label>Custom message <span class="optional">(raw JSON)</span></label>
-            <div style="display:flex;gap:8px;">
-              <input type="text" id="f-ws-raw" placeholder='{"Type":"subscribe","Data":{"connectionId":1}}' style="flex:1;">
-              <button class="btn btn-secondary" onclick="wsSendRaw()" id="ws-raw-btn" disabled>Send</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
-          <label>Message Log &amp; Market Data</label>
-          <button class="btn btn-secondary" onclick="wsClearLog()" style="padding:4px 10px;font-size:12px;">Clear Log</button>
-        </div>
-        <div class="ws-panels">
-          <div class="ws-log" id="ws-log"><span class="log-sys">Waiting for connection...</span></div>
-          <div class="ob-panel" id="ob-panel">
-            <div class="ob-header">
-              <label>Order Book</label>
-            </div>
-            <div class="ob-tabs" id="ob-tabs"></div>
-            <div class="ob-empty" id="ob-empty">Subscribe to order book<br>to see live depth</div>
-            <div class="ob-ladder" id="ob-ladder" style="display:none;"></div>
-          </div>
-          <div class="trades-panel" id="trades-panel">
-            <div class="trades-header">
-              <label>Trades</label>
-            </div>
-            <div class="trades-tabs" id="trades-tabs"></div>
-            <div class="trades-empty" id="trades-empty">Subscribe to trades<br>to see live feed</div>
-            <div class="trades-list" id="trades-list" style="display:none;"></div>
-          </div>
         </div>
       </div>
     </div>
