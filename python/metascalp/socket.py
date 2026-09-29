@@ -340,8 +340,8 @@ class MetaScalpSocket:
     ) -> None:
         """Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
 
-        REQUIRES the MetaBroker login in the terminal — without it the subscribe is
-        refused with an 'error' frame.
+        No MetaBroker login is needed: the upstream is the screener-v2 hub signed with
+        the shared service key.
 
         exchanges is required and must be non-empty; valid names: binance, bybit, okx,
         bitget, gate, htx, aster, lighter. asset_class: 'all' | 'crypto' | 'tradfi'
@@ -354,7 +354,7 @@ class MetaScalpSocket:
 
         Events: 'liquidations_snapshot' (after every subscribe/replace),
         'liquidations_update' (live rows, newest first), 'liquidations_metadata'
-        (totals + top tokens, ~2 s cadence).
+        (totals + top tokens, sub-second cadence).
         """
         data: dict = {"exchanges": exchanges}
         if min_notional_usd is not None:

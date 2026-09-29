@@ -200,7 +200,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `ui_subscribe` | `ui_snapshot`, then `ui_update` on UI changes |
 | `density_map_subscribe` | `density_map_snapshot`, then `density_map_update` — MetaBroker order-book walls, one notification per wall |
 | `large_trades_subscribe` | `large_trades_update` — MetaBroker aggregated large trade prints (append-only, no snapshot) |
-| `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (requires the MetaBroker login) |
+| `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (no MetaBroker login needed) |
 
 > **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship.
 

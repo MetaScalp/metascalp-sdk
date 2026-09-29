@@ -343,11 +343,11 @@ public class MetaScalpSocket : IDisposable
 
     /// <summary>
     /// Subscribe to the MetaBroker cross-exchange liquidations stream (futures only).
-    /// REQUIRES the MetaBroker login in the terminal — without it the subscribe is refused with
-    /// an error frame. <c>Exchanges</c> is required and must be non-empty. Re-subscribing replaces
+    /// No MetaBroker login is needed: the upstream is the screener-v2 hub signed with the shared
+    /// service key. <c>Exchanges</c> is required and must be non-empty. Re-subscribing replaces
     /// the filters and the server re-sends a snapshot.
     /// Events: OnLiquidationsSnapshot (after every subscribe/replace), OnLiquidationsUpdate
-    /// (live rows, newest first), OnLiquidationsMetadata (totals + top tokens, ~2 s cadence).
+    /// (live rows, newest first), OnLiquidationsMetadata (totals + top tokens, sub-second cadence).
     /// </summary>
     public void SubscribeLiquidations(LiquidationsSubscribeOptions options)
         => Send("liquidations_subscribe", options);

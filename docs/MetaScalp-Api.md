@@ -72,7 +72,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required)
 - **Chart annotation subscriptions:** Send `annotation_subscribe` with a connection ID + ticker to receive a one-shot `annotations_snapshot` of the current shapes
 - **UI change subscriptions:** Send `ui_subscribe` to receive a `ui_snapshot` of the open UI followed by `ui_update` events (no connection ID required)
-- **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; liquidations requires the MetaBroker login)
+- **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; no MetaBroker login needed)
 - You can subscribe to multiple connections and tickers simultaneously
 - All subscriptions are automatically cleaned up when you disconnect
 
@@ -2151,7 +2151,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `ui_subscribe` | `{}` | Subscribe to UI change events. Receives a `ui_snapshot`, then `ui_update` events. Idempotent. |
 | `ui_unsubscribe` | `{}` | Stop receiving UI change events. Idempotent. |
 
-**MetaBroker analytics subscriptions (density map, large trades, liquidations)** — app-wide market-intelligence feeds relayed from the MetaBroker backend: the same data the terminal's Density Map, Large Trades and Liquidations windows show. No connection ID required. Each socket holds at most **one subscription per feed** — re-subscribing REPLACES the config (no unsubscribe needed to change filters), and each socket gets its own upstream feed, independent of the windows. The liquidations feed **requires the MetaBroker login** (the upstream socket authenticates with the user's token); without it the subscribe is refused with an `error` frame:
+**MetaBroker analytics subscriptions (density map, large trades, liquidations)** — app-wide market-intelligence feeds relayed from the MetaBroker backend: the same data the terminal's Density Map, Large Trades and Liquidations windows show. No connection ID required. Each socket holds at most **one subscription per feed** — re-subscribing REPLACES the config (no unsubscribe needed to change filters), and each socket gets its own upstream feed, independent of the windows. **No MetaBroker login is needed** for any of the three: the liquidations upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use:
 
 | Type | Data | Description |
 |---|---|---|
@@ -2159,7 +2159,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
 | `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
 | `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
-| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **Requires the MetaBroker login.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
+| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
 | `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |
 
 #### Messages you receive
@@ -2862,7 +2862,7 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 `minPrice` / `maxPrice` span the prints merged into the aggregation window (`minPrice == maxPrice` and `tradeCount == 1` when `aggregationMs` is `0`); `category` is `small` / `medium` / `large` per the configured coefficients.
 
-**Liquidations snapshot / update / metadata** — `liquidations_snapshot` follows every subscribe/replace (backfill rows + aggregates; may be empty), `liquidations_update` carries live rows batched newest-first, and `liquidations_metadata` refreshes the aggregates every ~2 s for the configured `window`:
+**Liquidations snapshot / update / metadata** — `liquidations_snapshot` follows every subscribe/replace (backfill rows + aggregates; may be empty), `liquidations_update` carries live rows batched newest-first, and `liquidations_metadata` refreshes the aggregates on every upstream map tick (sub-second) for the configured `window`:
 
 ```json
 {
