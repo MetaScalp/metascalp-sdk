@@ -18,6 +18,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
 | `POST /api/combo` | Open a combo layout for a ticker |
+| `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `GET /api/connections` | List all active exchange connections |
 | `GET /api/connections/{id}/...` | Query tickers, orders, positions, balances for a connection |
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
@@ -365,6 +366,26 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}'
+```
+
+---
+
+### Close Last Tab
+
+Closes the **last** tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.
+
+```
+POST http://127.0.0.1:{port}/api/close-last-tab
+```
+
+**Response**
+
+| Field | Value |
+|---|---|
+| `status` | `"ok"` when a tab was closed, `"skipped"` when only one tab remained (it is never closed) |
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/close-last-tab
 ```
 
 ---

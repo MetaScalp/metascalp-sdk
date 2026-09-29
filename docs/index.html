@@ -837,6 +837,32 @@
     </div>
   </div>
 
+  <!-- /api/close-last-tab -->
+  <div class="endpoint" id="ep-close-last-tab">
+    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/close-last-tab</span>
+      <span class="endpoint-desc">Close the main window's last tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the <strong>last</strong> tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.</p>
+        <p>Refuses to close the only remaining tab: the response is then <code>{ "status": "skipped" }</code> instead of <code>{ "status": "ok" }</code>.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-close-last-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-close-last-tab-status"></span>
+          <span class="response-time" id="resp-close-last-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-close-last-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Connections -->
   <div class="section-label">Connections</div>
 
@@ -4257,6 +4283,15 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('combo', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('combo', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseLastTab() {
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
+      showResponse('close-last-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
     }
   }
 

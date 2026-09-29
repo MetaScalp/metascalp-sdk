@@ -116,6 +116,11 @@ export class MetaScalpClient {
     return this.post('/api/combo', request);
   }
 
+  /** Closes the main window's last tab (test surface). Resolves to { status: 'skipped' } when only one tab remains. */
+  async closeLastTab(): Promise<{ status: string }> {
+    return this.post('/api/close-last-tab', {});
+  }
+
   // ---- Order Book Settings ----
 
   async getOrderBookSettings(connectionId: number, ticker: string): Promise<OrderBookSettingsResponse> {

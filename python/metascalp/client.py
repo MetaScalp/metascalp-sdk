@@ -202,6 +202,10 @@ class MetaScalpClient:
         """Open a combo layout for a ticker."""
         return await self._post("/api/combo", {"ticker": ticker})
 
+    async def close_last_tab(self) -> dict:
+        """Close the main window's last tab (test surface; {"status": "skipped"} when only one tab remains)."""
+        return await self._post("/api/close-last-tab", {})
+
     # ---- Signal Levels ----
 
     async def get_signal_levels(self, connection_id: int, ticker: str) -> dict:

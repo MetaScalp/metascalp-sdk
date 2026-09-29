@@ -170,6 +170,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout |
+| `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
 
