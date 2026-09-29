@@ -837,6 +837,32 @@
     </div>
   </div>
 
+  <!-- /api/close-last-tab -->
+  <div class="endpoint" id="ep-close-last-tab">
+    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/close-last-tab</span>
+      <span class="endpoint-desc">Close the main window's last tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the <strong>last</strong> tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.</p>
+        <p>Refuses to close the only remaining tab: the response is then <code>{ "status": "skipped" }</code> instead of <code>{ "status": "ok" }</code>.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-close-last-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-close-last-tab-status"></span>
+          <span class="response-time" id="resp-close-last-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-close-last-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Connections -->
   <div class="section-label">Connections</div>
 
@@ -3592,10 +3618,10 @@
           <tr><td><code>screener_frame</code></td><td>server &rarr; client</td><td>A full screener row set &mdash; the current snapshot on subscribe, then one per backend update</td><td><code>templateId</code>, <code>rows[]</code> &mdash; each with <code>ticker</code>, <code>wireTicker</code>, <code>isNewCoin</code>, <code>exchange</code>, <code>listedExchanges[]</code>, <code>columns[]</code> (<code>type</code>, <code>timeFrame</code>, <code>time</code>, <code>metric</code>, <code>value</code>; <code>fundingRate</code> is scaled &times;100 as in the window)</td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows. The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market", "bdsMode"?, "bdsValue"? }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures; <code>bdsMode</code>: manual | auto, default manual; <code>bdsValue</code> default 1000000 USD). On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) without replaying already-notified walls; each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market", "bdsMode"?, "bdsValue"? }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures; <code>bdsMode</code>: manual | auto, default manual; <code>bdsValue</code> default 1000000 USD). On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
+          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream &mdash; a repeat subscribe re-sends the snapshot for the new filters</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
           <tr><td><code>density_map_unsubscribe</code></td><td>client &rarr; server</td><td>Stop the stream (send <code>"data": {}</code>)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>density_map_snapshot</code> follows)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -3603,7 +3629,7 @@
           <tr><td><code>density_map_update</code></td><td>server &rarr; client</td><td>Newly seen walls (one notification per wall id, ever)</td><td>same <code>notifications[]</code> shape</td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Large trades stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>large trades</strong> feed (aggregated trade prints). No snapshot exists upstream &mdash; rows are final, append-only aggregates and history starts at subscribe time. The subscribe <code>data</code> uses the same building blocks as the density stream (<code>exchangeMarkets[]</code> required, same enum names) plus the aggregation window: <code>aggregationMs</code> (0&ndash;60000, default 500; <code>0</code> = every raw print individually) and an optional <code>minAmountUsd</code> floor; defaults are the window's: coefficients <code>3/2/1</code>, <code>includedQuoteAssets ["USDT","USDC","OTHER"]</code>. A repeat <code>large_trades_subscribe</code> <strong>replaces</strong> the config; if the upstream feed rejects a subscription after the ack, the standard <code>error</code> frame names <code>large_trades_subscribe</code> while the feed retries itself:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Large trades stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>large trades</strong> feed (aggregated trade prints). No snapshot exists upstream &mdash; rows are final, append-only aggregates and history starts at subscribe time. The subscribe <code>data</code> uses the same building blocks as the density stream (<code>exchangeMarkets[]</code> required, same enum names) plus the aggregation window: <code>aggregationMs</code> (0&ndash;60000, default 500 &mdash; out of range is refused with an <code>error</code> frame naming the field; <code>0</code> = every raw print individually) and an optional <code>minAmountUsd</code> floor; defaults are the window's: coefficients <code>3/2/1</code>, <code>includedQuoteAssets ["USDT","USDC","OTHER"]</code>. A repeat <code>large_trades_subscribe</code> <strong>replaces</strong> the config; if the upstream feed rejects a subscription after the ack, the standard <code>error</code> frame names <code>large_trades_subscribe</code> while the feed retries itself:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
           <tr><td><code>large_trades_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the large trades stream</td><td><code>exchangeMarkets[]</code> (required), <code>aggregationMs</code>, <code>minAmountUsd</code>, <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>includedQuoteAssets[]</code></td></tr>
@@ -3613,7 +3639,7 @@
           <tr><td><code>large_trades_update</code></td><td>server &rarr; client</td><td>Finished aggregates, batched (~100 ms upstream tick); append-only, never updated or removed</td><td><code>trades[]</code> &mdash; each with <code>id</code>, <code>exchange</code>, <code>exchangeLogo</code>, <code>market</code> (spot | futures), <code>ticker</code>, <code>side</code> (buy | sell), <code>minPrice</code>, <code>maxPrice</code>, <code>sizeUsd</code>, <code>tradeCount</code>, <code>category</code> (small | medium | large), <code>time</code></td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>No MetaBroker login is needed</strong>: the upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>No MetaBroker login is needed</strong>: the upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200; out of range is refused with an <code>error</code> frame naming the field). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
           <tr><td><code>liquidations_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the liquidations stream &mdash; no MetaBroker login needed</td><td><code>exchanges[]</code> (required), <code>minNotionalUsd</code>, <code>minImpactBps</code>, <code>assetClass</code>, <code>side</code>, <code>coin</code>, <code>window</code>, <code>backfill</code></td></tr>
@@ -4257,6 +4283,15 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('combo', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('combo', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseLastTab() {
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
+      showResponse('close-last-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
     }
   }
 

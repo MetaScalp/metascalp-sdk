@@ -18,6 +18,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
 | `POST /api/combo` | Open a combo layout for a ticker |
+| `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `GET /api/connections` | List all active exchange connections |
 | `GET /api/connections/{id}/...` | Query tickers, orders, positions, balances for a connection |
 | `POST /api/connections/{id}/orders` | Place an order on a connection |
@@ -365,6 +366,26 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]}'
+```
+
+---
+
+### Close Last Tab
+
+Closes the **last** tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.
+
+```
+POST http://127.0.0.1:{port}/api/close-last-tab
+```
+
+**Response**
+
+| Field | Value |
+|---|---|
+| `status` | `"ok"` when a tab was closed, `"skipped"` when only one tab remained (it is never closed) |
+
+```bash
+curl -X POST http://127.0.0.1:17845/api/close-last-tab
 ```
 
 ---
@@ -2155,11 +2176,11 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000 }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures; `bdsMode`: manual \| auto (default manual; `bdsValue` default 1000000 USD). A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config without replaying already-notified walls. |
+| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000 }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id; a wall id is delivered at most once per subscription, in the snapshot or in an update, even when the feed removes and later re-broadcasts it). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures; `bdsMode`: manual \| auto (default manual; `bdsValue` default 1000000 USD). A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config: the server acks with `density_map_subscribed` and sends a fresh `density_map_snapshot` of the walls that match the new filters; walls already notified are not replayed as updates. |
 | `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
-| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
+| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
 | `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
-| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
+| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500; out of range is refused with an `error` frame naming the field) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
 | `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |
 
 #### Messages you receive
