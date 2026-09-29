@@ -1334,13 +1334,13 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns the current cluster (volume profile / footprint) data for a ticker. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass <code>Columns</code> to fill more history.</p>
+        <p>Returns the current cluster (volume profile / footprint) data for a ticker. Each time column holds bid/ask volumes at every price level; columns are ordered oldest first, newest last. Without <code>Columns</code> the response has the classic shape: 100 time columns of which only the newest 10 carry data (the cluster backend's default page), the rest are empty time slots. With <code>Columns=N</code> the response holds exactly N columns (the newest N), all filled from backend history.</p>
         <table>
           <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
           <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Trading pair symbol</td></tr>
           <tr><td><code>TimeFrame</code></td><td>string</td><td>yes</td><td></td><td>S30, M1, M5, M10, M15, M30, H1, H4, D1</td></tr>
           <tr><td><code>ZoomIndex</code></td><td>int</td><td>no</td><td>1</td><td>Price aggregation factor (1 = raw levels)</td></tr>
-          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of history columns to fill, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the backend default page (10). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer.</td></tr>
+          <tr><td><code>Columns</code></td><td>int</td><td>no</td><td>0</td><td>Number of columns to return, counted back from the newest (1 = newest). <code>0</code> / omitted keeps the classic 100-column response with the backend default page (10) filled. A positive value returns exactly that many columns, all filled from backend history. Values above 100 are clamped to 100. History is fetched in pages of 5 columns, so larger values take longer.</td></tr>
         </table>
         <p>When <code>ZoomIndex &gt; 1</code>, prices are grouped into buckets of <code>ZoomIndex &times; PriceIncrement</code> and volumes are summed.</p>
       </div>
@@ -3716,6 +3716,50 @@
           <button class="btn btn-secondary" onclick="wsSendNotification('signal_level_unsubscribe')" id="ws-sl-unsub-btn" disabled>Unsubscribe Signal Levels</button>
         </div>
 
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-group" style="display:flex;flex-direction:row;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px;" title="Comma-separated exchange names. Density map / large trades: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, aster, lighter, xt. Liquidations: binance, bybit, okx, bitget, gate, htx, aster, lighter.">Analytics exchanges <span class="optional">(comma list)</span></label>
+              <input type="text" id="f-ws-an-exchanges" value="binance,bybit,okx" style="width:210px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Market for density map / large trades (liquidations are futures only)">Market</label>
+              <select id="f-ws-an-market" style="width:100px;">
+                <option value="futures" selected>futures</option>
+                <option value="spot">spot</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq minNotionalUsd <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-min-notional" min="0" placeholder="0" style="width:120px;">
+            </div>
+            <div>
+              <label style="font-size:11px;" title="Affects totals / topTokens only, never the rows">Liq window</label>
+              <select id="f-ws-liq-window" style="width:80px;">
+                <option value="m5">m5</option>
+                <option value="m15">m15</option>
+                <option value="h1" selected>h1</option>
+                <option value="h4">h4</option>
+                <option value="h24">h24</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;">Liq backfill <span class="optional">(opt)</span></label>
+              <input type="number" id="f-ws-liq-backfill" min="0" max="500" placeholder="200" style="width:90px;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:row;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="wsSendAnalytics('density_map_subscribe')" id="ws-dm-sub-btn" disabled>Density Map Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('density_map_unsubscribe')" id="ws-dm-unsub-btn" disabled>Density Map Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('large_trades_subscribe')" id="ws-lt-sub-btn" disabled>Large Trades Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('large_trades_unsubscribe')" id="ws-lt-unsub-btn" disabled>Large Trades Unsub</button>
+          <button class="btn btn-primary" onclick="wsSendAnalytics('liquidations_subscribe')" id="ws-liq-sub-btn" disabled>Liquidations Sub</button>
+          <button class="btn btn-secondary" onclick="wsSendAnalytics('liquidations_unsubscribe')" id="ws-liq-unsub-btn" disabled>Liquidations Unsub</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">MetaBroker analytics streams (app-wide, no connection ID, no MetaBroker login). The buttons send the exchange list above with the documented defaults; for coefficients, lifetimes, quote assets, <code>aggregationMs</code>, <code>side</code>, <code>coin</code> or <code>assetClass</code> use the custom message box with a payload from the reference table below. Rows are logged as compact one-liners.</p>
+
         <div class="form-grid single" style="margin-top:8px;">
           <div class="form-group">
             <label>Custom message <span class="optional">(raw JSON)</span></label>
@@ -4889,6 +4933,9 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       slSubBtn.disabled = true;
       slUnsubBtn.disabled = true;
     }
+    for (const id of ['ws-dm-sub-btn', 'ws-dm-unsub-btn', 'ws-lt-sub-btn', 'ws-lt-unsub-btn', 'ws-liq-sub-btn', 'ws-liq-unsub-btn']) {
+      document.getElementById(id).disabled = !connected;
+    }
   }
 
   async function wsDiscover() {
@@ -4950,7 +4997,10 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
           tradesOnUnsubscribed(data.data.connectionId, data.data.ticker);
         }
         // Log everything except high-frequency order book updates
-        if (data.type !== 'orderbook_update' && data.type !== 'orderbook_snapshot' && data.type !== 'trade_update') {
+        const analyticsLine = wsAnalyticsCompactLine(data);
+        if (analyticsLine) {
+          wsLog(`&larr; ${analyticsLine}`, 'log-in');
+        } else if (data.type !== 'orderbook_update' && data.type !== 'orderbook_snapshot' && data.type !== 'trade_update') {
           const pretty = JSON.stringify(data, null, 2);
           wsLog(`&larr; ${pretty}`, data.type === 'error' ? 'log-err' : 'log-in');
         } else {
@@ -5042,6 +5092,77 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
 
   function wsSendNotification(type) {
     wsSend({ type: type, data: {} });
+  }
+
+  // ========== MetaBroker analytics streams (density map / large trades / liquidations) ==========
+
+  function wsAnalyticsExchanges() {
+    return document.getElementById('f-ws-an-exchanges').value
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function wsSendAnalytics(type) {
+    if (type.endsWith('_unsubscribe')) {
+      wsSend({ type: type, data: {} });
+      return;
+    }
+    const exchanges = wsAnalyticsExchanges();
+    if (!exchanges.length) {
+      wsLog('At least one exchange is required for the analytics streams', 'log-err');
+      return;
+    }
+    let data;
+    if (type === 'liquidations_subscribe') {
+      data = { exchanges: exchanges };
+      const minRaw = document.getElementById('f-ws-liq-min-notional').value;
+      const backfillRaw = document.getElementById('f-ws-liq-backfill').value;
+      if (minRaw !== '') data.minNotionalUsd = parseFloat(minRaw);
+      data.window = document.getElementById('f-ws-liq-window').value;
+      if (backfillRaw !== '') data.backfill = parseInt(backfillRaw);
+    } else {
+      const market = document.getElementById('f-ws-an-market').value;
+      data = { exchangeMarkets: exchanges.map(e => ({ exchange: e, market: market })) };
+    }
+    wsSend({ type: type, data: data });
+  }
+
+  function wsUsd(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return '?';
+    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+    return n.toFixed(0);
+  }
+
+  // One-line summaries for the analytics frames; null = log the full frame as usual.
+  function wsAnalyticsCompactLine(data) {
+    const t = data.type;
+    const d = data.data || {};
+    if (t === 'density_map_snapshot' || t === 'density_map_update') {
+      const rows = d.notifications || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange}/${first.market} ${first.ticker} ${first.side} @${first.price} $${wsUsd(first.sizeUsd)}` : '';
+      return `${t} (${rows.length} notification${rows.length !== 1 ? 's' : ''})${sample}`;
+    }
+    if (t === 'large_trades_update') {
+      const rows = d.trades || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange}/${first.market} ${first.ticker} ${first.side} ${first.minPrice}-${first.maxPrice} $${wsUsd(first.sizeUsd)}` : '';
+      return `${t} (${rows.length} trade${rows.length !== 1 ? 's' : ''})${sample}`;
+    }
+    if (t === 'liquidations_snapshot' || t === 'liquidations_update') {
+      const rows = d.liquidations || [];
+      const first = rows[0];
+      const sample = first ? ` e.g. ${first.exchange} ${first.symbol} ${first.side} @${first.price} $${wsUsd(first.notionalUsd)}` : '';
+      const tot = d.totals ? ` | totals long $${wsUsd(d.totals.longUsd)} / short $${wsUsd(d.totals.shortUsd)}` : '';
+      return `${t} (${rows.length} row${rows.length !== 1 ? 's' : ''})${sample}${tot}`;
+    }
+    if (t === 'liquidations_metadata') {
+      const tot = d.totals || {};
+      const top = (d.topTokens || []).slice(0, 3).map(x => x.token).join(', ');
+      return `${t} long $${wsUsd(tot.longUsd)} (${tot.longCount ?? '?'}) / short $${wsUsd(tot.shortUsd)} (${tot.shortCount ?? '?'})${top ? ' | top: ' + top : ''}`;
+    }
+    return null;
   }
 
   function wsSendRaw() {
