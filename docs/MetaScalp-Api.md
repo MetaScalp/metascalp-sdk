@@ -72,6 +72,7 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required)
 - **Chart annotation subscriptions:** Send `annotation_subscribe` with a connection ID + ticker to receive a one-shot `annotations_snapshot` of the current shapes
 - **UI change subscriptions:** Send `ui_subscribe` to receive a `ui_snapshot` of the open UI followed by `ui_update` events (no connection ID required)
+- **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; no MetaBroker login needed)
 - You can subscribe to multiple connections and tickers simultaneously
 - All subscriptions are automatically cleaned up when you disconnect
 
@@ -829,7 +830,7 @@ curl "http://127.0.0.1:17845/api/connections/1/orderbook-snapshot?Ticker=BTCUSDT
 
 #### Cluster snapshot
 
-Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The snapshot contains up to 10 time columns, each holding bid/ask volumes at every price level.
+Returns the current cluster (volume profile / footprint) data for a ticker on a connection. The response always contains 100 time columns (oldest first, newest last), each holding bid/ask volumes at every price level. By default only the newest 10 columns carry data (the cluster backend's default page); the remaining columns are empty time slots. Pass `Columns` to fill more history.
 
 ```
 GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&ZoomIndex=1
@@ -842,6 +843,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 | `Ticker`    | string | yes      |         | Trading pair symbol |
 | `TimeFrame` | string | yes      |         | Cluster timeframe — see [ClusterTimeFrame values](#clustertimeframe-values) |
 | `ZoomIndex` | int    | no       | `1`     | Price aggregation factor. `1` = no aggregation (raw price levels). Higher values group price levels into buckets of `ZoomIndex * PriceIncrement`. |
+| `Columns`   | int    | no       | `0`     | History depth: how many columns to fill with data, counted back from the newest (1 = newest). `0` / omitted = the backend default page (10 columns). Values above 100 are clamped to 100. The history is fetched from the cluster backend in pages of 5 columns, so larger values take longer. |
 
 **Response `200 OK`:**
 
@@ -866,7 +868,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/cluster-snapshot?Tick
 }
 ```
 
-- `Columns` — up to 10 time-period columns (rolling window), ordered chronologically
+- `Columns` — always 100 time-period columns, ordered chronologically (oldest first, newest last); only the newest `Columns` (default 10) carry data, the rest are empty time slots with `AsksSum`/`BidsSum` = 0 and no `Items`
 - `Items` — price levels within each column, ordered by price descending (highest first)
 - `AsksSum` / `BidsSum` — total ask/bid volume for the column
 - `AskSize` / `BidSize` — volume at each price level (ask = seller-initiated, bid = buyer-initiated)
@@ -888,6 +890,9 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 
 # Get 1-hour clusters with 5x price aggregation
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"
+
+# Fill the whole 100-column history (20 backend pages of 5 columns)
+curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&Columns=100"
 ```
 
 #### Order Books of a Link Group
@@ -2146,6 +2151,17 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `ui_subscribe` | `{}` | Subscribe to UI change events. Receives a `ui_snapshot`, then `ui_update` events. Idempotent. |
 | `ui_unsubscribe` | `{}` | Stop receiving UI change events. Idempotent. |
 
+**MetaBroker analytics subscriptions (density map, large trades, liquidations)** — app-wide market-intelligence feeds relayed from the MetaBroker backend: the same data the terminal's Density Map, Large Trades and Liquidations windows show. No connection ID required. Each socket holds at most **one subscription per feed** — re-subscribing REPLACES the config (no unsubscribe needed to change filters), and each socket gets its own upstream feed, independent of the windows. **No MetaBroker login is needed** for any of the three: the liquidations upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use:
+
+| Type | Data | Description |
+|---|---|---|
+| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000 }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures; `bdsMode`: manual \| auto (default manual; `bdsValue` default 1000000 USD). A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config without replaying already-notified walls. |
+| `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
+| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
+| `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
+| `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`). A `liquidations_snapshot` follows every subscribe/replace. |
+| `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |
+
 #### Messages you receive
 
 ##### Acknowledgements
@@ -2174,6 +2190,12 @@ All messages (inbound and outbound) are JSON with this envelope:
 | `annotation_unsubscribed` | `{ "ConnectionId": 123, "Ticker": "BTCUSDT" }` | After successful annotation unsubscribe |
 | `ui_subscribed` | `{}` | After successful UI subscribe (a `ui_snapshot` follows immediately) |
 | `ui_unsubscribed` | `{}` | After successful UI unsubscribe |
+| `density_map_subscribed` | `{}` | After successful density map subscribe (a `density_map_snapshot` follows immediately) |
+| `density_map_unsubscribed` | `{}` | After successful density map unsubscribe |
+| `large_trades_subscribed` | `{}` | After successful large trades subscribe (no snapshot — updates follow as trades happen) |
+| `large_trades_unsubscribed` | `{}` | After successful large trades unsubscribe |
+| `liquidations_subscribed` | `{}` | After successful liquidations subscribe (a `liquidations_snapshot` follows immediately) |
+| `liquidations_unsubscribed` | `{}` | After successful liquidations unsubscribe |
 | `error` | `{ "error": "..." }` | Invalid message, unknown type, bad connection ID, or missing ticker |
 
 > Acknowledgement echoes are emitted with **PascalCase** field names (they echo the parsed request), unlike the camelCase update payloads below. The `orderbook_subscribed` ack echoes any non-null `DepthLevels` / `DepthPercent`, and echoes `FetchSnapshot` only when it was sent as `false`.
@@ -2786,6 +2808,90 @@ These are pushed automatically after subscribing. You only receive updates for c
 
 > **Coverage.** The API observes only Application-layer events, so exactly the two `ui_update` kinds above are delivered today. The following changes are **not** emitted yet (and no polling is used): order-book document opened, ticker changed, window opened/closed, tab removed/activated, document closed/moved, and link-number changes. Clients that need the current state after such a change can re-request `GET /api/ui/state`.
 
+**Density map snapshot / update** — `density_map_snapshot` carries the first-seen walls of the initial upstream snapshot (may be empty — it resolves the loading state); `density_map_update` carries newly seen walls (each wall is reported exactly once, on first sight of its id). Both use the same `notifications[]` shape:
+
+```json
+{
+  "Type": "density_map_update",
+  "Data": {
+    "notifications": [
+      {
+        "id": "0d9c1a9e-7c31-4f0b-9a55-2f6f2b8f11aa",
+        "exchange": "Binance",
+        "exchangeLogo": "Binance.png",
+        "market": "futures",
+        "ticker": "BTCUSDT",
+        "side": "bid",
+        "price": 62000.5,
+        "distancePercent": -1.35,
+        "sizeUsd": 780000,
+        "time": "2026-08-15T12:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+`side` is `ask` (sell wall) or `bid` (buy wall); `distancePercent` is the wall's distance from the current price (±, capped ±10); `market` is `spot` or `futures`.
+
+**Large trades update** — aggregated trade prints, append-only (no snapshot; rows are never updated or removed):
+
+```json
+{
+  "Type": "large_trades_update",
+  "Data": {
+    "trades": [
+      {
+        "id": "5b2f7c31-9a55-4f0b-8f11-0d9c1a9eaa22",
+        "exchange": "Binance",
+        "exchangeLogo": "Binance.png",
+        "market": "futures",
+        "ticker": "BTCUSDT",
+        "side": "buy",
+        "minPrice": 62712.9,
+        "maxPrice": 62736.7,
+        "sizeUsd": 188139.4,
+        "tradeCount": 17,
+        "category": "medium",
+        "time": "2026-08-15T12:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+`minPrice` / `maxPrice` span the prints merged into the aggregation window (`minPrice == maxPrice` and `tradeCount == 1` when `aggregationMs` is `0`); `category` is `small` / `medium` / `large` per the configured coefficients.
+
+**Liquidations snapshot / update / metadata** — `liquidations_snapshot` follows every subscribe/replace (backfill rows + aggregates; may be empty), `liquidations_update` carries live rows batched newest-first, and `liquidations_metadata` refreshes the aggregates on every upstream map tick (sub-second) for the configured `window`:
+
+```json
+{
+  "Type": "liquidations_snapshot",
+  "Data": {
+    "liquidations": [
+      {
+        "time": "2026-08-15T12:00:00+00:00",
+        "exchange": "bybit",
+        "symbol": "BTCUSDT",
+        "coin": "BTC",
+        "side": "short",
+        "assetClass": "crypto",
+        "price": 64230.5,
+        "size": 0.012,
+        "notionalUsd": 770.77,
+        "impactBps": 0.01
+      }
+    ],
+    "totals": { "longUsd": 1250430.55, "shortUsd": 84210.0, "longCount": 37, "shortCount": 4 },
+    "topTokens": [
+      { "token": "BTC", "longUsd": 900000.0, "shortUsd": 50000.0, "longCount": 20, "shortCount": 2 }
+    ]
+  }
+}
+```
+
+`side` is the side of the **liquidated** position (`long` = longs got liquidated, price fell); `impactBps` is `null` when the market's 24h turnover is unknown; `totals` may be `null`. `liquidations_update` carries only `liquidations[]`; `liquidations_metadata` carries only `totals` + `topTokens[]` (top 10 tokens by combined USD, biggest first).
+
 #### Lifecycle
 
 | Event | Behavior |
@@ -3048,8 +3154,9 @@ async function cancelAllOrders(port, ConnectionId, ticker) {
   return r.json();
 }
 
-async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomIndex = 1) {
+async function getClusterSnapshot(port, ConnectionId, ticker, timeFrame, zoomIndex = 1, columns = 0) {
   const params = new URLSearchParams({ Ticker: ticker, TimeFrame: timeFrame, ZoomIndex: zoomIndex });
+  if (columns > 0) params.set("Columns", columns); // history depth, up to 100 (default: backend page of 10)
   const r = await fetch(`http://127.0.0.1:${port}/api/connections/${ConnectionId}/cluster-snapshot?${params}`);
   return r.json();
 }
@@ -3201,9 +3308,12 @@ def cancel_all_orders(port, connection_id, ticker):
                       json=payload)
     return r.json()
 
-def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1):
+def get_cluster_snapshot(port, connection_id, ticker, time_frame, zoom_index=1, columns=0):
+    params = {"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index}
+    if columns > 0:
+        params["Columns"] = columns  # history depth, up to 100 (default: backend page of 10)
     r = requests.get(f"http://127.0.0.1:{port}/api/connections/{connection_id}/cluster-snapshot",
-                     params={"Ticker": ticker, "TimeFrame": time_frame, "ZoomIndex": zoom_index})
+                     params=params)
     return r.json()
 
 def get_signal_levels(port, connection_id, ticker):

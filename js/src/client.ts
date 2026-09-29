@@ -17,6 +17,9 @@ import type {
   OrderBookSettings,
   OrderBookSnapshotResponse,
   GetOrderBookSnapshotOptions,
+  ClusterSnapshotResponse,
+  ClusterTimeFrame,
+  GetClusterSnapshotOptions,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -147,6 +150,26 @@ export class MetaScalpClient {
     if (options.depthLevels !== undefined) qs.push(`DepthLevels=${options.depthLevels}`);
     if (options.depthPercent !== undefined) qs.push(`DepthPercent=${options.depthPercent}`);
     return this.get(`/api/connections/${connectionId}/orderbook-snapshot?${qs.join('&')}`);
+  }
+
+  // ---- Clusters ----
+
+  /**
+   * Fetches the cluster (volume profile / footprint) snapshot for a ticker at a timeframe.
+   * The response always holds 100 time columns, oldest first. By default only the newest 10
+   * carry data (the cluster backend's default page); pass `options.columns` (up to 100) to fill
+   * more history. Each extra 5 columns is one more backend request, so deep fills take longer.
+   */
+  async getClusterSnapshot(
+    connectionId: number,
+    ticker: string,
+    timeFrame: ClusterTimeFrame,
+    options: GetClusterSnapshotOptions = {},
+  ): Promise<ClusterSnapshotResponse> {
+    const qs: string[] = [`Ticker=${encodeURIComponent(ticker)}`, `TimeFrame=${timeFrame}`];
+    if (options.zoomIndex !== undefined && options.zoomIndex > 1) qs.push(`ZoomIndex=${options.zoomIndex}`);
+    if (options.columns !== undefined && options.columns > 0) qs.push(`Columns=${options.columns}`);
+    return this.get(`/api/connections/${connectionId}/cluster-snapshot?${qs.join('&')}`);
   }
 
   // ---- Signal Levels ----

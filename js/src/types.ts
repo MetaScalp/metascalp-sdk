@@ -362,6 +362,211 @@ export interface OrderBookSnapshotResponse {
     bestBid: OrderBookOrder | null;
 }
 
+// ============ Cluster (footprint) snapshot ============
+
+/** Cluster timeframes accepted by `MetaScalpClient.getClusterSnapshot`. */
+export type ClusterTimeFrame = 'S30' | 'M1' | 'M5' | 'M10' | 'M15' | 'M30' | 'H1' | 'H4' | 'D1';
+
+export interface GetClusterSnapshotOptions {
+    /** Price aggregation factor. `1` (default) = raw price levels; `> 1` = bucket into `zoomIndex × PriceIncrement` and sum sizes. */
+    zoomIndex?: number;
+    /**
+     * History depth: how many columns to fill with data, counted back from the newest column (1 = newest).
+     * Omitted / `0` = the cluster backend's default page (10 columns). Values above 100 are clamped to 100.
+     * The response always holds 100 columns; the ones beyond the fetched depth are empty time slots.
+     */
+    columns?: number;
+}
+
+/** One price level of a cluster column. Keys are PascalCase: this endpoint serializes its DTO as-is. */
+export interface ClusterItem {
+    Price: number;
+    /** Seller-initiated volume at this price. */
+    AskSize: number;
+    /** Buyer-initiated volume at this price. */
+    BidSize: number;
+}
+
+export interface ClusterColumn {
+    /** ISO-8601 start of the time column. */
+    StartTime: string;
+    AsksSum: number;
+    BidsSum: number;
+    /** Price levels ordered by price descending (highest first). */
+    Items: ClusterItem[];
+}
+
+/** Response from `MetaScalpClient.getClusterSnapshot`. `Columns` is chronological: oldest first, newest last. */
+export interface ClusterSnapshotResponse {
+    Ticker: string;
+    TimeFrame: string;
+    ZoomIndex: number;
+    PriceIncrement: number;
+    Columns: ClusterColumn[];
+}
+
+// ============ MetaBroker Analytics Types ============
+// Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
+// backend (the same data the terminal's analytics windows show). No connectionId required.
+// One subscription per feed per socket: re-subscribing REPLACES the config.
+
+export type AnalyticsExchangeName =
+  | 'binance' | 'gate' | 'bybit' | 'kucoin' | 'bitget' | 'mexc' | 'okx' | 'bingx'
+  | 'htx' | 'bitmart' | 'lbank' | 'hyperliquid' | 'upbit' | 'asterdex' | 'lighter'
+  | 'xt' | 'edgex' | 'bitunix' | 'ourbit' | 'whitebit' | 'blofin' | 'weex' | 'polymarket';
+
+export interface AnalyticsExchangeMarket {
+  exchange: AnalyticsExchangeName;
+  market: 'spot' | 'futures';
+  /** Base density size mode: 'auto' derives it from the live order book. Default 'manual'. */
+  bdsMode?: 'manual' | 'auto';
+  /** Base density size in USD (used in 'manual' mode, and as the 'auto' fallback). Default 1 000 000. */
+  bdsValue?: number;
+}
+
+export interface DensityMapSubscribeOptions {
+  /** Required, non-empty — an empty list is rejected. */
+  exchangeMarkets: AnalyticsExchangeMarket[];
+  /** Size-class coefficients over the effective BDS. Defaults: 3 / 2 / 1. */
+  largeCoefficient?: number;
+  mediumCoefficient?: number;
+  smallCoefficient?: number;
+  /** Minimum wall age per size class, minutes. Defaults: 5 / 5 / 5. */
+  largeLifetimeMinutes?: number;
+  mediumLifetimeMinutes?: number;
+  smallLifetimeMinutes?: number;
+  /** 'USDT' | 'USDC' | 'OTHER'. Default: ['USDT']. */
+  includedQuoteAssets?: string[];
+}
+
+export interface LargeTradesSubscribeOptions {
+  /** Required, non-empty — an empty list is rejected. */
+  exchangeMarkets: AnalyticsExchangeMarket[];
+  /** Tape-merge window, 0–60000 ms; 0 = every raw print individually. Default 500. */
+  aggregationMs?: number;
+  /** Optional USD floor below which prints are not emitted. */
+  minAmountUsd?: number;
+  /** Size-class coefficients over the effective BDS. Defaults: 3 / 2 / 1. */
+  largeCoefficient?: number;
+  mediumCoefficient?: number;
+  smallCoefficient?: number;
+  /** 'USDT' | 'USDC' | 'OTHER'. Default: ['USDT', 'USDC', 'OTHER']. */
+  includedQuoteAssets?: string[];
+}
+
+export type LiquidationExchangeName =
+  | 'binance' | 'bybit' | 'okx' | 'bitget' | 'gate' | 'htx' | 'aster' | 'lighter';
+
+export interface LiquidationsSubscribeOptions {
+  /** Required, non-empty — an empty list is rejected. */
+  exchanges: LiquidationExchangeName[];
+  /** Minimum USD size of a single liquidation. Default 0. */
+  minNotionalUsd?: number;
+  /** Minimum notional / 24h turnover × 10000; rows with unknown turnover are dropped when set. Default off. */
+  minImpactBps?: number;
+  /** Default 'all'. TradFi = stocks, ETFs, indices, metals, commodities. */
+  assetClass?: 'all' | 'crypto' | 'tradfi';
+  /** Side of the LIQUIDATED position. Default 'all'. */
+  side?: 'all' | 'long' | 'short';
+  /** Case-insensitive prefix on the resolved coin ('BTC', not 'BTCUSDT'). Default ''. */
+  coin?: string;
+  /** Aggregation window for totals / topTokens only (never the rows). Default 'h1'. */
+  window?: 'm5' | 'm15' | 'h1' | 'h4' | 'h24';
+  /** Snapshot row count, 0–500. Default 200. */
+  backfill?: number;
+}
+
+/** One density wall notification — each wall is reported exactly once, on first sight of its id. */
+export interface DensityMapNotification {
+  id: string;
+  exchange: string;
+  exchangeLogo: string;
+  market: 'spot' | 'futures';
+  ticker: string;
+  side: 'ask' | 'bid';
+  price: number;
+  /** Distance from the current price, ± percent, capped ±10. */
+  distancePercent: number;
+  sizeUsd: number;
+  time: string;
+}
+
+export interface DensityMapSnapshotData {
+  notifications: DensityMapNotification[];
+}
+
+export interface DensityMapUpdateData {
+  notifications: DensityMapNotification[];
+}
+
+/** One aggregated trade print — final and append-only, never updated or removed. */
+export interface LargeTrade {
+  id: string;
+  exchange: string;
+  exchangeLogo: string;
+  market: 'spot' | 'futures';
+  ticker: string;
+  side: 'buy' | 'sell';
+  minPrice: number;
+  maxPrice: number;
+  sizeUsd: number;
+  tradeCount: number;
+  category: 'small' | 'medium' | 'large';
+  time: string;
+}
+
+export interface LargeTradesUpdateData {
+  trades: LargeTrade[];
+}
+
+export interface LiquidationRow {
+  time: string;
+  /** Lowercase venue name; null for a venue the terminal does not know. */
+  exchange: string | null;
+  /** Exchange-native instrument (BTCUSDT, BTC-USDT-SWAP, ...). */
+  symbol: string;
+  /** Resolved base token (1000BONKUSDT → BONK). */
+  coin: string;
+  /** Side of the LIQUIDATED position: 'long' = longs got liquidated (price fell). */
+  side: 'long' | 'short';
+  assetClass: 'crypto' | 'tradfi';
+  price: number;
+  size: number;
+  notionalUsd: number;
+  /** notionalUsd / 24h turnover × 10000; null when turnover is unknown. */
+  impactBps: number | null;
+}
+
+export interface LiquidationsTotals {
+  longUsd: number;
+  shortUsd: number;
+  longCount: number;
+  shortCount: number;
+}
+
+export interface TopToken {
+  token: string;
+  longUsd: number;
+  shortUsd: number;
+  longCount: number;
+  shortCount: number;
+}
+
+export interface LiquidationsSnapshotData {
+  liquidations: LiquidationRow[];
+  totals: LiquidationsTotals | null;
+  topTokens: TopToken[];
+}
+
+export interface LiquidationsUpdateData {
+  liquidations: LiquidationRow[];
+}
+
+export interface LiquidationsMetadataData {
+  totals: LiquidationsTotals | null;
+  topTokens: TopToken[];
+}
+
 export interface SocketEventMap {
   order_update: OrderUpdateData;
   position_update: PositionUpdateData;
@@ -394,6 +599,18 @@ export interface SocketEventMap {
   signal_level_removed: SignalLevelRemovedData;
   signal_levels_removed_all: Record<string, never>;
   signal_levels_removed_triggered: Record<string, never>;
+  density_map_subscribed: Record<string, never>;
+  density_map_unsubscribed: Record<string, never>;
+  density_map_snapshot: DensityMapSnapshotData;
+  density_map_update: DensityMapUpdateData;
+  large_trades_subscribed: Record<string, never>;
+  large_trades_unsubscribed: Record<string, never>;
+  large_trades_update: LargeTradesUpdateData;
+  liquidations_subscribed: Record<string, never>;
+  liquidations_unsubscribed: Record<string, never>;
+  liquidations_snapshot: LiquidationsSnapshotData;
+  liquidations_update: LiquidationsUpdateData;
+  liquidations_metadata: LiquidationsMetadataData;
   error: { error: string };
   connected: void;
   disconnected: void;
