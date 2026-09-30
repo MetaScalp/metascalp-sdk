@@ -2138,6 +2138,31 @@ GET http://127.0.0.1:{port}/api/screener/templates/{templateId}/data
 `listedExchanges` are screener exchange keys (`"binance_s"`, `"bybit_f"`, `"polymarket"`) and each
 `columns[]` entry is `{ type, timeFrame, time, metric, value }`.
 
+**Column numbers (`type`) are a public contract (MET-1833)** — the same in `/data` and in the
+`screener_frame` WebSocket rows, pinned independently of the app's internal column list, so they never
+shift when the app adds or removes a column:
+
+| `type` | Column |
+|---|---|
+| 2 | Volume $ |
+| 3 | Trades |
+| 4 | Change % |
+| 5 | NATR % |
+| 6 | Spread % |
+| 7 | **retired** (was Activity, removed in MET-1827; never sent, never reused) |
+| 8 | Funding % |
+| 9 | Next funding time (epoch seconds) |
+| 10 | Funding interval (seconds) |
+| 11 | Volume spike % |
+| 12 | Trades spike % |
+| 13 | OI change % |
+| 14 | OI change $ |
+| 15 | Δ volume % |
+| 16 | Δ volume $ |
+| 17 | Price |
+
+(`0` Actions and `1` Ticker are window-only columns and carry no value.)
+
 **Errors:** non-numeric `{templateId}` → `400 Invalid template ID`; unknown id →
 `404 Screener template {id} not found` (checked **before** any subscribe). If the screener backend
 produces no rows within the deadline, `rows` is an empty array (`count = 0`).
