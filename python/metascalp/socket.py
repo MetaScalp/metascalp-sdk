@@ -258,8 +258,10 @@ class MetaScalpSocket:
         Order book walls, each reported exactly once on first sight of its id.
 
         exchange_markets is required and must be non-empty; each entry is a dict like
-        {"exchange": "binance", "market": "futures", "bdsMode": "auto", "bdsValue": 1000000}
-        (bdsMode/bdsValue optional — default manual / 1 000 000 USD). All other arguments
+        {"exchange": "binance", "market": "futures"}. The base density size is always
+        auto (MetaBroker MB-702): "bdsMode": "manual" or a "bdsValue" in an entry is refused
+        with an error frame naming the field (MET-1828); "bdsMode": "auto" is accepted as a
+        no-op. Those two fields belong to subscribe_large_trades(). All other arguments
         default to the terminal's Density Map window defaults (coefficients 3/2/1,
         lifetimes 5 min, quote assets ["USDT"]; valid assets: USDT, USDC, OTHER).
         Re-subscribing replaces the config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
@@ -345,7 +347,8 @@ class MetaScalpSocket:
 
         exchanges is required and must be non-empty; valid names: binance, bybit, okx,
         bitget, gate, htx, aster, lighter. asset_class: 'all' | 'crypto' | 'tradfi'
-        (default all). side filters by the side of the LIQUIDATED position: 'all' |
+        (default all; the class the terminal's Liquidations window shows for the coin,
+        MET-1829 - a live row of a coin first seen in the session waits up to 2 s for it). side filters by the side of the LIQUIDATED position: 'all' |
         'long' | 'short' (default all). coin is a case-insensitive prefix on the
         resolved coin ('BTC', not 'BTCUSDT'). window ('m5'|'m15'|'h1'|'h4'|'h24',
         default h1) affects totals / top tokens only, never the rows. backfill is the

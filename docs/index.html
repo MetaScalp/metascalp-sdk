@@ -817,6 +817,11 @@
           <li><code>{ "tickers": ["BTCUSDT", "ETHUSDT", "SOLUSDT"] }</code> &mdash; opens one combo layout per ticker, <strong>in the order given</strong>.</li>
         </ul>
         <p>The <code>tickers</code> form is a write validated as all-or-nothing: the whole list is validated first, and if <em>any</em> ticker resolves on no eligible connection, <strong>nothing is opened</strong> and the request returns <code>400</code> naming the rejected tickers. Supplying <em>both</em> <code>ticker</code> and <code>tickers</code>, or an empty <code>tickers</code> array with no <code>ticker</code>, also returns <code>400</code>.</p>
+        <p>Both shapes accept an optional <code>activate</code> boolean (default <code>true</code>) that decides whether the newly opened combo takes focus:</p>
+        <ul>
+          <li><code>activate: true</code> or the field omitted &mdash; the combo opens and becomes the active/focused layout (unchanged default). On the <code>tickers</code> form, exactly one window (the last in the list) comes to the front, as today.</li>
+          <li><code>activate: false</code> &mdash; the combo opens <strong>in the background</strong>: whatever window/tab you were on stays active. On the <code>tickers</code> form, <em>no</em> element of the list steals focus.</li>
+        </ul>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -833,32 +838,6 @@
           <span class="response-time" id="resp-combo-time"></span>
         </div>
         <div class="response-body" id="resp-combo-body"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- /api/close-last-tab -->
-  <div class="endpoint" id="ep-close-last-tab">
-    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
-      <span class="method method-post">POST</span>
-      <span class="endpoint-path">/api/close-last-tab</span>
-      <span class="endpoint-desc">Close the main window's last tab</span>
-      <span class="chevron">&#9656;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="docs">
-        <p>Closes the <strong>last</strong> tab of the main window through the same path a user's tab-close click takes. It is a test surface (memory-leak loops open a combo, then close it here); no request body.</p>
-        <p>Refuses to close the only remaining tab: the response is then <code>{ "status": "skipped" }</code> instead of <code>{ "status": "ok" }</code>.</p>
-      </div>
-      <div class="actions-row">
-        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
-      </div>
-      <div class="response-panel" id="resp-close-last-tab">
-        <div class="response-bar">
-          <span class="status-badge" id="resp-close-last-tab-status"></span>
-          <span class="response-time" id="resp-close-last-tab-time"></span>
-        </div>
-        <div class="response-body" id="resp-close-last-tab-body"></div>
       </div>
     </div>
   </div>
@@ -1783,7 +1762,8 @@
     <div class="endpoint-body">
       <div class="docs">
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
-        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1798,7 +1778,7 @@
       <div class="form-grid single">
         <div class="form-group">
           <label>Request body (JSON)</label>
-          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true}</textarea>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true, "showExecutedOrders": false}</textarea>
         </div>
       </div>
       <div class="actions-row">
@@ -3228,6 +3208,118 @@
     </div>
   </div>
 
+  <!-- /api/ui/tabs/{tabId}/close (POST) -->
+  <div class="endpoint" id="ep-ui-close-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-close-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/close</span>
+      <span class="endpoint-desc">Close a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the ONE tab addressed by <code>{tabId}</code> through the app's OWN tab-close path (the same
+        teardown the tab's own <strong>&times;</strong> runs &mdash; every document in the tab is torn down and its
+        DB rows deleted). <code>{tabId}</code> is the <code>id</code> a tab carries under
+        <code>GET /api/ui/state</code> (Window &rarr; Tab). Tab ids are <strong>globally unique</strong>, so no
+        window type is needed &mdash; the id alone addresses the tab, and the window it belongs to and its sibling
+        tabs stay open.</p>
+        <p><strong>No request body is required</strong> (an empty body or <code>{}</code> is accepted).</p>
+        <p>Response <code>{ tabId, closed, outcome }</code>.</p>
+        <p><strong>Unlike a hand-close, the API path raises NO confirmation prompt</strong> (a modal would block
+        the HTTP response); the interactive prompt &mdash; and its <em>&laquo;Show a warning when closing windows
+        and tabs&raquo;</em> setting &mdash; is unchanged.</p>
+        <p><strong>A window's ONLY tab cannot be closed</strong> &rarr; <code>400</code> with a message (it would
+        leave an empty workspace); there is no silent no-op.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code> &mdash; all validated <em>before</em> any tab is closed.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-close-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-close-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-close-tab-status"></span>
+          <span class="response-time" id="resp-ui-close-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-close-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/tabs/{tabId}/activate (POST) -->
+  <div class="endpoint" id="ep-ui-activate-tab">
+    <div class="endpoint-header" onclick="toggle('ep-ui-activate-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/tabs/{tabId}/activate</span>
+      <span class="endpoint-desc">Switch to a tab by id</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Makes the tab addressed by <code>{tabId}</code> the selected one in its window, by driving the SAME
+        header selection a user's tab click drives (which also persists it). Same id-addressing as the close route;
+        no request body is required. Idempotent when the tab is already selected.</p>
+        <p>Response <code>{ tabId, activated, outcome }</code>.</p>
+        <p><strong>Errors:</strong> a non-numeric <code>{tabId}</code> &rarr; <code>400 Invalid tab ID</code>;
+        a malformed body or an unknown body property &rarr; <code>400</code>; an id no open window hosts &rarr;
+        <code>404 Tab {tabId} not found.</code></p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tab ID</label>
+          <input type="number" id="f-ui-activate-tab-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendActivateTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-ui-activate-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-ui-activate-tab-status"></span>
+          <span class="response-time" id="resp-ui-activate-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-ui-activate-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/close-last-tab (POST) -->
+  <div class="endpoint" id="ep-close-last-tab">
+    <div class="endpoint-header" onclick="toggle('ep-close-last-tab')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/close-last-tab</span>
+      <span class="endpoint-desc">Close the main window's last tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Closes the <strong>main workspace window's LAST tab</strong> through the tab's own close path (no
+        confirmation prompt). It never closes the only remaining tab. This is a fixed-target convenience route (no
+        id) &mdash; to close a SPECIFIC tab by id, use <code>POST /api/ui/tabs/{tabId}/close</code>.</p>
+        <p><strong>No request body is required.</strong> Response <code>{ status }</code> &mdash;
+        <code>"ok"</code> when a tab was closed, <code>"skipped"</code> when only one tab remained.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendCloseLastTab()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-close-last-tab">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-close-last-tab-status"></span>
+          <span class="response-time" id="resp-close-last-tab-time"></span>
+        </div>
+        <div class="response-body" id="resp-close-last-tab-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- /api/ui/documents/{externalId}/ticker (PUT) -->
   <div class="endpoint" id="ep-ui-doc-ticker">
     <div class="endpoint-header" onclick="toggle('ep-ui-doc-ticker')">
@@ -3295,18 +3387,17 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Opening/closing a panel and switching the active window or tab are <strong>not yet available</strong>.
-        They require calling MetaScalp's own window-thread methods, and the local API layer has no reachable
-        window&#8209;id&nbsp;&rarr;&nbsp;dispatcher lookup to marshal onto (it does not reference the WPF UI
-        project). Faking them by writing the database directly would diverge the on-screen layout from the
-        saved model, so they are deliberately deferred to a dedicated follow-up rather than shipped fragile.
-        The following routes therefore do <strong>not</strong> exist yet:</p>
+        <p>Opening/closing an individual <strong>panel</strong> (a single order book or chart inside a tab) is
+        <strong>not yet available</strong>. Whole-window lifecycle and per-<strong>tab</strong> close/activate ARE
+        available (see the routes above); only the panel-level routes below remain deferred. Faking them by writing
+        the database directly would diverge the on-screen layout from the saved model, so they are deliberately
+        deferred to a dedicated follow-up rather than shipped fragile. The following routes therefore do
+        <strong>not</strong> exist yet:</p>
         <table>
           <tr><th>Route</th><th>Intent</th></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/order-books</code></td><td>Open an order book in a window's active tab</td></tr>
           <tr><td><code>POST /api/ui/windows/{windowId}/charts</code></td><td>Open a chart in a window's active tab</td></tr>
           <tr><td><code>DELETE /api/ui/documents/{externalId}</code></td><td>Close one addressed panel (with its DB delete)</td></tr>
-          <tr><td><code>POST /api/ui/tabs/{tabId}/activate</code></td><td>Activate a tab</td></tr>
         </table>
       </div>
     </div>
@@ -3618,7 +3709,7 @@
           <tr><td><code>screener_frame</code></td><td>server &rarr; client</td><td>A full screener row set &mdash; the current snapshot on subscribe, then one per backend update</td><td><code>templateId</code>, <code>rows[]</code> &mdash; each with <code>ticker</code>, <code>wireTicker</code>, <code>isNewCoin</code>, <code>exchange</code>, <code>listedExchanges[]</code>, <code>columns[]</code> (<code>type</code>, <code>timeFrame</code>, <code>time</code>, <code>metric</code>, <code>value</code>; <code>fundingRate</code> is scaled &times;100 as in the window)</td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market", "bdsMode"?, "bdsValue"? }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures; <code>bdsMode</code>: manual | auto, default manual; <code>bdsValue</code> default 1000000 USD). On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market" }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures). The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): <code>bdsMode: "manual"</code> or a <code>bdsValue</code> in an entry is refused with an error frame naming the field (MET-1828); <code>bdsMode: "auto"</code> is accepted as a no-op. These two fields belong to <code>large_trades_subscribe</code>, where they apply. On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
           <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream &mdash; a repeat subscribe re-sends the snapshot for the new filters</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
@@ -3639,7 +3730,7 @@
           <tr><td><code>large_trades_update</code></td><td>server &rarr; client</td><td>Finished aggregates, batched (~100 ms upstream tick); append-only, never updated or removed</td><td><code>trades[]</code> &mdash; each with <code>id</code>, <code>exchange</code>, <code>exchangeLogo</code>, <code>market</code> (spot | futures), <code>ticker</code>, <code>side</code> (buy | sell), <code>minPrice</code>, <code>maxPrice</code>, <code>sizeUsd</code>, <code>tradeCount</code>, <code>category</code> (small | medium | large), <code>time</code></td></tr>
         </table>
 
-        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>No MetaBroker login is needed</strong>: the upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200; out of range is refused with an <code>error</code> frame naming the field). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Liquidations stream</strong> (MET-1403) &mdash; the MetaBroker cross-exchange <strong>liquidations</strong> feed (futures only). <strong>No MetaBroker login is needed</strong>: the upstream is the screener-v2 hub signed with the shared service key, the same connection the density map and large trades streams use. The subscribe <code>data</code>: <code>exchanges[]</code> (required, names or numbers: binance, bybit, okx, bitget, gate, htx, aster, lighter), <code>minNotionalUsd</code> (default 0), <code>minImpactBps</code> (default off; rows with unknown turnover are dropped when set), <code>assetClass</code> (all | crypto | tradfi, default all &mdash; a row's class is the one the Liquidations window shows for its coin, taken from the backend's clusters feed because the per-event tape carries none (MET-1829); a live row of a coin first seen in the session waits up to 2 s for that class before it is sent), <code>side</code> (all | long | short &mdash; side of the liquidated position, default all), <code>coin</code> (case-insensitive prefix on the resolved coin, e.g. "BTC"), <code>window</code> (m5 | m15 | h1 | h4 | h24, default h1 &mdash; affects totals/topTokens only), <code>backfill</code> (0&ndash;500 snapshot rows, default 200; out of range is refused with an <code>error</code> frame naming the field). On subscribe the server acks with <code>liquidations_subscribed</code>, then delivers a <code>liquidations_snapshot</code>; a repeat <code>liquidations_subscribe</code> <strong>replaces</strong> the filters and the server re-sends a snapshot. Live rows ride <code>liquidations_update</code> batches and the header aggregates ride a periodic <code>liquidations_metadata</code>:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
           <tr><td><code>liquidations_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the liquidations stream &mdash; no MetaBroker login needed</td><td><code>exchanges[]</code> (required), <code>minNotionalUsd</code>, <code>minImpactBps</code>, <code>assetClass</code>, <code>side</code>, <code>coin</code>, <code>window</code>, <code>backfill</code></td></tr>
@@ -4102,7 +4193,7 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
         <tr><td><code>funding_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving funding rate updates (perpetual futures only).</td></tr>
         <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
-        <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures", "bdsMode": "auto" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min) and quote assets. Re-subscribing replaces the config.</td></tr>
+        <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min) and quote assets. Re-subscribing replaces the config.</td></tr>
         <tr><td><code>density_map_unsubscribe</code></td><td><code>{}</code></td><td>Stop the density map stream.</td></tr>
         <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>large_trades_unsubscribe</code></td><td><code>{}</code></td><td>Stop the large trades stream.</td></tr>
@@ -4283,15 +4374,6 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('combo', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('combo', 'ERR', 'status-net', e.message, 0);
-    }
-  }
-
-  async function sendCloseLastTab() {
-    try {
-      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
-      showResponse('close-last-tab', status, statusClass(status), data, ms);
-    } catch (e) {
-      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
     }
   }
 
@@ -4853,6 +4935,35 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('ui-activate-window', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('ui-activate-window', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseTab() {
+    const id = document.getElementById('f-ui-close-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/close`, {});
+      showResponse('ui-close-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-close-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendActivateTab() {
+    const id = document.getElementById('f-ui-activate-tab-id').value;
+    try {
+      const { status, data, ms } = await apiCall('POST', `/api/ui/tabs/${id}/activate`, {});
+      showResponse('ui-activate-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('ui-activate-tab', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendCloseLastTab() {
+    try {
+      const { status, data, ms } = await apiCall('POST', '/api/close-last-tab', {});
+      showResponse('close-last-tab', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('close-last-tab', 'ERR', 'status-net', e.message, 0);
     }
   }
 
