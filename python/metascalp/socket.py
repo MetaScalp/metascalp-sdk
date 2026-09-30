@@ -347,7 +347,8 @@ class MetaScalpSocket:
 
         exchanges is required and must be non-empty; valid names: binance, bybit, okx,
         bitget, gate, htx, aster, lighter. asset_class: 'all' | 'crypto' | 'tradfi'
-        (default all). side filters by the side of the LIQUIDATED position: 'all' |
+        (default all; the class the terminal's Liquidations window shows for the coin,
+        MET-1829 - a live row of a coin first seen in the session waits up to 2 s for it). side filters by the side of the LIQUIDATED position: 'all' |
         'long' | 'short' (default all). coin is a case-insensitive prefix on the
         resolved coin ('BTC', not 'BTCUSDT'). window ('m5'|'m15'|'h1'|'h4'|'h24',
         default h1) affects totals / top tokens only, never the rows. backfill is the

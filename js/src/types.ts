@@ -496,7 +496,10 @@ export interface LiquidationsSubscribeOptions {
   minNotionalUsd?: number;
   /** Minimum notional / 24h turnover × 10000; rows with unknown turnover are dropped when set. Default off. */
   minImpactBps?: number;
-  /** Default 'all'. TradFi = stocks, ETFs, indices, metals, commodities. */
+  /**
+   * Default 'all'. TradFi = stocks, ETFs, indices, metals, commodities — the class the terminal's Liquidations
+   * window shows for the coin (MET-1829); a live row of a coin first seen in the session waits up to 2 s for it.
+   */
   assetClass?: 'all' | 'crypto' | 'tradfi';
   /** Side of the LIQUIDATED position. Default 'all'. */
   side?: 'all' | 'long' | 'short';
@@ -561,6 +564,7 @@ export interface LiquidationRow {
   coin: string;
   /** Side of the LIQUIDATED position: 'long' = longs got liquidated (price fell). */
   side: 'long' | 'short';
+  /** The class the terminal's Liquidations window shows for the coin (MET-1829). */
   assetClass: 'crypto' | 'tradfi';
   price: number;
   size: number;
