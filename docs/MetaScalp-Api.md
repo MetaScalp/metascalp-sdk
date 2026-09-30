@@ -2138,6 +2138,32 @@ GET http://127.0.0.1:{port}/api/screener/templates/{templateId}/data
 `listedExchanges` are screener exchange keys (`"binance_s"`, `"bybit_f"`, `"polymarket"`) and each
 `columns[]` entry is `{ type, timeFrame, time, metric, value }`.
 
+**Column numbers (`type`)** — the same in `/data` and in the `screener_frame` WebSocket rows. The value
+is the terminal's internal column id, so the list is re-issued whenever the terminal adds or removes a
+column. Last change: MET-1827 removed Activity (the former 7) and every later column moved down by one;
+builds up to Beta 1.0.756 still send the old numbers (Funding % 8 … Price 17). Current numbers
+(Dev 1.0.4357 and later, MET-1833):
+
+| `type` | Column |
+|---|---|
+| 2 | Volume $ |
+| 3 | Trades |
+| 4 | Change % |
+| 5 | NATR % |
+| 6 | Spread % |
+| 7 | Funding % |
+| 8 | Next funding time (epoch seconds) |
+| 9 | Funding interval (seconds) |
+| 10 | Volume spike % |
+| 11 | Trades spike % |
+| 12 | OI change % |
+| 13 | OI change $ |
+| 14 | Δ volume % |
+| 15 | Δ volume $ |
+| 16 | Price |
+
+(`0` Actions and `1` Ticker are window-only columns and carry no value.)
+
 **Errors:** non-numeric `{templateId}` → `400 Invalid template ID`; unknown id →
 `404 Screener template {id} not found` (checked **before** any subscribe). If the screener backend
 produces no rows within the deadline, `rows` is an empty array (`count = 0`).
