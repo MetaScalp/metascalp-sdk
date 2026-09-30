@@ -488,7 +488,8 @@ public class LiquidationsSubscribeOptions
     public decimal? MinNotionalUsd { get; set; }
     /// <summary>Minimum notional / 24h turnover × 10000; rows with unknown turnover are dropped when set. Default off.</summary>
     public decimal? MinImpactBps { get; set; }
-    /// <summary>"all" | "crypto" | "tradfi". Default all.</summary>
+    /// <summary>"all" | "crypto" | "tradfi". Default all. The class is the one the terminal's Liquidations window
+    /// shows for the coin (MET-1829); a live row of a coin first seen in the session waits up to 2 s for it.</summary>
     public string? AssetClass { get; set; }
     /// <summary>Side of the LIQUIDATED position: "all" | "long" | "short". Default all.</summary>
     public string? Side { get; set; }
@@ -564,7 +565,7 @@ public class LiquidationRowDto
     public string Coin { get; set; } = "";
     /// <summary>Side of the LIQUIDATED position: "long" = longs got liquidated (price fell).</summary>
     public string Side { get; set; } = "";
-    /// <summary>"crypto" | "tradfi".</summary>
+    /// <summary>"crypto" | "tradfi" — the class the terminal's Liquidations window shows for the coin (MET-1829).</summary>
     public string AssetClass { get; set; } = "";
     public decimal Price { get; set; }
     public decimal Size { get; set; }
