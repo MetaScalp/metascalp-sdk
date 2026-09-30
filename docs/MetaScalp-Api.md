@@ -2138,6 +2138,32 @@ GET http://127.0.0.1:{port}/api/screener/templates/{templateId}/data
 `listedExchanges` are screener exchange keys (`"binance_s"`, `"bybit_f"`, `"polymarket"`) and each
 `columns[]` entry is `{ type, timeFrame, time, metric, value }`.
 
+**Column numbers (`type`)** — the same in `/data` and in the `screener_frame` WebSocket rows. The value
+is the terminal's internal column id, so the list is re-issued whenever the terminal adds or removes a
+column. Last change: MET-1827 removed Activity (the former 7) and every later column moved down by one;
+builds up to Beta 1.0.756 still send the old numbers (Funding % 8 … Price 17). Current numbers
+(Dev 1.0.4357 and later, MET-1833):
+
+| `type` | Column |
+|---|---|
+| 2 | Volume $ |
+| 3 | Trades |
+| 4 | Change % |
+| 5 | NATR % |
+| 6 | Spread % |
+| 7 | Funding % |
+| 8 | Next funding time (epoch seconds) |
+| 9 | Funding interval (seconds) |
+| 10 | Volume spike % |
+| 11 | Trades spike % |
+| 12 | OI change % |
+| 13 | OI change $ |
+| 14 | Δ volume % |
+| 15 | Δ volume $ |
+| 16 | Price |
+
+(`0` Actions and `1` Ticker are window-only columns and carry no value.)
+
 **Errors:** non-numeric `{templateId}` → `400 Invalid template ID`; unknown id →
 `404 Screener template {id} not found` (checked **before** any subscribe). If the screener backend
 produces no rows within the deadline, `rows` is an empty array (`count = 0`).
@@ -2249,7 +2275,7 @@ All messages (inbound and outbound) are JSON with this envelope:
 |---|---|---|
 | `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id; a wall id is delivered at most once per subscription, in the snapshot or in an update, even when the feed removes and later re-broadcasts it). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures. The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): `bdsMode: "manual"` or a `bdsValue` in an entry is refused with an error frame naming the field (MET-1828); `bdsMode: "auto"` is accepted as a no-op. These two fields belong to `large_trades_subscribe`, where they apply. A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config: the server acks with `density_map_subscribed` and sends a fresh `density_map_snapshot` of the walls that match the new filters; walls already notified are not replayed as updates. |
 | `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
-| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor; same `exchangeMarkets` shape and defaults as the density feed. |
+| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor (applied by the terminal on top of the venue-side BDS threshold: a row is sent only when it passes both — MET-1832); same `exchangeMarkets` shape and defaults as the density feed. |
 | `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
 | `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500; out of range is refused with an `error` frame naming the field) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`); `assetClass` (all \| crypto \| tradfi) matches the class the terminal's Liquidations window shows for the coin — taken from the backend's clusters feed, because the per-event tape carries none (MET-1829) — so a live row of a coin first seen in the session waits up to 2 s for that class before it is sent. A `liquidations_snapshot` follows every subscribe/replace. |
 | `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |

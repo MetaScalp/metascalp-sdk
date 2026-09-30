@@ -470,7 +470,8 @@ public class LargeTradesSubscribeOptions
     public List<LargeTradesExchangeMarket> ExchangeMarkets { get; set; } = new();
     /// <summary>Tape-merge window, 0–60000 ms; 0 = every raw print individually. Default 500.</summary>
     public int? AggregationMs { get; set; }
-    /// <summary>Optional USD floor below which prints are not emitted.</summary>
+    /// <summary>Optional USD floor below which prints are not emitted — applied by the terminal on top of the BDS
+    /// threshold (MET-1832).</summary>
     public decimal? MinAmountUsd { get; set; }
     /// <summary>Size-class coefficients over the effective BDS. Defaults: 3 / 2 / 1.</summary>
     public decimal? LargeCoefficient { get; set; }
