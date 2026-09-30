@@ -306,7 +306,9 @@ class MetaScalpSocket:
         subscribe time. exchange_markets uses the same shape and defaults as
         subscribe_density_map(). aggregation_ms is 0-60000 (default 500; 0 = every raw
         print individually); quote assets default to ["USDT", "USDC", "OTHER"].
-        Re-subscribing replaces the config.
+        min_amount_usd is a USD floor the terminal applies on top of the BDS threshold
+        (a row is sent only when it passes both; MET-1832). Re-subscribing replaces the
+        config.
 
         Event: 'large_trades_update'
         """

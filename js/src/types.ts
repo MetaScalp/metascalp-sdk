@@ -476,7 +476,7 @@ export interface LargeTradesSubscribeOptions {
   exchangeMarkets: LargeTradesExchangeMarket[];
   /** Tape-merge window, 0–60000 ms; 0 = every raw print individually. Default 500. */
   aggregationMs?: number;
-  /** Optional USD floor below which prints are not emitted. */
+  /** Optional USD floor below which prints are not emitted — applied by the terminal on top of the BDS threshold (MET-1832). */
   minAmountUsd?: number;
   /** Size-class coefficients over the effective BDS. Defaults: 3 / 2 / 1. */
   largeCoefficient?: number;
