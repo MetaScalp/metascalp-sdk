@@ -434,6 +434,13 @@ public class AnalyticsExchangeMarket
     public string Exchange { get; set; } = "";
     /// <summary>"spot" | "futures".</summary>
     public string Market { get; set; } = "futures";
+}
+
+/// <summary>One exchange market of a large trades subscription — the pair plus its manual/auto BDS choice.
+/// The density map has no manual BDS (MetaBroker MB-702): a bdsMode "manual" or a bdsValue sent to
+/// density_map_subscribe is refused with an error frame naming the field (MET-1828).</summary>
+public class LargeTradesExchangeMarket : AnalyticsExchangeMarket
+{
     /// <summary>"manual" | "auto" — 'auto' derives the base density size from the live order
     /// book. Default manual when omitted.</summary>
     public string? BdsMode { get; set; }
@@ -460,7 +467,7 @@ public class DensityMapSubscribeOptions
 public class LargeTradesSubscribeOptions
 {
     /// <summary>Required, non-empty — an empty list is rejected.</summary>
-    public List<AnalyticsExchangeMarket> ExchangeMarkets { get; set; } = new();
+    public List<LargeTradesExchangeMarket> ExchangeMarkets { get; set; } = new();
     /// <summary>Tape-merge window, 0–60000 ms; 0 = every raw print individually. Default 500.</summary>
     public int? AggregationMs { get; set; }
     /// <summary>Optional USD floor below which prints are not emitted.</summary>

@@ -438,9 +438,18 @@ export type AnalyticsExchangeName =
   | 'htx' | 'bitmart' | 'lbank' | 'hyperliquid' | 'upbit' | 'asterdex' | 'lighter'
   | 'xt' | 'edgex' | 'bitunix' | 'ourbit' | 'whitebit' | 'blofin' | 'weex' | 'polymarket';
 
+/**
+ * One exchange market of a density map subscription. The density map's base density size is always
+ * auto (MetaBroker MB-702 removed the manual mode): `bdsMode: 'manual'` or a `bdsValue` in an entry is
+ * refused with an error frame naming the field (MET-1828). Those fields belong to the large trades feed.
+ */
 export interface AnalyticsExchangeMarket {
   exchange: AnalyticsExchangeName;
   market: 'spot' | 'futures';
+}
+
+/** One exchange market of a large trades subscription — the pair plus its manual/auto BDS choice. */
+export interface LargeTradesExchangeMarket extends AnalyticsExchangeMarket {
   /** Base density size mode: 'auto' derives it from the live order book. Default 'manual'. */
   bdsMode?: 'manual' | 'auto';
   /** Base density size in USD (used in 'manual' mode, and as the 'auto' fallback). Default 1 000 000. */
@@ -464,7 +473,7 @@ export interface DensityMapSubscribeOptions {
 
 export interface LargeTradesSubscribeOptions {
   /** Required, non-empty — an empty list is rejected. */
-  exchangeMarkets: AnalyticsExchangeMarket[];
+  exchangeMarkets: LargeTradesExchangeMarket[];
   /** Tape-merge window, 0–60000 ms; 0 = every raw print individually. Default 500. */
   aggregationMs?: number;
   /** Optional USD floor below which prints are not emitted. */
