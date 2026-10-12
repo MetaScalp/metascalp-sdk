@@ -733,6 +733,8 @@ Content-Type: application/json
 { "status": "ok" }
 ```
 
+**Response `400`** for an app-side stop or SL/TP (stop / SL/TP location «Application», MC-868): such an order lives in the terminal, not on the exchange, and carries a negative `OrderId` below −2^40. The local API never sends that id to the exchange and answers `{ "error": "Order {OrderId} is an app-side stop or SL/TP held by the terminal; the local API cannot cancel it — cancel it in the order book." }`.
+
 **Example:**
 ```bash
 curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel \

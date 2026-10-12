@@ -1270,6 +1270,7 @@
           <tr><td><code>orderId</code></td><td>integer</td><td>yes</td><td>Exchange order ID</td></tr>
           <tr><td><code>type</code></td><td>integer</td><td>no</td><td>Order type (default <code>0</code> Limit)</td></tr>
         </table>
+        <p><code>400</code> <code>{ error }</code> for an app-side stop or SL/TP (a negative <code>orderId</code> below &minus;2<sup>40</sup>, location &laquo;Application&raquo;): the terminal holds it, the exchange never sees it &mdash; cancel it in the order book.</p>
       </div>
       <div class="form-grid triple">
         <div class="form-group">
@@ -4032,6 +4033,7 @@
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Size &lt;= 0</td><td>400</td><td><code>Size must be greater than zero</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders</code></td><td>Price &lt;= 0 (non-market)</td><td>400</td><td><code>Price must be greater than zero for non-market orders</code></td></tr>
       <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>Missing fields</td><td>400</td><td><code>Invalid request body. 'ticker' and 'orderId' are required.</code></td></tr>
+      <tr><td><code>/api/connections/{id}/orders/cancel</code></td><td>App-side stop or SL/TP id (<code>orderId</code> below &minus;2<sup>40</sup>, location &laquo;Application&raquo;)</td><td>400</td><td><code>Order {orderId} is an app-side stop or SL/TP held by the terminal; the local API cannot cancel it &mdash; cancel it in the order book.</code></td></tr>
       <tr><td><code>POST /api/connections/{id}/signal-levels</code></td><td>Missing ticker/price</td><td>400</td><td><code>Invalid request body. 'ticker' and 'price' are required.</code></td></tr>
       <tr><td><code>POST/PUT .../signal-levels</code></td><td>Price &lt;= 0</td><td>400</td><td><code>Price must be greater than zero</code></td></tr>
       <tr><td><code>POST/PUT .../signal-levels</code></td><td>Unknown triggerRule</td><td>400</td><td><code>Invalid 'triggerRule'. Allowed values: LessThanEqual, GreaterThanEqual.</code></td></tr>
