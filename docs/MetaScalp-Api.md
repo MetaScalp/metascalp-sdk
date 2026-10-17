@@ -1606,7 +1606,8 @@ GET http://127.0.0.1:{port}/api/ui/state
 `standaloneCharts` is a top-level array of chart documents (same document shape) for chart windows not attached to any tab; each includes its own `chart.geometry` and never appears under a tab.
 
 **«Trades» windows (MC-704).** `userTrades` keeps its `{ id, isOpen, geometry }` shape but describes the
-**newest** open «Trades» window (`id` 0 and `isOpen: false` when none is open). `userTradesWindows` lists
+**newest** open «Trades» window (`id` 0 and `isOpen: false` when none is open; for a docked window `geometry`
+is its stored rect, not where it floats on screen — the open response carries where it landed). `userTradesWindows` lists
 every open one, oldest first, each `{ id, externalId, tabId }` — `tabId` is the workspace tab it is docked
 in, `null` for a standalone window.
 
