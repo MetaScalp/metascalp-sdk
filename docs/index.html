@@ -2903,7 +2903,8 @@
           <tr><td><code>screeners</code></td><td>array</td><td>no</td><td>Open screener windows, each <code>{ id, externalId, name, templateId, geometry }</code>. A screener row exists only while its window is open (created on open, removed on close), so every listed row is open.</td></tr>
           <tr><td><code>lineNotifications</code></td><td>object</td><td>yes</td><td>The line-notifications singleton: <code>{ id, isOpen, geometry }</code>. The row is always persisted; <code>isOpen</code> is <code>true</code> only when the window is actually shown &mdash; a persisted-but-hidden singleton reads <code>isOpen: false</code>. <code>null</code> if the family could not be read.</td></tr>
           <tr><td><code>finres</code></td><td>object</td><td>yes</td><td>The finres singleton, same shape/semantics as <code>lineNotifications</code>.</td></tr>
-          <tr><td><code>userTrades</code></td><td>object</td><td>yes</td><td>The user-trades singleton, same shape/semantics.</td></tr>
+          <tr><td><code>userTrades</code></td><td>object</td><td>yes</td><td>Same <code>{ id, isOpen, geometry }</code> shape, but <strong>no longer a singleton</strong> (MC-704): it describes the <em>newest</em> open &laquo;Trades&raquo; window &mdash; <code>id</code> is that window's id (the one <code>POST /api/ui/windows</code> returned), <code>isOpen</code> is <code>true</code> while at least one is open; with none open, <code>id</code> is <code>0</code> and <code>isOpen</code> <code>false</code>. Every open one is in <code>userTradesWindows</code>.</td></tr>
+          <tr><td><code>userTradesWindows</code></td><td>array</td><td>no</td><td>Every open &laquo;Trades&raquo; window (MC-704), oldest first, each <code>{ id, externalId, tabId }</code>: <code>id</code> addresses it on the close / activate / <code>?windowType=userTrades</code> routes; <code>tabId</code> is the workspace tab it is docked in, <code>null</code> for a standalone window. A row exists only while its window is open.</td></tr>
           <tr><td><code>listing</code></td><td>object</td><td>yes</td><td>The listing singleton, same shape/semantics.</td></tr>
         </table>
 
@@ -2938,10 +2939,11 @@
         <code>POST /api/ui/windows</code> are <em>per-surface</em>: a chart / watchlist / screener id is unique
         only within its own surface, not against the workspace <code>Windows</code> table this route reads by
         default. Supply <code>?windowType=</code> with one of <code>chart</code>, <code>tradingViewChart</code>,
-        <code>watchlist</code> or <code>screener</code> (case-insensitive) to resolve the id <em>within that
+        <code>watchlist</code>, <code>screener</code> or <code>userTrades</code> (case-insensitive) to resolve the id <em>within that
         surface</em> instead &mdash; letting a client read a window back at the very address the create route
-        returned. The response is then <code>{ id, type, document | watchlist | screener }</code> (exactly one
-        of the three type blocks is populated). Omit the query for byte-for-byte today's <code>Windows</code>-table
+        returned. The response is then <code>{ id, type, document | watchlist | screener | userTrades }</code> (exactly one
+        of the four type blocks is populated; <code>userTrades</code> is <code>{ id, externalId, tabId }</code>, as in
+        <code>userTradesWindows</code> of <code>/api/ui/state</code>). Omit the query for byte-for-byte today's <code>Windows</code>-table
         lookup.</p>
         <p><strong>Errors:</strong> a non-numeric <code>windowId</code> &rarr;
         <code>400 Invalid window ID</code>; an unknown window (in the default table, or within the requested
@@ -3048,11 +3050,18 @@
           <tr><td><code>templateId</code></td><td>integer</td><td>no</td><td><strong>Screener only.</strong> Open the screener already showing this saved template's filters and rows &mdash; the same state the window's own template picker produces. Omit for today's Default view. The synthetic Default (id <code>-1</code>) is accepted and resolves to Default. Ignored for any non-screener <code>windowType</code>.</td></tr>
         </table>
         <p>Response <code>{ windowId, windowType, top, left, height, width }</code> &mdash; where the window
-        actually landed (post-clamp). For the four <strong>singleton</strong> types (<code>lineNotifications</code>,
-        <code>finres</code>, <code>userTrades</code>, <code>listing</code>) <code>windowId</code> is
+        actually landed (post-clamp). For the three <strong>singleton</strong> types (<code>lineNotifications</code>,
+        <code>finres</code>, <code>listing</code>) <code>windowId</code> is
         <code>null</code>: each has a single fixed row (id <code>1</code>, which would collide with the main
         workspace) and its close/activate routes ignore the id entirely, so there is no addressable per-surface
         id to return. Every other type returns its real per-surface id.</p>
+        <p><strong><code>userTrades</code> (changed in MC-704).</strong> Every call opens a <em>new</em> &laquo;Trades&raquo;
+        window, docked as a floating window in the current tab of the active workspace (the main workspace when
+        none is active) &mdash; the window the toolbar &laquo;Trades&raquo; button opens. <code>windowId</code> is now that
+        window's id (it was <code>null</code> while &laquo;Your trades&raquo; was a singleton); pass it to the close /
+        activate routes and to <code>GET /api/ui/windows/{windowId}?windowType=userTrades</code>. Omitted geometry
+        opens it at the cursor, as the button does. The former standalone &laquo;Your trades&raquo; window no longer
+        exists.</p>
         <p><strong>Opening the screener on a template.</strong> For <code>windowType: "screener"</code> a
         supplied <code>templateId</code> is threaded onto the screener window so it loads that template exactly as
         picking it by hand would; because the choice is persisted with the window, it also becomes the window's
@@ -3099,8 +3108,10 @@
         named by <code>windowType</code> &mdash; ids are <strong>not</strong> unique across surfaces (a workspace,
         a chart, a screener and a watchlist can all be id 1), so the body's <code>windowType</code> is what routes
         the id to the correct window. The singleton surfaces (<code>lineNotifications</code>, <code>finres</code>,
-        <code>userTrades</code>, <code>listing</code>) ignore the path id. <code>finres</code> is HIDDEN rather
-        than destroyed, matching its manual toggle.</p>
+        <code>listing</code>) ignore the path id. <code>finres</code> is HIDDEN rather
+        than destroyed, matching its manual toggle. <code>userTrades</code> is <strong>not</strong> a singleton
+        any more (MC-704): the path id names one &laquo;Trades&raquo; window (the <code>windowId</code> its open returned);
+        an id with no open &laquo;Trades&raquo; window &rarr; <code>404</code>.</p>
         <p><strong>Request body:</strong></p>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "workspace" }</code></pre>
         <table>
@@ -3162,7 +3173,7 @@
       <div class="docs">
         <p>Brings ONE terminal window to the front on its own window thread. Same id-addressing as the close
         route: <code>{windowId}</code> is the id within the surface named by <code>windowType</code>; singletons
-        ignore the id.</p>
+        ignore the id; <code>userTrades</code> uses it to pick one &laquo;Trades&raquo; window (MC-704).</p>
         <p><strong>Request body:</strong></p>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "chart" }</code></pre>
         <table>
