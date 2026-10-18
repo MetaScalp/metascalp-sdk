@@ -1667,7 +1667,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 
 #### Re-ticker a Panel
 
-Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives the active window and a whole named link group. `{externalId}` is the document's GUID.
+Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives a whole named link group. `{externalId}` is the document's GUID.
 
 ```
 PUT http://127.0.0.1:{port}/api/ui/documents/{externalId}/ticker
