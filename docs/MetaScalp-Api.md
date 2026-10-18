@@ -240,7 +240,7 @@ GET http://127.0.0.1:{port}/ping
 
 #### Change Ticker
 
-Switches the active ticker in MetaScalp. The active window is always notified. When a named binding is provided, that binding's linked panels are notified as well.
+Switches the active ticker in MetaScalp. A named binding addresses that binding's linked panels; omit it and the call reaches no panel. Panels bound to **Active window** are **not** notified — the active window follows user actions inside the terminal only (MC-720).
 
 ```
 POST http://127.0.0.1:{port}/api/change-ticker
@@ -256,7 +256,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | Field           | Type   | Required | Description                                                                 |
 |-----------------|--------|----------|-----------------------------------------------------------------------------|
 | `TickerPattern` | string | yes      | Pattern string (see [Ticker pattern format](#ticker-pattern-format) below). |
-| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Option B — Explicit fields**
 
@@ -265,7 +265,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | `Exchange` | integer | yes      | Exchange identifier (see [Exchange values](#exchange-values))   |
 | `Market`   | integer | yes      | Market type identifier (see [MarketType values](#markettype-values)) |
 | `Ticker`   | string  | yes      | Trading pair symbol, e.g. `"BTCUSDT"`             |
-| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Bindings**
 
@@ -273,8 +273,8 @@ A **binding** is a named group of linked panels inside MetaScalp (e.g. a chart, 
 
 | `Binding` value        | Active window notified | Named binding notified |
 |------------------------|:----------------------:|:----------------------:|
-| omitted / empty / null | yes                    | —                      |
-| `"001"` … `"500"`      | yes                    | yes                    |
+| omitted / empty / null | no                     | —                      |
+| `"001"` … `"500"`      | no                     | yes                    |
 
 **Response**
 
@@ -1605,6 +1605,12 @@ GET http://127.0.0.1:{port}/api/ui/state
 
 `standaloneCharts` is a top-level array of chart documents (same document shape) for chart windows not attached to any tab; each includes its own `chart.geometry` and never appears under a tab.
 
+**«Trades» windows (MC-704).** `userTrades` keeps its `{ id, isOpen, geometry }` shape but describes the
+**newest** open «Trades» window (`id` 0 and `isOpen: false` when none is open; for a docked window `geometry`
+is its stored rect, not where it floats on screen — the open response carries where it landed). `userTradesWindows` lists
+every open one, oldest first, each `{ id, externalId, tabId }` — `tabId` is the workspace tab it is docked
+in, `null` for a standalone window.
+
 #### Get One Window
 
 Returns exactly the same single-window object as that window's entry in `/api/ui/state` — same geometry, tabs and documents.
@@ -1612,6 +1618,11 @@ Returns exactly the same single-window object as that window's entry in `/api/ui
 ```
 GET http://127.0.0.1:{port}/api/ui/windows/{windowId}
 ```
+
+Optional `?windowType=` (`chart`, `tradingViewChart`, `watchlist`, `screener`, `userTrades`) resolves the id
+within that surface — the address `POST /api/ui/windows` returned. The response is then
+`{ id, type, document | watchlist | screener | userTrades }`; for `userTrades` the block is
+`{ id, externalId, tabId }`.
 
 **Errors:**
 
@@ -1656,7 +1667,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 
 #### Re-ticker a Panel
 
-Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives the active window and a whole named link group. `{externalId}` is the document's GUID.
+Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives a whole named link group. `{externalId}` is the document's GUID.
 
 ```
 PUT http://127.0.0.1:{port}/api/ui/documents/{externalId}/ticker
@@ -1698,8 +1709,9 @@ id `1`, so the body's `windowType` is what routes the id to the correct window.
 `windowType` is one of: `workspace`, `lightWorkspace`, `chart`, `tradingViewChart`, `watchlist`,
 `screener`, `lineNotifications`, `finres`, `userTrades`, `listing`.
 
-The four **singleton** surfaces (`lineNotifications`, `finres`, `userTrades`, `listing`) ignore the
-path id entirely — each has one fixed row.
+The three **singleton** surfaces (`lineNotifications`, `finres`, `listing`) ignore the
+path id entirely — each has one fixed row. `userTrades` is **not** a singleton any more (MC-704): every
+open creates a new «Trades» window and its `windowId` addresses that one window.
 
 #### Open a Window
 
@@ -1725,9 +1737,16 @@ Content-Type: application/json
 | `templateId` | integer | no | **Screener only.** Open the screener already showing this saved template's filters and rows. Omit for today's Default view. The synthetic Default (`-1`) is accepted. Ignored for any non-screener `windowType`. |
 
 **Response `200 OK`:** `{ windowId, windowType, top, left, height, width }` — where the window
-*actually* landed (post-clamp). For the four singleton types `windowId` is `null`: each has a single
+*actually* landed (post-clamp). For the three singleton types `windowId` is `null`: each has a single
 fixed row (id `1`, which would collide with the main workspace) and its close/activate routes ignore
 the id, so there is no addressable per-surface id to return.
+
+> **`userTrades` (changed in MC-704).** Every call opens a **new** «Trades» window, docked as a floating
+> window in the current tab of the active workspace (the main workspace when none is active) — the window
+> the toolbar «Trades» button opens. `windowId` is now that window's id (it was `null` while «Your trades»
+> was a singleton); pass it to close / activate and to `GET /api/ui/windows/{windowId}?windowType=userTrades`.
+> Omitted geometry opens it at the cursor, as the button does. The former standalone «Your trades» window
+> no longer exists.
 
 > **Opening the screener on a template.** For `windowType: "screener"` a supplied `templateId` is
 > threaded onto the window so it loads that template exactly as picking it by hand would; because the
@@ -1961,7 +1980,7 @@ Settings field reference:
 | `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
 | `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
-| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | string | How one mouse-wheel notch moves the compression: `"Linear"` (by one unit) or `"Logarithmic"` (to the next rung of the 1, 2, 5, 10, 20, 50 … ladder). `null` on a settings row saved before this field existed — the terminal treats that as `"Linear"` |
 | `AutoZoom` | boolean | Enable automatic zoom |
@@ -1995,7 +2014,7 @@ Settings field reference:
 
 | Field | Valid values |
 |-------|-------------|
-| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
@@ -2030,7 +2049,7 @@ Content-Type: application/json
 | Condition | Error message |
 |-----------|---------------|
 | Missing ticker | `Query parameter 'Ticker' is required` |
-| Invalid enum value | `Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume` |
+| Invalid enum value | `Invalid ShowRuler value: 'X'` |
 | No settings found | `No order book settings found for this ticker` |
 
 **Examples:**
