@@ -240,7 +240,7 @@ GET http://127.0.0.1:{port}/ping
 
 #### Change Ticker
 
-Switches the active ticker in MetaScalp. The active window is always notified. When a named binding is provided, that binding's linked panels are notified as well.
+Switches the active ticker in MetaScalp. A named binding addresses that binding's linked panels; omit it and the call reaches no panel. Panels bound to **Active window** are **not** notified — the active window follows user actions inside the terminal only (MC-720).
 
 ```
 POST http://127.0.0.1:{port}/api/change-ticker
@@ -256,7 +256,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | Field           | Type   | Required | Description                                                                 |
 |-----------------|--------|----------|-----------------------------------------------------------------------------|
 | `TickerPattern` | string | yes      | Pattern string (see [Ticker pattern format](#ticker-pattern-format) below). |
-| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Option B — Explicit fields**
 
@@ -265,7 +265,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | `Exchange` | integer | yes      | Exchange identifier (see [Exchange values](#exchange-values))   |
 | `Market`   | integer | yes      | Market type identifier (see [MarketType values](#markettype-values)) |
 | `Ticker`   | string  | yes      | Trading pair symbol, e.g. `"BTCUSDT"`             |
-| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Bindings**
 
@@ -273,8 +273,8 @@ A **binding** is a named group of linked panels inside MetaScalp (e.g. a chart, 
 
 | `Binding` value        | Active window notified | Named binding notified |
 |------------------------|:----------------------:|:----------------------:|
-| omitted / empty / null | yes                    | —                      |
-| `"001"` … `"500"`      | yes                    | yes                    |
+| omitted / empty / null | no                     | —                      |
+| `"001"` … `"500"`      | no                     | yes                    |
 
 **Response**
 
@@ -1980,7 +1980,7 @@ Settings field reference:
 | `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
 | `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
-| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | string | How one mouse-wheel notch moves the compression: `"Linear"` (by one unit) or `"Logarithmic"` (to the next rung of the 1, 2, 5, 10, 20, 50 … ladder). `null` on a settings row saved before this field existed — the terminal treats that as `"Linear"` |
 | `AutoZoom` | boolean | Enable automatic zoom |
@@ -2014,7 +2014,7 @@ Settings field reference:
 
 | Field | Valid values |
 |-------|-------------|
-| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
@@ -2049,7 +2049,7 @@ Content-Type: application/json
 | Condition | Error message |
 |-----------|---------------|
 | Missing ticker | `Query parameter 'Ticker' is required` |
-| Invalid enum value | `Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume` |
+| Invalid enum value | `Invalid ShowRuler value: 'X'` |
 | No settings found | `No order book settings found for this ticker` |
 
 **Examples:**

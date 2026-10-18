@@ -711,7 +711,7 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Changes the current ticker. The active window is always notified. When a named binding is provided, that binding's linked panels are also updated.</p>
+        <p>Changes the current ticker. A named <code>binding</code> addresses that binding&rsquo;s linked panels; omit it and the call reaches no panel. Panels bound to <strong>Active window</strong> are <strong>not</strong> notified &mdash; the active window follows user actions inside the terminal only (MC-720).</p>
         <p>Accepts two request formats: a <strong>ticker pattern</strong> string (e.g. <code>BINANCE:BTCUSDT.p</code>) or <strong>explicit fields</strong> (exchange + market + ticker).</p>
         <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">A <strong>binding</strong> is a named group of linked panels inside MetaScalp (e.g. a chart, order book, and trade feed showing the same ticker). Bindings are numbered <code>"001"</code>&ndash;<code>"500"</code> and configured by the user in the MetaScalp UI.</p>
       </div>
@@ -1762,7 +1762,7 @@
     <div class="endpoint-body">
       <div class="docs">
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
-        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>, <code>PercentVolumeOneLine</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
         <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
       </div>
       <div class="form-grid">
