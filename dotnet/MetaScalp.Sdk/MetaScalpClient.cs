@@ -160,6 +160,59 @@ public class MetaScalpClient : IDisposable
     public Task RemoveTriggeredSignalLevelsAsync(CancellationToken ct = default)
         => DeleteAsync<object>("/api/signal-levels/triggered", ct);
 
+    // ---- Appearance (Settings -> Display) ----
+
+    /// <summary>Active theme id, every theme and the general display options.</summary>
+    public Task<AppearanceState> GetAppearanceAsync(CancellationToken ct = default)
+        => GetAsync<AppearanceState>("/api/appearance", ct);
+
+    /// <summary>Font families the <c>Font</c> option accepts (custom fonts first, then installed system fonts).</summary>
+    public Task<FontFamiliesResponse> GetFontFamiliesAsync(CancellationToken ct = default)
+        => GetAsync<FontFamiliesResponse>("/api/appearance/font-families", ct);
+
+    /// <summary>Changes only the non-null options; applied at once. 400 on a bad value or range (nothing saved).</summary>
+    public Task<AppearanceGeneral> UpdateAppearanceGeneralAsync(AppearanceGeneralUpdate update, CancellationToken ct = default)
+        => PutAsync<AppearanceGeneral>("/api/appearance/general", update, ct);
+
+    /// <summary>Makes the theme active in the running terminal (kept after a restart). 404 for an unknown id.</summary>
+    public Task<AppearanceTheme> SetActiveThemeAsync(long themeId, CancellationToken ct = default)
+        => PutAsync<AppearanceTheme>("/api/appearance/active-theme", new { themeId }, ct);
+
+    /// <summary>
+    /// Creates an editable copy of <see cref="CreateThemeRequest.CopyFromThemeId"/> (default: the active theme);
+    /// no name = «&lt;source&gt; (N)». The copy is not activated.
+    /// </summary>
+    public Task<AppearanceTheme> CreateThemeAsync(CreateThemeRequest? request = null, CancellationToken ct = default)
+        => PostAsync<AppearanceTheme>("/api/appearance/themes", request ?? new CreateThemeRequest(), ct);
+
+    /// <summary>Renames an own theme. 409 for a built-in theme (copy it first).</summary>
+    public Task<AppearanceTheme> RenameThemeAsync(long themeId, string name, CancellationToken ct = default)
+        => PutAsync<AppearanceTheme>($"/api/appearance/themes/{themeId}", new { name }, ct);
+
+    /// <summary>Deletes an own theme; deleting the active one activates its neighbour. 409 built-in, 400 last theme.</summary>
+    public Task<DeleteThemeResponse> DeleteThemeAsync(long themeId, CancellationToken ct = default)
+        => DeleteAsync<DeleteThemeResponse>($"/api/appearance/themes/{themeId}", ct);
+
+    /// <summary>Every colour row of the four Display colour sections.</summary>
+    public Task<ThemeColorsResponse> GetThemeColorsAsync(long themeId, CancellationToken ct = default)
+        => GetAsync<ThemeColorsResponse>($"/api/appearance/themes/{themeId}/colors", ct);
+
+    /// <summary>
+    /// Writes colour rows: key -> <c>#RRGGBB</c> / <c>#AARRGGBB</c> (<c>Light</c> / <c>Dark</c> for the two choice rows).
+    /// All-or-nothing: one bad key or value = 400 and nothing is saved. 409 for a built-in theme.
+    /// </summary>
+    public Task<ThemeColorsResponse> UpdateThemeColorsAsync(long themeId, IDictionary<string, string> colors, CancellationToken ct = default)
+        => PutAsync<ThemeColorsResponse>($"/api/appearance/themes/{themeId}/colors", new { colors }, ct);
+
+    /// <summary>Every «Fonts» row: element, group, label, size, bold, italic, color, hasStyle.</summary>
+    public Task<ThemeTextStylesResponse> GetThemeTextStylesAsync(long themeId, CancellationToken ct = default)
+        => GetAsync<ThemeTextStylesResponse>($"/api/appearance/themes/{themeId}/text-styles", ct);
+
+    /// <summary>Writes «Fonts» rows: element -> size (8-20) / bold / italic / color; the two chip-background rows take color only.</summary>
+    public Task<ThemeTextStylesResponse> UpdateThemeTextStylesAsync(long themeId, IDictionary<string, AppearanceTextStyleUpdate> textStyles,
+        CancellationToken ct = default)
+        => PutAsync<ThemeTextStylesResponse>($"/api/appearance/themes/{themeId}/text-styles", new { textStyles }, ct);
+
     // ---- HTTP Helpers ----
 
     private async Task<T> GetAsync<T>(string path, CancellationToken ct)

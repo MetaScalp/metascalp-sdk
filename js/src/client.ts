@@ -22,6 +22,13 @@ import type {
   ClusterSnapshotResponse,
   ClusterTimeFrame,
   GetClusterSnapshotOptions,
+  AppearanceState,
+  AppearanceGeneral,
+  AppearanceTheme,
+  CreateThemeRequest,
+  ThemeColorsResponse,
+  ThemeTextStylesResponse,
+  AppearanceTextStyleUpdate,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -212,6 +219,69 @@ export class MetaScalpClient {
 
   async removeTriggeredSignalLevels(): Promise<{ status: string }> {
     return this.delete('/api/signal-levels/triggered');
+  }
+
+  // ---- Appearance (Settings -> Display) ----
+
+  /** Active theme id, every theme `{ id, name, isBuiltIn, isActive }` and the general display options. */
+  async getAppearance(): Promise<AppearanceState> {
+    return this.get('/api/appearance');
+  }
+
+  /** Font families the «Font» option accepts (custom fonts first, then installed system fonts). */
+  async getFontFamilies(): Promise<{ count: number; fonts: string[] }> {
+    return this.get('/api/appearance/font-families');
+  }
+
+  /** Changes only the given display options (omitted = unchanged); applied at once. 400 on a bad value / range. */
+  async updateAppearanceGeneral(update: Partial<AppearanceGeneral>): Promise<AppearanceGeneral> {
+    return this.put('/api/appearance/general', update);
+  }
+
+  /** Makes the theme active in the running terminal (kept after a restart). 404 for an unknown id. */
+  async setActiveTheme(themeId: number): Promise<AppearanceTheme> {
+    return this.put('/api/appearance/active-theme', { themeId });
+  }
+
+  /**
+   * Creates an editable copy of `copyFromThemeId` (default: the active theme). No name = «<source> (N)».
+   * The copy is not activated.
+   */
+  async createTheme(request: CreateThemeRequest = {}): Promise<AppearanceTheme> {
+    return this.post('/api/appearance/themes', request);
+  }
+
+  /** Renames an own theme. 409 for a built-in theme (copy it first). */
+  async renameTheme(themeId: number, name: string): Promise<AppearanceTheme> {
+    return this.put(`/api/appearance/themes/${themeId}`, { name });
+  }
+
+  /** Deletes an own theme; deleting the active one activates its neighbour. 409 built-in, 400 last theme. */
+  async deleteTheme(themeId: number): Promise<{ deleted: boolean; themeId: number }> {
+    return this.delete(`/api/appearance/themes/${themeId}`);
+  }
+
+  /** Every colour row of the four Display colour sections. */
+  async getThemeColors(themeId: number): Promise<ThemeColorsResponse> {
+    return this.get(`/api/appearance/themes/${themeId}/colors`);
+  }
+
+  /**
+   * Writes colour rows: key -> `#RRGGBB` / `#AARRGGBB` (`Light` / `Dark` for the two choice rows).
+   * All-or-nothing: one bad key or value = 400 and nothing is saved. 409 for a built-in theme.
+   */
+  async updateThemeColors(themeId: number, colors: Record<string, string>): Promise<ThemeColorsResponse> {
+    return this.put(`/api/appearance/themes/${themeId}/colors`, { colors });
+  }
+
+  /** Every «Fonts» row: element, group, label, size, bold, italic, color, hasStyle. */
+  async getThemeTextStyles(themeId: number): Promise<ThemeTextStylesResponse> {
+    return this.get(`/api/appearance/themes/${themeId}/text-styles`);
+  }
+
+  /** Writes «Fonts» rows: element -> `{ size (8-20), bold, italic, color }`; the two chip-background rows take color only. */
+  async updateThemeTextStyles(themeId: number, textStyles: Record<string, AppearanceTextStyleUpdate>): Promise<ThemeTextStylesResponse> {
+    return this.put(`/api/appearance/themes/${themeId}/text-styles`, { textStyles });
   }
 
   // ---- HTTP helpers ----
