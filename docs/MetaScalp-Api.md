@@ -62,6 +62,15 @@ Use HTTP to discover connections, query data, and execute trades:
 | `PUT /api/screener/templates/{templateId}` | Update a template (partial) |
 | `DELETE /api/screener/templates/{templateId}` | Delete a template |
 | `GET /api/screener/templates/{templateId}/data` | One headless snapshot of a template's full row set — no screener window is opened |
+| `GET /api/appearance` | Settings → Display: the active theme, every theme (`isBuiltIn`, `isActive`) and the nine display options |
+| `GET /api/appearance/font-families` | Font families the `font` display option accepts |
+| `PUT /api/appearance/general` | Change display options (partial; applied at once) |
+| `PUT /api/appearance/active-theme` | Switch the active theme (applied at once, kept after a restart) |
+| `POST /api/appearance/themes` | Create an editable copy of a theme (default: the active one) |
+| `PUT /api/appearance/themes/{themeId}` | Rename an own theme |
+| `DELETE /api/appearance/themes/{themeId}` | Delete an own theme (the active one hands over to its neighbour) |
+| `GET/PUT /api/appearance/themes/{themeId}/colors` | Read / write every colour row of the four Display colour sections |
+| `GET/PUT /api/appearance/themes/{themeId}/text-styles` | Read / write every «Шрифты» row (size, bold, italic, colour) |
 
 ### WebSocket streaming
 
@@ -2211,6 +2220,159 @@ curl "http://127.0.0.1:17845/api/screener/templates/-1/data"
 ```
 
 ---
+
+### Appearance (Settings → Display)
+
+Everything on **Settings → Display**: the active theme, theme copies, every colour section («Цвета приложения»,
+«Построчная лента сделок», «Цвета графиков», «Цвета информационной панели»), the «Шрифты» (Fonts) rows and the
+general display options. A change is saved and applied by the running terminal at once — the same save + live
+apply the Display page runs for the same edit. Answers are camelCase; bodies are read case-insensitively.
+
+- **Built-in themes are read-only**, as on the Display page: an edit, rename or delete of one → `409` with
+  `Theme '<name>' is built in and read-only. Copy it first (POST /api/appearance/themes with copyFromThemeId=<id>) and change the copy.`
+- **All-or-nothing**: a bad key, value, range or an unknown body field → `400` naming it, and **nothing** is saved.
+- Unknown theme id → `404 Theme {id} not found.`; non-numeric `{themeId}` → `400 Invalid theme ID`.
+- A Display settings window that is already open shows API changes after it is reopened.
+
+#### Get Appearance
+
+```
+GET http://127.0.0.1:{port}/api/appearance
+```
+
+Returns `{ activeThemeId, themes[], general }`. Each theme is `{ id, name, isBuiltIn, isActive }`.
+`general` carries the nine display options:
+
+| Field | Type | Values |
+|---|---|---|
+| `language` | string | `ru`, `en`, `zh-Hans`, `hy-AM`, `uk-UA` |
+| `font` | string | One of `GET /api/appearance/font-families` |
+| `orderBookFontSize` | number | 8–20, whole |
+| `highlightPricesOnBaseLevelsFactor` | bool | Highlight prices on base levels |
+| `actionBarWidth` | int | 0–40 |
+| `clusterColumnWidth` | int | 0–200 (a change sets the cluster width of **every** order book, as the page does) |
+| `limitOrderButtonPosition` | string | `Left`, `Right` |
+| `errorDisplayDuration` | int | 1–7 (seconds) |
+| `designType` | string | `Standard`, `Simplified` |
+
+#### Get Font Families
+
+```
+GET http://127.0.0.1:{port}/api/appearance/font-families
+```
+
+Returns `{ count, fonts[] }`: custom fonts first, then the installed system fonts that pass validation — the
+list of the «Шрифт» drop-down.
+
+#### Update Display Options
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/general
+Content-Type: application/json
+```
+
+Any of the nine `general` fields above; an omitted field keeps its value. Applied at once (a new `language`
+switches the menu immediately) and saved. Returns the nine options after the change.
+
+```json
+{ "orderBookFontSize": 14, "errorDisplayDuration": 3 }
+```
+
+#### Set Active Theme
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/active-theme
+Content-Type: application/json
+```
+
+Body `{ "themeId": 5 }` (required). The terminal switches at once and the theme stays active after a restart.
+Returns `{ id, name, isBuiltIn, isActive }`.
+
+#### Create Theme (copy)
+
+```
+POST http://127.0.0.1:{port}/api/appearance/themes
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no | Omitted / blank = a unique `<source> (N)`, as «Дублировать» names it. |
+| `copyFromThemeId` | integer | no | Theme to copy; omitted = the active theme. A built-in theme can be copied. |
+
+The body may be empty. The copy is always editable (`isBuiltIn: false`) and is **not** activated. Returns
+`{ id, name, isBuiltIn, isActive }`.
+
+#### Rename Theme
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}
+Content-Type: application/json
+```
+
+Body `{ "name": "My theme" }`; a blank name → `400`. Returns `{ id, name, isBuiltIn, isActive }`.
+
+#### Delete Theme
+
+```
+DELETE http://127.0.0.1:{port}/api/appearance/themes/{themeId}
+```
+
+Returns `{ deleted: true, themeId }`. Deleting the **active** theme first activates its neighbour in the list (the
+next one, or the previous one at the end). The last theme → `400 The last theme cannot be deleted.`
+
+#### Get Theme Colours
+
+```
+GET http://127.0.0.1:{port}/api/appearance/themes/{themeId}/colors
+```
+
+Returns `{ themeId, colors[] }`, one row per colour row of the four Display colour sections, in page order:
+`{ key, section, label, value, options }`. `section` is `application`, `timeAndSales`, `chart` or `infoPanel`;
+`label` is the row's name in the terminal's current language; `value` is `#AARRGGBB`. The two choice rows
+(`TradingViewMenuColor`, `MessengerThemeColor`) carry `Light` / `Dark` and list them in `options`.
+
+#### Update Theme Colours
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}/colors
+Content-Type: application/json
+```
+
+Body `{ "colors": { "<key>": "<value>", ... } }` with keys from the GET (case-insensitive) and values `#RRGGBB` /
+`#AARRGGBB` (`Light` / `Dark` for a choice row). Returns the whole `{ themeId, colors[] }` after the write. An
+edit of the **active** theme repaints the terminal at once.
+
+```json
+{ "colors": { "Asks": "#FFFF8080", "ChartBackground": "#101418" } }
+```
+
+#### Get Theme Text Styles («Шрифты»)
+
+```
+GET http://127.0.0.1:{port}/api/appearance/themes/{themeId}/text-styles
+```
+
+Returns `{ themeId, textStyles[] }`, one row per «Шрифты» row: `{ element, group, label, size, bold, italic, color,
+hasStyle }`. `group` is `orderBook`, `tapeClusters`, `windows` or `charts`; `size` / `bold` / `italic` are the
+effective values. The info-panel rows' `color` is that metric's colour and large volume level 1 / 2 show the
+level's colour, as on the page. The two chip-background rows have `hasStyle: false` (colour only).
+
+#### Update Theme Text Styles
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}/text-styles
+Content-Type: application/json
+```
+
+Body `{ "textStyles": { "<element>": { "size": 8-20, "bold": true, "italic": false, "color": "#RRGGBB" }, ... } }`;
+every field is optional, at least one per element. A value equal to the element's default is stored as «not set»,
+as on the page. A chip-background row takes `color` only (`size` / `bold` / `italic` → `400`). Returns the whole
+`{ themeId, textStyles[] }`.
+
+```json
+{ "textStyles": { "OrderBookPriceScale": { "size": 14, "bold": true } } }
+```
 
 ### Real-time WebSocket
 

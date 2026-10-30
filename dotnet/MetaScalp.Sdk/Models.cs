@@ -416,6 +416,159 @@ public class OrderBookSettingsResponse
     public OrderBookSettingsDto Settings { get; set; } = new();
 }
 
+// ============ Appearance (Settings -> Display) ============
+
+public class AppearanceTheme
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = "";
+
+    /// <summary>Built-in themes are read-only: copy one and change the copy.</summary>
+    public bool IsBuiltIn { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class AppearanceGeneral
+{
+    public string Language { get; set; } = "";
+    public string Font { get; set; } = "";
+    public double OrderBookFontSize { get; set; }
+    public bool HighlightPricesOnBaseLevelsFactor { get; set; }
+    public int ActionBarWidth { get; set; }
+    public int ClusterColumnWidth { get; set; }
+    public string LimitOrderButtonPosition { get; set; } = "";
+    public int ErrorDisplayDuration { get; set; }
+    public string DesignType { get; set; } = "";
+}
+
+/// <summary>Every field is optional: null = not sent = unchanged.</summary>
+public class AppearanceGeneralUpdate
+{
+    /// <summary>ru, en, zh-Hans, hy-AM or uk-UA.</summary>
+    [JsonProperty("language", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Language { get; set; }
+
+    /// <summary>One of GET /api/appearance/font-families.</summary>
+    [JsonProperty("font", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Font { get; set; }
+
+    /// <summary>8-20, whole.</summary>
+    [JsonProperty("orderBookFontSize", NullValueHandling = NullValueHandling.Ignore)]
+    public double? OrderBookFontSize { get; set; }
+
+    [JsonProperty("highlightPricesOnBaseLevelsFactor", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? HighlightPricesOnBaseLevelsFactor { get; set; }
+
+    /// <summary>0-40.</summary>
+    [JsonProperty("actionBarWidth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ActionBarWidth { get; set; }
+
+    /// <summary>0-200; a change sets the cluster width of every order book.</summary>
+    [JsonProperty("clusterColumnWidth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ClusterColumnWidth { get; set; }
+
+    /// <summary>Left or Right.</summary>
+    [JsonProperty("limitOrderButtonPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? LimitOrderButtonPosition { get; set; }
+
+    /// <summary>1-7 seconds.</summary>
+    [JsonProperty("errorDisplayDuration", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ErrorDisplayDuration { get; set; }
+
+    /// <summary>Standard or Simplified.</summary>
+    [JsonProperty("designType", NullValueHandling = NullValueHandling.Ignore)]
+    public string? DesignType { get; set; }
+}
+
+public class AppearanceState
+{
+    public long ActiveThemeId { get; set; }
+    public List<AppearanceTheme> Themes { get; set; } = new();
+    public AppearanceGeneral General { get; set; } = new();
+}
+
+public class FontFamiliesResponse
+{
+    public int Count { get; set; }
+    public List<string> Fonts { get; set; } = new();
+}
+
+public class CreateThemeRequest
+{
+    /// <summary>null = «&lt;source&gt; (N)».</summary>
+    [JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Name { get; set; }
+
+    /// <summary>Theme to copy; null = the active theme.</summary>
+    [JsonProperty("copyFromThemeId", NullValueHandling = NullValueHandling.Ignore)]
+    public long? CopyFromThemeId { get; set; }
+}
+
+public class DeleteThemeResponse
+{
+    public bool Deleted { get; set; }
+    public long ThemeId { get; set; }
+}
+
+public class AppearanceColor
+{
+    public string Key { get; set; } = "";
+
+    /// <summary>application, timeAndSales, chart or infoPanel.</summary>
+    public string Section { get; set; } = "";
+    public string Label { get; set; } = "";
+
+    /// <summary>#AARRGGBB, or Light / Dark for a choice row.</summary>
+    public string? Value { get; set; }
+
+    /// <summary>Allowed values of a choice row; null for a colour row.</summary>
+    public List<string>? Options { get; set; }
+}
+
+public class ThemeColorsResponse
+{
+    public long ThemeId { get; set; }
+    public List<AppearanceColor> Colors { get; set; } = new();
+}
+
+public class AppearanceTextStyle
+{
+    public string Element { get; set; } = "";
+
+    /// <summary>orderBook, tapeClusters, windows or charts.</summary>
+    public string Group { get; set; } = "";
+    public string Label { get; set; } = "";
+    public double? Size { get; set; }
+    public bool? Bold { get; set; }
+    public bool? Italic { get; set; }
+    public string? Color { get; set; }
+
+    /// <summary>false for the two chip-background rows: colour only.</summary>
+    public bool HasStyle { get; set; }
+}
+
+/// <summary>Every field is optional: null = not sent = unchanged.</summary>
+public class AppearanceTextStyleUpdate
+{
+    [JsonProperty("size", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Size { get; set; }
+
+    [JsonProperty("bold", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Bold { get; set; }
+
+    [JsonProperty("italic", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Italic { get; set; }
+
+    [JsonProperty("color", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Color { get; set; }
+}
+
+public class ThemeTextStylesResponse
+{
+    public long ThemeId { get; set; }
+    public List<AppearanceTextStyle> TextStyles { get; set; } = new();
+}
+
 // ============ Signal Level Socket Models ============
 
 public class SignalLevelsSnapshotData
