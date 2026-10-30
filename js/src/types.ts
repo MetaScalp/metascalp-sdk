@@ -125,6 +125,8 @@ export interface ComboRequest {
   tickers?: string[];
   /** Omitted or true: the combo takes focus (today's behaviour). false: it opens in the background. */
   activate?: boolean;
+  /** Connection ids from GET /api/connections: exactly these books, in this order. Omitted: the terminal picks (today's behaviour). */
+  connections?: number[];
 }
 
 /** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */

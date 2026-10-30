@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` picks the books and their order) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -334,9 +334,10 @@ request flag:
 
 | Field     | Type     | Description |
 |-----------|----------|-------------|
-| `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
+| `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. Which books open: see *Which books open* below. |
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
 | `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
+| `Connections` | integer[] | Optional. Connection ids from `GET /api/connections`. Present: the combo opens with the books of exactly these connections, in this order (for `Tickers`: in every combo). Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
@@ -348,6 +349,17 @@ naming the rejected tickers.
   `Tickers` form exactly one window (the last in the list) comes to the front, as today.
 - `false` — the combo opens **in the background**: whatever window/tab you were on stays active. On the
   `Tickers` form *no* element of the list steals focus.
+
+**Which books open.** Without `Connections` the terminal decides: every active connection on which the
+ticker resolves, in the connection list order, minus the venues unchecked in Settings → Combo window, or
+the top-N venues by the screener metric when the venue mode there is TOP. With `Connections` the list IS
+the set and the order: the first listed connection is the first book (and, with charts on, every chart
+follows its book); the venue checkboxes and the TOP mode are not applied, every other combo setting (open
+mode, charts, sizes, linking, the book cap) is. The book cap splits a long list into several windows named
+`BTCUSDT 1/K` … `BTCUSDT K/K`; the order runs across them (window 1 holds the first listed connections).
+A listed connection is accepted only if it is an active connection and the ticker resolves on it the
+way the combo resolves it (separator-tolerant, KRW pair preferred on Upbit and Bithumb); whatever passes
+the check is exactly what opens.
 
 **Response**
 
@@ -363,6 +375,17 @@ naming the rejected tickers.
 | Missing or empty `Ticker` | `Invalid request body. 'ticker' is required.` |
 | Both `Ticker` and `Tickers` supplied, or an empty `Tickers` array with no `Ticker` | `400` |
 | One or more tickers resolve on no eligible connection | `400` naming the rejected tickers (nothing is opened) |
+
+With `Connections` the checks run in this order; the first failing one answers and nothing is opened:
+
+| # | Condition | Error message |
+|---|-----------|---------------|
+| 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
+| 2 | `Connections` is an empty array | `Invalid request body. 'connections' must not be empty.` |
+| 3 | The same id is listed twice or more | `Invalid request body. Duplicate connections: 4.` (every duplicated id, in request order) |
+| 4 | One or more ids are not found or not active | `Combo not opened. Unknown or inactive connections: 999, 12.` (every such id, in request order) |
+| 5 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 6 | A ticker does not trade on one or more listed connections | `Combo not opened. Not traded: BTCUSDT on 4, 7; ETHUSDT on 4.` (every failing pair) |
 
 **Example**
 
@@ -381,6 +404,21 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Ticker": "BTCUSDT", "Activate": false}'
+
+# Exactly these books, in this order (ids from GET /api/connections)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Connections": [1, 4]}'
+
+# The same list for every combo of the request
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Connections": [1, 4]}'
+
+# The listed books, in the background
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Connections": [1, 4], "Activate": false}'
 ```
 
 ---

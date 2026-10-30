@@ -166,7 +166,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background) |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
