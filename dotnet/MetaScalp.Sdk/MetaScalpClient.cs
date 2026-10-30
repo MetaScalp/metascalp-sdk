@@ -82,6 +82,16 @@ public class MetaScalpClient : IDisposable
     public async Task CancelOrderAsync(long connectionId, CancelOrderRequest request, CancellationToken ct = default)
         => await PostAsync<object>($"/api/connections/{connectionId}/orders/cancel", request, ct);
 
+    // ---- Combo ----
+
+    /// <summary>
+    /// Opens a combo layout: <see cref="ComboRequest.Ticker"/> (one combo) or <see cref="ComboRequest.Tickers"/>
+    /// (one per ticker, in order, validated all-or-nothing). <see cref="ComboRequest.Connections"/> opens exactly
+    /// these books, in this order. Unset fields are not sent, so older terminals still accept the call.
+    /// </summary>
+    public async Task<StatusResponse> OpenComboAsync(ComboRequest request, CancellationToken ct = default)
+        => await PostAsync<StatusResponse>("/api/combo", request, ct);
+
     // ---- Order Book Settings ----
 
     public Task<OrderBookSettingsResponse> GetOrderBookSettingsAsync(long connectionId, string ticker, CancellationToken ct = default)

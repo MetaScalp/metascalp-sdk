@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace MetaScalp.Sdk;
 
 // ============ REST Models ============
@@ -110,6 +112,28 @@ public class PlaceOrderRequest
     public decimal Size { get; set; }
     public int Type { get; set; }
     public bool ReduceOnly { get; set; }
+}
+
+public class ComboRequest
+{
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Ticker { get; set; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Tickers { get; set; }
+
+    /// <summary>null (default) = not sent = the combo takes focus; false = opens in the background.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Activate { get; set; }
+
+    /// <summary>Connection ids from GET /api/connections: exactly these books, in this order. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<long>? Connections { get; set; }
+}
+
+public class StatusResponse
+{
+    public string Status { get; set; } = "";
 }
 
 public class PlaceOrderResponse

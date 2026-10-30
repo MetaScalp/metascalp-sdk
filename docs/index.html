@@ -822,11 +822,33 @@
           <li><code>activate: true</code> or the field omitted &mdash; the combo opens and becomes the active/focused layout (unchanged default). On the <code>tickers</code> form, exactly one window (the last in the list) comes to the front, as today.</li>
           <li><code>activate: false</code> &mdash; the combo opens <strong>in the background</strong>: whatever window/tab you were on stays active. On the <code>tickers</code> form, <em>no</em> element of the list steals focus.</li>
         </ul>
+        <p><strong>Which books open.</strong> Without <code>connections</code> the terminal decides: every active connection on which the ticker resolves, in the connection list order, minus the venues unchecked in Settings &rarr; Combo window, or the top-N venues by the screener metric when the venue mode there is TOP. The book cap of the Combo window settings then splits a long list into several windows named <code>BTCUSDT 1/K</code> &hellip; <code>BTCUSDT K/K</code>.</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>connections</code></td><td>integer array</td><td>no</td><td>Connection ids from <code>GET /api/connections</code>. Present: the combo opens with the books of exactly these connections, in this order (for <code>tickers</code>: in every combo); the venue checkboxes and the TOP mode of the Combo window settings are not applied, every other combo setting (open mode, charts, sizes, linking, the book cap and its split) is. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
+        </table>
+        <pre>{ "ticker": "BTCUSDT", "connections": [1, 4] }
+{ "tickers": ["BTCUSDT", "ETHUSDT"], "connections": [1, 4] }
+{ "ticker": "BTCUSDT", "connections": [1, 4], "activate": false }</pre>
+        <p>With <code>connections</code> the checks run in this order and the first failing one answers <code>400</code>; nothing opens:</p>
+        <table>
+          <tr><th>Condition</th><th>Error message</th></tr>
+          <tr><td>Both <code>ticker</code> and a non-empty <code>tickers</code>; missing <code>ticker</code></td><td>unchanged (see above)</td></tr>
+          <tr><td><code>connections</code> is an empty array</td><td><code>Invalid request body. 'connections' must not be empty.</code></td></tr>
+          <tr><td>The same id listed twice or more</td><td><code>Invalid request body. Duplicate connections: 4.</code> (every duplicated id, in request order)</td></tr>
+          <tr><td>Ids not found or not active</td><td><code>Combo not opened. Unknown or inactive connections: 999, 12.</code> (every such id, in request order)</td></tr>
+          <tr><td>A <code>tickers</code> element is null or blank</td><td>unchanged: <code>Combo not opened. Rejected tickers: &lt;names&gt;.</code></td></tr>
+          <tr><td>A ticker does not trade on one or more listed connections</td><td><code>Combo not opened. Not traded: BTCUSDT on 4, 7; ETHUSDT on 4.</code> (every failing pair)</td></tr>
+        </table>
       </div>
       <div class="form-grid single">
         <div class="form-group">
           <label>Ticker</label>
           <input type="text" id="f-combo-ticker" value="BTCUSDT" placeholder="e.g. BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>Connections (optional, comma-separated ids, in order)</label>
+          <input type="text" id="f-combo-connections" value="" placeholder="e.g. 1, 4">
         </div>
       </div>
       <div class="actions-row">
@@ -4023,6 +4045,10 @@
       <tr><td><code>/api/change-ticker</code></td><td>No connection</td><td>400</td><td><code>No connection found for exchange ... and market ...</code></td></tr>
       <tr><td><code>/api/change-ticker</code></td><td>Ticker not on connection</td><td>400</td><td><code>Ticker '{ticker}' not found on connection {id}</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Missing ticker</td><td>400</td><td><code>Invalid request body. 'ticker' is required.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Empty <code>connections</code></td><td>400</td><td><code>Invalid request body. 'connections' must not be empty.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Duplicated connection id</td><td>400</td><td><code>Invalid request body. Duplicate connections: {ids}.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Unknown or inactive connection id</td><td>400</td><td><code>Combo not opened. Unknown or inactive connections: {ids}.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Ticker not traded on a listed connection</td><td>400</td><td><code>Combo not opened. Not traded: {ticker} on {ids}; ...</code></td></tr>
       <tr><td><code>/api/connections/{id}</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Invalid connection ID</td><td>400</td><td><code>Invalid connection ID</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
@@ -4370,8 +4396,11 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
   // --- Combo ---
   async function sendCombo() {
     const ticker = document.getElementById('f-combo-ticker').value.trim();
+    const connectionsText = document.getElementById('f-combo-connections').value.trim();
+    const body = { ticker };
+    if (connectionsText) body.connections = connectionsText.split(',').map(s => Number(s.trim()));
     try {
-      const { status, data, ms } = await apiCall('POST', '/api/combo', { ticker });
+      const { status, data, ms } = await apiCall('POST', '/api/combo', body);
       showResponse('combo', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('combo', 'ERR', 'status-net', e.message, 0);
