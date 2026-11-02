@@ -366,6 +366,89 @@ export interface OrderBookSettingsResponse {
     settings: OrderBookSettings;
 }
 
+// ---- Appearance (Settings -> Display) ----
+
+export interface AppearanceTheme {
+  id: number;
+  name: string;
+  /** Built-in themes are read-only: copy one (createTheme) and change the copy. */
+  isBuiltIn: boolean;
+  isActive: boolean;
+}
+
+export interface AppearanceGeneral {
+  /** ru, en, zh-Hans, hy-AM or uk-UA. */
+  language: string;
+  /** One of getFontFamilies(). */
+  font: string;
+  /** 8-20, whole. */
+  orderBookFontSize: number;
+  highlightPricesOnBaseLevelsFactor: boolean;
+  /** 0-40. */
+  actionBarWidth: number;
+  /** 0-200; a change sets the cluster width of every order book. */
+  clusterColumnWidth: number;
+  /** Left or Right. */
+  limitOrderButtonPosition: string;
+  /** 1-7 seconds. */
+  errorDisplayDuration: number;
+  /** Standard or Simplified. */
+  designType: string;
+}
+
+export interface AppearanceState {
+  activeThemeId: number;
+  themes: AppearanceTheme[];
+  general: AppearanceGeneral;
+}
+
+export interface CreateThemeRequest {
+  name?: string;
+  /** Theme to copy; omitted = the active theme. */
+  copyFromThemeId?: number;
+}
+
+export interface AppearanceColor {
+  key: string;
+  /** application, timeAndSales, chart or infoPanel. */
+  section: string;
+  label: string;
+  /** #AARRGGBB, or Light / Dark for a choice row. */
+  value?: string;
+  /** Allowed values of a choice row; absent for a colour row. */
+  options?: string[];
+}
+
+export interface ThemeColorsResponse {
+  themeId: number;
+  colors: AppearanceColor[];
+}
+
+export interface AppearanceTextStyle {
+  element: string;
+  /** orderBook, tapeClusters, windows or charts. */
+  group: string;
+  label: string;
+  size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  /** false for the two chip-background rows: colour only. */
+  hasStyle: boolean;
+}
+
+export interface AppearanceTextStyleUpdate {
+  size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+}
+
+export interface ThemeTextStylesResponse {
+  themeId: number;
+  textStyles: AppearanceTextStyle[];
+}
+
 export interface GetOrderBookSnapshotOptions {
     /** Price aggregation factor. `0`/`1` = no aggregation; `> 1` = bucket and sum sizes. */
     zoomIndex?: number;

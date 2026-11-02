@@ -2732,6 +2732,363 @@
     </div>
   </div>
 
+  <!-- Appearance (Settings -> Display) -->
+  <div class="section-label">Appearance</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>Everything on <strong>Settings &rarr; Display</strong>: the active theme, theme copies, every colour section, the
+    &laquo;Шрифты&raquo; rows and the general display options. A change is saved and applied by the terminal at once, the same
+    way the Display page applies it. Built-in themes are read-only, as on the page: copy one and change the copy. A Display
+    page that is already open shows the new values after it is reopened. Answers are camelCase.</p>
+  </div>
+
+  <!-- /api/appearance (GET) -->
+  <div class="endpoint" id="ep-appearance-get">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/appearance</span>
+      <span class="endpoint-desc">Active theme, all themes and the display options</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>{ activeThemeId, themes[], general }</code>. Each theme is <code>{ id, name, isBuiltIn, isActive }</code>; built-in themes are read-only (as on the Display page). <code>general</code> is <code>{ language, font, orderBookFontSize, highlightPricesOnBaseLevelsFactor, actionBarWidth, clusterColumnWidth, limitOrderButtonPosition, errorDisplayDuration, designType }</code>.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-get-status"></span>
+          <span class="response-time" id="resp-appearance-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/font-families (GET) -->
+  <div class="endpoint" id="ep-appearance-fonts">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-fonts')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/appearance/font-families</span>
+      <span class="endpoint-desc">Font families the terminal can use</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>{ count, fonts[] }</code>: custom fonts first, then the installed system fonts that pass validation &mdash; the list of the <em>Font</em> drop-down.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceFonts()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-fonts">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-fonts-status"></span>
+          <span class="response-time" id="resp-appearance-fonts-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-fonts-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/general (PUT) -->
+  <div class="endpoint" id="ep-appearance-general">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-general')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/appearance/general</span>
+      <span class="endpoint-desc">Change display options (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: any of <code>language</code> (<code>ru</code>, <code>en</code>, <code>zh-Hans</code>, <code>hy-AM</code>, <code>uk-UA</code>), <code>font</code> (from <code>/api/appearance/font-families</code>), <code>orderBookFontSize</code> (8&ndash;20), <code>highlightPricesOnBaseLevelsFactor</code>, <code>actionBarWidth</code> (0&ndash;40), <code>clusterColumnWidth</code> (0&ndash;200), <code>limitOrderButtonPosition</code> (<code>Left</code> / <code>Right</code>), <code>errorDisplayDuration</code> (1&ndash;7 s), <code>designType</code> (<code>Standard</code> / <code>Simplified</code>). Omitted fields keep their value. Applied at once and saved; returns the options after the change.</p><p><strong>Errors:</strong> unknown value or out of range &rarr; <code>400</code> naming the field and the allowed values.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-general-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"orderBookFontSize": 13}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceGeneral()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-general">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-general-status"></span>
+          <span class="response-time" id="resp-appearance-general-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-general-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/active-theme (PUT) -->
+  <div class="endpoint" id="ep-appearance-active">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-active')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/appearance/active-theme</span>
+      <span class="endpoint-desc">Switch the active theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ themeId }</code>. The same as clicking the theme in <em>Settings &rarr; Display</em>; the terminal repaints at once. Returns the theme.</p><p><strong>Errors:</strong> missing <code>themeId</code> &rarr; <code>400</code>; unknown id &rarr; <code>404 Theme {id} not found.</code></p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-active-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"themeId": 1}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceActive()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-active">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-active-status"></span>
+          <span class="response-time" id="resp-appearance-active-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-active-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes (POST) -->
+  <div class="endpoint" id="ep-appearance-create">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-create')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/appearance/themes</span>
+      <span class="endpoint-desc">Create an editable copy of a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ name?, copyFromThemeId? }</code> (or no body). Copies <code>copyFromThemeId</code> (default: the active theme) into a new editable theme; a missing name becomes <code>&lt;source&gt; (N)</code>. It does not activate the copy. Returns the new theme.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-create-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "My theme"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceCreate()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-create">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-create-status"></span>
+          <span class="response-time" id="resp-appearance-create-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-create-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId} (PUT) -->
+  <div class="endpoint" id="ep-appearance-rename">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-rename')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}</span>
+      <span class="endpoint-desc">Rename a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ name }</code>. Returns the theme.</p><p><strong>Errors:</strong> empty name &rarr; <code>400</code>; unknown id &rarr; <code>404</code>; built-in theme &rarr; <code>409</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-rename-id" value="1">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-rename-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"name": "Renamed theme"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceRename()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-rename">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-rename-status"></span>
+          <span class="response-time" id="resp-appearance-rename-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-rename-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId} (DELETE) -->
+  <div class="endpoint" id="ep-appearance-delete">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-delete')">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}</span>
+      <span class="endpoint-desc">Delete a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Deletes a theme you created; deleting the active theme first activates its neighbour in the list. Returns <code>{ deleted, themeId }</code>.</p><p><strong>Errors:</strong> unknown id &rarr; <code>404</code>; built-in theme &rarr; <code>409</code>; the last theme &rarr; <code>400</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-delete-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceDelete()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-delete">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-delete-status"></span>
+          <span class="response-time" id="resp-appearance-delete-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-delete-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId}/colors (GET) -->
+  <div class="endpoint" id="ep-appearance-colors-get">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-colors-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}/colors</span>
+      <span class="endpoint-desc">Colour rows of a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>{ themeId, colors[] }</code>; each row is <code>{ key, section, label, value, options? }</code>. <code>section</code> is <code>application</code> (Цвета приложения), <code>timeAndSales</code> (Построчная лента сделок), <code>chart</code> (Цвета графиков) or <code>infoPanel</code> (Цвета информационной панели; one <code>InfoPanel&lt;Metric&gt;</code> row per metric). <code>value</code> is <code>#AARRGGBB</code>; the two choice rows <code>TradingViewMenuColor</code> and <code>MessengerThemeColor</code> take <code>Light</code> / <code>Dark</code>. <code>label</code> is the row name in the terminal's language.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-colors-get-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceColorsGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-colors-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-colors-get-status"></span>
+          <span class="response-time" id="resp-appearance-colors-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-colors-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId}/colors (PUT) -->
+  <div class="endpoint" id="ep-appearance-colors-put">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-colors-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}/colors</span>
+      <span class="endpoint-desc">Change colours of a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ colors: { key: value, ... } }</code> with keys from the GET above and values <code>#RRGGBB</code> / <code>#AARRGGBB</code> (or <code>Light</code> / <code>Dark</code>). Every key and value is checked before anything is saved. If the theme is the active one the terminal repaints at once. Returns the colour rows after the change.</p><p><strong>Errors:</strong> unknown key or bad value &rarr; <code>400</code>; unknown id &rarr; <code>404</code>; built-in theme &rarr; <code>409</code> (copy it with <code>POST /api/appearance/themes</code> and change the copy).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-colors-put-id" value="1">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-colors-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"colors": {"ChartBackground": "#FF101418", "TradingViewMenuColor": "Dark"}}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceColorsPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-colors-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-colors-put-status"></span>
+          <span class="response-time" id="resp-appearance-colors-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-colors-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId}/text-styles (GET) -->
+  <div class="endpoint" id="ep-appearance-text-get">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-text-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}/text-styles</span>
+      <span class="endpoint-desc">Font rows («Шрифты») of a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>{ themeId, textStyles[] }</code>; each row is <code>{ element, group, label, size, bold, italic, color, hasStyle }</code> &mdash; the effective values. <code>group</code> is <code>orderBook</code>, <code>tapeClusters</code>, <code>windows</code> or <code>charts</code>. The two chip-background rows have <code>hasStyle: false</code> (colour only).</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-text-get-id" value="1">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceTextGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-text-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-text-get-status"></span>
+          <span class="response-time" id="resp-appearance-text-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-text-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/appearance/themes/{themeId}/text-styles (PUT) -->
+  <div class="endpoint" id="ep-appearance-text-put">
+    <div class="endpoint-header" onclick="toggle('ep-appearance-text-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/appearance/themes/{themeId}/text-styles</span>
+      <span class="endpoint-desc">Change font rows of a theme</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body <code>{ textStyles: { element: { size?, bold?, italic?, color? }, ... } }</code> with elements from the GET above; <code>size</code> 8&ndash;20. A value equal to the element's default is stored as &laquo;not set&raquo;, as on the Display page. The info-panel rows' colour is the metric colour and the large-volume level 1/2 colour is the level's colour, as on the page. Returns the rows after the change.</p><p><strong>Errors:</strong> unknown element or bad value &rarr; <code>400</code>; unknown id &rarr; <code>404</code>; built-in theme &rarr; <code>409</code>.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Theme ID</label>
+          <input type="number" id="f-appearance-text-put-id" value="1">
+        </div>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-appearance-text-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"textStyles": {"OrderBookPriceScale": {"size": 13, "bold": true}}}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendAppearanceTextPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-appearance-text-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-appearance-text-put-status"></span>
+          <span class="response-time" id="resp-appearance-text-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-appearance-text-put-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notifications -->
   <div class="section-label">Notifications</div>
 
@@ -4931,6 +5288,124 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('screener-templates-data', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('screener-templates-data', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Appearance ---
+  async function sendAppearanceGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/appearance');
+      showResponse('appearance-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceFonts() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/appearance/font-families');
+      showResponse('appearance-fonts', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-fonts', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceGeneral() {
+    const bodyText = document.getElementById('f-appearance-general-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/appearance/general', body);
+      showResponse('appearance-general', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-general', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceActive() {
+    const bodyText = document.getElementById('f-appearance-active-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/appearance/active-theme', body);
+      showResponse('appearance-active', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-active', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceCreate() {
+    const bodyText = document.getElementById('f-appearance-create-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('POST', '/api/appearance/themes', body);
+      showResponse('appearance-create', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-create', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceRename() {
+    const id = document.getElementById('f-appearance-rename-id').value;
+    const bodyText = document.getElementById('f-appearance-rename-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/appearance/themes/${id}`, body);
+      showResponse('appearance-rename', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-rename', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceDelete() {
+    const id = document.getElementById('f-appearance-delete-id').value;
+    try {
+      const { status, data, ms } = await apiCall('DELETE', `/api/appearance/themes/${id}`);
+      showResponse('appearance-delete', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-delete', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceColorsGet() {
+    const id = document.getElementById('f-appearance-colors-get-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/appearance/themes/${id}/colors`);
+      showResponse('appearance-colors-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-colors-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceColorsPut() {
+    const id = document.getElementById('f-appearance-colors-put-id').value;
+    const bodyText = document.getElementById('f-appearance-colors-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/appearance/themes/${id}/colors`, body);
+      showResponse('appearance-colors-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-colors-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceTextGet() {
+    const id = document.getElementById('f-appearance-text-get-id').value;
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/appearance/themes/${id}/text-styles`);
+      showResponse('appearance-text-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-text-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendAppearanceTextPut() {
+    const id = document.getElementById('f-appearance-text-put-id').value;
+    const bodyText = document.getElementById('f-appearance-text-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', `/api/appearance/themes/${id}/text-styles`, body);
+      showResponse('appearance-text-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('appearance-text-put', 'ERR', 'status-net', e.message, 0);
     }
   }
 

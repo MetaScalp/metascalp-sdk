@@ -168,6 +168,9 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
+| `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the nine display options (`GET .../font-families` lists the fonts) |
+| `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
+| `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order) |

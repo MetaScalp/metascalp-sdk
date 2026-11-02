@@ -161,6 +161,9 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
 | `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
 | `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle) |
+| `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the nine display options (`GET .../font-families` lists the fonts) |
+| `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
+| `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |

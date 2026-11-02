@@ -295,6 +295,72 @@ class MetaScalpClient:
             settings,
         )
 
+    # ---- Appearance (Settings -> Display) ----
+
+    async def get_appearance(self) -> dict:
+        """Active theme id, every theme {id, name, isBuiltIn, isActive} and the general display options."""
+        return await self._get("/api/appearance")
+
+    async def get_font_families(self) -> dict:
+        """Font families the ``font`` option accepts: {"count", "fonts"}."""
+        return await self._get("/api/appearance/font-families")
+
+    async def update_appearance_general(self, **options) -> dict:
+        """Change only the given display options (omitted = unchanged); applied at once.
+
+        Keys: language (ru, en, zh-Hans, hy-AM, uk-UA), font, orderBookFontSize (8-20),
+        highlightPricesOnBaseLevelsFactor, actionBarWidth (0-40), clusterColumnWidth (0-200),
+        limitOrderButtonPosition (Left / Right), errorDisplayDuration (1-7), designType (Standard / Simplified).
+        A bad value or range -> 400 and nothing is saved.
+        """
+        return await self._put("/api/appearance/general", options)
+
+    async def set_active_theme(self, theme_id: int) -> dict:
+        """Make the theme active in the running terminal (kept after a restart). 404 for an unknown id."""
+        return await self._put("/api/appearance/active-theme", {"themeId": theme_id})
+
+    async def create_theme(self, name: Optional[str] = None, copy_from_theme_id: Optional[int] = None) -> dict:
+        """Create an editable copy of copy_from_theme_id (default: the active theme); not activated.
+
+        No name = "<source> (N)".
+        """
+        body: dict = {}
+        if name is not None:
+            body["name"] = name
+        if copy_from_theme_id is not None:
+            body["copyFromThemeId"] = copy_from_theme_id
+        return await self._post("/api/appearance/themes", body)
+
+    async def rename_theme(self, theme_id: int, name: str) -> dict:
+        """Rename an own theme. 409 for a built-in theme (copy it first)."""
+        return await self._put(f"/api/appearance/themes/{theme_id}", {"name": name})
+
+    async def delete_theme(self, theme_id: int) -> dict:
+        """Delete an own theme; deleting the active one activates its neighbour. 409 built-in, 400 last theme."""
+        return await self._delete(f"/api/appearance/themes/{theme_id}")
+
+    async def get_theme_colors(self, theme_id: int) -> dict:
+        """Every colour row of the four Display colour sections: {"themeId", "colors": [{key, section, label, value, options}]}."""
+        return await self._get(f"/api/appearance/themes/{theme_id}/colors")
+
+    async def update_theme_colors(self, theme_id: int, colors: dict) -> dict:
+        """Write colour rows: key -> "#RRGGBB" / "#AARRGGBB" ("Light" / "Dark" for the two choice rows).
+
+        All-or-nothing: one bad key or value -> 400 and nothing is saved. 409 for a built-in theme.
+        """
+        return await self._put(f"/api/appearance/themes/{theme_id}/colors", {"colors": colors})
+
+    async def get_theme_text_styles(self, theme_id: int) -> dict:
+        """Every «Fonts» row: {"themeId", "textStyles": [{element, group, label, size, bold, italic, color, hasStyle}]}."""
+        return await self._get(f"/api/appearance/themes/{theme_id}/text-styles")
+
+    async def update_theme_text_styles(self, theme_id: int, text_styles: dict) -> dict:
+        """Write «Fonts» rows: element -> {"size": 8-20, "bold", "italic", "color"}.
+
+        The two chip-background rows take color only. 409 for a built-in theme.
+        """
+        return await self._put(f"/api/appearance/themes/{theme_id}/text-styles", {"textStyles": text_styles})
+
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 
     async def get_order_book_snapshot(
