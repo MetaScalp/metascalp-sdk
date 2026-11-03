@@ -2752,7 +2752,7 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns <code>{ activeThemeId, themes[], general }</code>. Each theme is <code>{ id, name, isBuiltIn, isActive }</code>; built-in themes are read-only (as on the Display page). <code>general</code> is <code>{ language, font, orderBookFontSize, highlightPricesOnBaseLevelsFactor, actionBarWidth, clusterColumnWidth, limitOrderButtonPosition, errorDisplayDuration, designType }</code>.</p>
+        <p>Returns <code>{ activeThemeId, themes[], general }</code>. Each theme is <code>{ id, name, isBuiltIn, isActive }</code>; built-in themes are read-only (as on the Display page). <code>general</code> is <code>{ language, font, orderBookFontSize, highlightPricesOnBaseLevelsFactor, actionBarWidth, clusterColumnWidth, limitOrderButtonPosition, errorDisplayDuration, designType, orderSizeChipPosition, slTpChipPosition, priceMarkerPosition, clusterColorBlendMode }</code>. The last four are the values the page shows, also when the row was never changed.</p>
       </div>
       <div class="actions-row">
         <button class="btn btn-primary" onclick="sendAppearanceGet()">Send Request</button>
@@ -2802,7 +2802,7 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Body: any of <code>language</code> (<code>ru</code>, <code>en</code>, <code>zh-Hans</code>, <code>hy-AM</code>, <code>uk-UA</code>), <code>font</code> (from <code>/api/appearance/font-families</code>), <code>orderBookFontSize</code> (8&ndash;20), <code>highlightPricesOnBaseLevelsFactor</code>, <code>actionBarWidth</code> (0&ndash;40), <code>clusterColumnWidth</code> (0&ndash;200), <code>limitOrderButtonPosition</code> (<code>Left</code> / <code>Right</code>), <code>errorDisplayDuration</code> (1&ndash;7 s), <code>designType</code> (<code>Standard</code> / <code>Simplified</code>). Omitted fields keep their value. Applied at once and saved; returns the options after the change.</p><p><strong>Errors:</strong> unknown value or out of range &rarr; <code>400</code> naming the field and the allowed values.</p>
+        <p>Body: any of <code>language</code> (<code>ru</code>, <code>en</code>, <code>zh-Hans</code>, <code>hy-AM</code>, <code>uk-UA</code>), <code>font</code> (from <code>/api/appearance/font-families</code>), <code>orderBookFontSize</code> (8&ndash;20), <code>highlightPricesOnBaseLevelsFactor</code>, <code>actionBarWidth</code> (0&ndash;40), <code>clusterColumnWidth</code> (0&ndash;200), <code>limitOrderButtonPosition</code> (<code>Left</code> / <code>Right</code>), <code>errorDisplayDuration</code> (1&ndash;7 s), <code>designType</code> (<code>Standard</code> / <code>Simplified</code>), <code>orderSizeChipPosition</code> (&laquo;Объём заявок&raquo;), <code>slTpChipPosition</code> (&laquo;Метки SL / TP&raquo;), <code>priceMarkerPosition</code> (&laquo;Маркеры цен MP / IP / LP&raquo;) &mdash; each <code>Left</code> / <code>Right</code>, <code>clusterColorBlendMode</code> (&laquo;Смешивание цветов кластеров&raquo;: <code>Classic</code> / <code>Soft</code>). Changing <code>limitOrderButtonPosition</code> moves only the cancel button: the SL / TP labels and the price markers keep their place, as on the page. Omitted fields keep their value and are not written. Applied at once and saved; returns the options after the change.</p><p><strong>Errors:</strong> unknown value or out of range &rarr; <code>400</code> naming the field and the allowed values.</p>
       </div>
       <div class="form-grid single">
         <div class="form-group">
