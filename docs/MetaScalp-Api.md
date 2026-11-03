@@ -28,6 +28,8 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
 | `GET /api/connections/{id}/orderbook-snapshot?Ticker=` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `GET /api/link-groups/{groupId}/orderbook-snapshots` | Read-only order books of every panel currently in link group N (live membership; per-entry `reason` on partial failure) |
+| `GET /api/connections/{id}/open-interest` | Current open interest in base coin (derivative venues with open interest; `501` + reason elsewhere) |
+| `GET /api/connections/{id}/open-interest/history` | Open-interest history per timeframe (base coin; `historyAvailable=false` on seconds/M1/M3) |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
 | `GET /api/connections/{id}/leverage-limits?Ticker=` | Max leverage and max position size, live from the venue's own risk-limit tiers |
 | `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
@@ -970,6 +972,11 @@ When `ZoomIndex > 1`, prices are grouped into buckets of `ZoomIndex * PriceIncre
 ```bash
 # Get 5-minute clusters for BTCUSDT with default zoom
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5"
+
+# Open interest (MC-898; derivative venues with open interest, base coin)
+curl "http://127.0.0.1:17845/api/connections/1/open-interest?Ticker=BTCUSDT"
+curl "http://127.0.0.1:17845/api/connections/1/open-interest/history?Ticker=BTCUSDT&TimeFrame=M5"
+# WS: { "Type": "open_interest_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } } -> open_interest_update { connectionId, ticker, openInterest, time, unit }
 
 # Get 1-hour clusters with 5x price aggregation
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"

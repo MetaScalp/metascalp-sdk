@@ -208,6 +208,19 @@ class MetaScalpSocket:
         """Unsubscribe from funding rate updates for a specific ticker."""
         self._send("funding_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
 
+    def subscribe_open_interest(self, connection_id: int, ticker: str) -> None:
+        """Subscribe to open interest (base coin) — derivative venues with open interest; other markets get an 'error'.
+
+        The terminal polls the exchange about every 5 s (4 s on Binance and MEXC) while at least one subscriber exists.
+
+        Event: 'open_interest_update' (connectionId, ticker, openInterest, time, unit='base')
+        """
+        self._send("open_interest_subscribe", {"connectionId": connection_id, "ticker": ticker})
+
+    def unsubscribe_open_interest(self, connection_id: int, ticker: str) -> None:
+        """Unsubscribe from open interest for a specific ticker."""
+        self._send("open_interest_unsubscribe", {"connectionId": connection_id, "ticker": ticker})
+
     # ---- Notification subscriptions ----
     # App-wide notifications (trades, signal levels, large amounts, screener).
     # Independent from subscribe() — no connectionId required.

@@ -153,6 +153,8 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
+| `GET` | `/api/connections/{id}/open-interest?Ticker=X` | Current open interest in base coin (derivative venues with open interest; `501` with a reason elsewhere) |
+| `GET` | `/api/connections/{id}/open-interest/history?Ticker=X&TimeFrame=M5` | Open-interest history (base coin; `historyAvailable=false` on seconds/M1/M3) |
 | `GET` | `/api/connections/{id}/cluster-snapshot?Ticker=X&TimeFrame=M5` | Cluster (volume profile) snapshot; `Columns=1..100` fills more history than the default 10 columns |
 | `POST` | `/api/connections/{id}/orders` | Place an order |
 | `POST` | `/api/connections/{id}/orders/cancel` | Cancel an order |

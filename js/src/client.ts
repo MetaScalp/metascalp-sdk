@@ -20,6 +20,8 @@ import type {
   OrderBookSnapshotResponse,
   GetOrderBookSnapshotOptions,
   ClusterSnapshotResponse,
+  OpenInterestResponse,
+  OpenInterestHistoryResponse,
   ClusterTimeFrame,
   GetClusterSnapshotOptions,
   AppearanceState,
@@ -197,6 +199,23 @@ export class MetaScalpClient {
     if (options.zoomIndex !== undefined && options.zoomIndex > 1) qs.push(`ZoomIndex=${options.zoomIndex}`);
     if (options.columns !== undefined && options.columns > 0) qs.push(`Columns=${options.columns}`);
     return this.get(`/api/connections/${connectionId}/cluster-snapshot?${qs.join('&')}`);
+  }
+
+  // ---- Open interest (MC-898) ----
+
+  /**
+   * Current open interest in base coin (derivative venues with open interest; spot and venues without open interest answer 501 with a reason).
+   */
+  async getOpenInterest(connectionId: number, ticker: string): Promise<OpenInterestResponse> {
+    return this.get(`/api/connections/${connectionId}/open-interest?Ticker=${encodeURIComponent(ticker)}`);
+  }
+
+  /**
+   * Open-interest history for a timeframe (M5, M15, M30, H1, H4, D1 have exchange history; seconds, M1, M3 answer
+   * historyAvailable = false). About 30 days, base coin, oldest first.
+   */
+  async getOpenInterestHistory(connectionId: number, ticker: string, timeFrame: string): Promise<OpenInterestHistoryResponse> {
+    return this.get(`/api/connections/${connectionId}/open-interest/history?Ticker=${encodeURIComponent(ticker)}&TimeFrame=${timeFrame}`);
   }
 
   // ---- Signal Levels ----

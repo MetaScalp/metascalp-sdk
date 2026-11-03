@@ -242,6 +242,23 @@ export class MetaScalpSocket {
     this.send('funding_unsubscribe', { connectionId, ticker });
   }
 
+  /**
+   * Subscribe to open interest (base coin) on a derivative venue with open interest; any other market gets an `error` with the reason.
+   * The terminal polls the exchange about every 5 s (4 s on Binance and MEXC) while at least one subscriber exists.
+   *
+   * Event: `open_interest_update`
+   */
+  subscribeOpenInterest(connectionId: number, ticker: string): void {
+    this.send('open_interest_subscribe', { connectionId, ticker });
+  }
+
+  /**
+   * Unsubscribe from open interest for a specific ticker.
+   */
+  unsubscribeOpenInterest(connectionId: number, ticker: string): void {
+    this.send('open_interest_unsubscribe', { connectionId, ticker });
+  }
+
   // ---- Notification subscriptions ----
   // App-wide notifications (trades, signal levels, large amounts, screener).
   // Independent from subscribe() — no connectionId required.

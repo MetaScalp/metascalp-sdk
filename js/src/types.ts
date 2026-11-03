@@ -239,6 +239,36 @@ export interface FundingUpdateData {
   fundingTime: string;
 }
 
+/** MC-898: open interest in BASE COIN (never USD); derivative venues with open interest. */
+export interface OpenInterestUpdateData {
+  connectionId: number;
+  ticker: string;
+  openInterest: number;
+  /** Exchange timestamp of the value (ISO 8601). */
+  time: string;
+  unit: 'base';
+}
+
+export interface OpenInterestResponse {
+  connectionId: number;
+  ticker: string;
+  openInterest: number;
+  time: string;
+  unit: 'base';
+}
+
+export interface OpenInterestHistoryResponse {
+  connectionId: number;
+  ticker: string;
+  timeFrame: string;
+  unit: 'base';
+  /** false on timeframes the exchange has no period for (seconds, M1, M3): points is empty, see reason. */
+  historyAvailable: boolean;
+  reason: string | null;
+  /** Oldest first. A point at `time` is the open interest AT that time. */
+  points: { time: string; openInterest: number }[];
+}
+
 export interface SignalLevel {
   id: number;
   connectionId: number;
@@ -698,6 +728,9 @@ export interface SocketEventMap {
   orderbook_update: OrderBookUpdateData;
   mark_price_update: MarkPriceUpdateData;
   funding_update: FundingUpdateData;
+  open_interest_update: OpenInterestUpdateData;
+  open_interest_subscribed: { connectionId: number; ticker: string };
+  open_interest_unsubscribed: { connectionId: number; ticker: string };
   subscribed: { connectionId: number };
   unsubscribed: { connectionId: number };
   trade_subscribed: { connectionId: number; ticker: string };

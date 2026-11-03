@@ -1428,6 +1428,61 @@
     </div>
   </div>
 
+  <!-- /api/connections/{id}/open-interest (MC-898) -->
+  <div class="endpoint" id="ep-open-interest">
+    <div class="endpoint-header" onclick="toggle('ep-open-interest')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/open-interest</span>
+      <span class="endpoint-desc">Open interest (current + history)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Open interest of a futures contract in <strong>base coin</strong> (BTC, ETH&hellip;) exactly as the exchange reports it &mdash; never converted to USD. The same values the chart's open-interest pane shows (Settings &rarr; Settings &rarr; Chart &rarr; &laquo;Open interest display&raquo;). Supported on <strong>derivative venues that publish open interest</strong> (Binance, Bybit, OKX, Bitget, Gate, MEXC, HTX, KuCoin, Hyperliquid and others); spot markets, venues without open interest, and a contract that is not trading (settling, delivered, pre-trading) answer <code>501</code> <code>{ error, reason, connectionId, ticker }</code> &mdash; never an empty success.</p>
+        <p><code>GET /api/connections/{connectionId}/open-interest?Ticker=BTCUSDT</code> &rarr; <code>{ connectionId, ticker, openInterest, time, unit: "base" }</code> &mdash; the value a running chart or <code>open_interest_subscribe</code> poll last received (the terminal polls the exchange every 5 s on most venues, 4 s on Binance and MEXC), otherwise one fresh exchange call. <code>time</code> is the exchange's own timestamp (ISO 8601).</p>
+        <p><code>GET /api/connections/{connectionId}/open-interest/history?Ticker=BTCUSDT&amp;TimeFrame=M5</code> &rarr; <code>{ connectionId, ticker, timeFrame, unit: "base", historyAvailable, reason, points[] }</code>, each point <code>{ time, openInterest }</code> oldest first. A point at <code>time</code> T is the open interest AT T: the close of the candle that ends at T and the open of the next one. Binance keeps about 30 days and publishes a point about 2 minutes after its time. Timeframes with an exchange period: <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>. On seconds timeframes, <code>M1</code> and <code>M3</code> the answer is <code>historyAvailable: false</code> with an empty <code>points</code> and a <code>reason</code> &mdash; no neighbouring period is substituted. An exchange failure answers <code>502</code>.</p>
+        <table>
+          <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+          <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Contract symbol, e.g. BTCUSDT</td></tr>
+          <tr><td><code>TimeFrame</code></td><td>string</td><td>history only</td><td></td><td>S1, S5, S10, S15, S30, M1, M3, M5, M15, M30, H1, H4, D1 (or the seconds, e.g. 300)</td></tr>
+        </table>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Connection ID</label>
+          <input type="number" id="f-oi-conn" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" id="f-oi-ticker" value="BTCUSDT">
+        </div>
+        <div class="form-group">
+          <label>TimeFrame (history)</label>
+          <select id="f-oi-timeframe">
+            <option value="M1">1 minute (no history)</option>
+            <option value="M5" selected>5 minutes</option>
+            <option value="M15">15 minutes</option>
+            <option value="M30">30 minutes</option>
+            <option value="H1">1 hour</option>
+            <option value="H4">4 hours</option>
+            <option value="D1">1 day</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendOpenInterest(false)">Current</button>
+        <button class="btn btn-primary" onclick="sendOpenInterest(true)">History</button>
+      </div>
+      <div class="response-panel" id="resp-open-interest">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-open-interest-status"></span>
+          <span class="response-time" id="resp-open-interest-time"></span>
+        </div>
+        <div class="response-body" id="resp-open-interest-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Signal levels -->
   <div class="section-label">Signal levels</div>
 
@@ -3987,6 +4042,8 @@
           <tr><td><code>index_price_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving index price updates for that ticker. Idempotent.</td></tr>
           <tr><td><code>funding_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Subscribe to funding rate updates (perpetual futures only). No initial snapshot. Idempotent.</td></tr>
           <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker. Idempotent.</td></tr>
+          <tr><td><code>open_interest_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Subscribe to open interest (base coin) &mdash; derivative venues with open interest; any other market gets <code>error</code> with the reason. The terminal polls the exchange every 5 s (4 s on Binance and MEXC) while at least one subscriber (chart or API) exists. Idempotent.</td></tr>
+          <tr><td><code>open_interest_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving open interest for that ticker; the poll stops with its last subscriber. Idempotent.</td></tr>
         </table>
 
         <h3>Outbound messages (server &rarr; client)</h3>
@@ -4005,6 +4062,8 @@
           <tr><td><code>index_price_unsubscribed</code></td><td>After successful index price unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
           <tr><td><code>funding_subscribed</code></td><td>After successful funding subscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
           <tr><td><code>funding_unsubscribed</code></td><td>After successful funding unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>open_interest_subscribed</code></td><td>After successful open interest subscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
+          <tr><td><code>open_interest_unsubscribed</code></td><td>After successful open interest unsubscribe</td><td><code>connectionId</code>, <code>ticker</code></td></tr>
           <tr><td><code>error</code></td><td>Invalid message, bad connection ID, or missing ticker</td><td><code>error</code> (string)</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Connection-level updates:</strong></p>
@@ -4024,6 +4083,7 @@
           <tr><td><code>mark_price_update</code></td><td>Mark price changed (futures only)</td><td><code>connectionId</code>, <code>ticker</code>, <code>markPrice</code></td></tr>
           <tr><td><code>index_price_update</code></td><td>Index price changed (futures only)</td><td><code>connectionId</code>, <code>ticker</code>, <code>indexPrice</code></td></tr>
           <tr><td><code>funding_update</code></td><td>Funding rate / time changed (perpetual futures only)</td><td><code>connectionId</code>, <code>ticker</code>, <code>fundingRate</code>, <code>fundingTime</code> (ISO 8601)</td></tr>
+          <tr><td><code>open_interest_update</code></td><td>Every open-interest poll value (about every 5 s, 4 s on Binance and MEXC; derivative venues with open interest)</td><td><code>connectionId</code>, <code>ticker</code>, <code>openInterest</code> (base coin), <code>time</code> (exchange timestamp, ISO 8601), <code>unit</code> (<code>"base"</code>)</td></tr>
         </table>
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Trade aggregation:</strong> <code>trade_update</code> entries are aggregated server-side using the order book's <code>AddingTicksForAPeriod</code> setting (same value that drives the UI ticks section, default <code>200</code> ms; per-(connection, ticker)). Consecutive same-side trades within the window are merged into one entry &mdash; <code>size</code> is summed, <code>price</code> and <code>time</code> track the latest merged trade. A new entry is emitted when the side changes or the window expires. Each entry also carries <code>highPrice</code> and <code>lowPrice</code> &mdash; the highest and lowest price among the trades merged into that entry (the range the price travelled inside the tick), while <code>price</code> stays the latest merged trade. With <code>AddingTicksForAPeriod = 0</code> aggregation is disabled and every entry has <code>highPrice == lowPrice == price</code>. Changes are picked up live by active subscriptions.</p>
 
@@ -4299,6 +4359,12 @@
 <span style="color:var(--text-muted);">// Funding update pushed by server</span>
 { "Type": "funding_update", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "fundingRate": 0.0001, "fundingTime": "2026-03-16T16:00:00+00:00" } }
 
+<span style="color:var(--text-muted);">// Subscribe to open interest (derivative venues with open interest; base coin)</span>
+{ "Type": "open_interest_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
+
+<span style="color:var(--text-muted);">// Open interest value pushed by server (about every 5 s; 4 s on Binance and MEXC)</span>
+{ "Type": "open_interest_update", "Data": { "connectionId": 1, "ticker": "BTCUSDT", "openInterest": 94237.032, "time": "2026-10-17T10:44:34.927+00:00", "unit": "base" } }
+
 <span style="color:var(--text-muted);">// Unsubscribe from market data</span>
 { "Type": "trade_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
 { "Type": "orderbook_unsubscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } }
@@ -4495,6 +4561,7 @@
         <tr><td><code>GET /api/connections/{connectionId}/orderbook-snapshot</code></td><td>REST order-book snapshot for a ticker (optional <code>DepthLevels</code> / <code>DepthPercent</code>; <code>501</code> when the exchange has no REST snapshot)</td></tr>
         <tr><td><code>GET /api/link-groups/{groupId}/orderbook-snapshots</code></td><td>Read-only order books of every panel currently in link group N (live membership; per-entry <code>reason</code> on partial failure)</td></tr>
         <tr><td><code>GET/PUT /api/connections/{connectionId}/orderbook-settings</code></td><td>Read, and partially update (every field optional), the order-book settings set for a ticker &mdash; changes are pushed live to the running panels. Working volumes are stored as paired USD/coin mirrors (<code>tradeAmountUsd1..5</code> &harr; <code>tradeAmount1..5</code>): writing one side recomputes the other at the <strong>live</strong> best-ask (truncated to the ticker's size increment, floored at its min size), so the terminal's own volume buttons show USD and coin figures that agree with the current price. Writing both sides of a pair keeps the values you sent. If no order book is open for the connection+ticker there is no live price &rarr; <code>409</code> (open the order book so the conversion has a live price); unknown ticker &rarr; <code>404</code>; nothing is written in either case.</td></tr>
+        <tr><td><code>GET /api/connections/{connectionId}/open-interest</code>, <code>GET /api/connections/{connectionId}/open-interest/history</code></td><td>Open interest in base coin, current and per timeframe (derivative venues with open interest; <code>501</code> with a reason on any other market)</td></tr>
         <tr><td><code>GET /api/connections/{connectionId}/cluster-snapshot</code></td><td>Remote cluster (footprint) snapshot for a ticker at a timeframe (optional <code>ZoomIndex</code>, <code>Columns</code> = history depth up to 100)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/signal-levels</code></td><td>Read, create, modify (in place) and delete signal levels for a ticker</td></tr>
         <tr><td><code>DELETE /api/signal-levels/triggered</code></td><td>Remove all <em>triggered</em> signal levels (across every connection)</td></tr>
@@ -4577,6 +4644,8 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>mark_price_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving mark price updates for that ticker.</td></tr>
         <tr><td><code>funding_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving funding rate updates (perpetual futures only).</td></tr>
         <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
+        <tr><td><code>open_interest_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving open interest (base coin) on a derivative venue with open interest; other markets get <code>error</code> with the reason.</td></tr>
+        <tr><td><code>open_interest_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving open interest for that ticker.</td></tr>
         <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min) and quote assets. Re-subscribing replaces the config.</td></tr>
         <tr><td><code>density_map_unsubscribe</code></td><td><code>{}</code></td><td>Stop the density map stream.</td></tr>
         <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Re-subscribing replaces the config.</td></tr>
@@ -4911,6 +4980,21 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('cluster-snapshot', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('cluster-snapshot', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Open interest (MC-898) ---
+  async function sendOpenInterest(history) {
+    const id = document.getElementById('f-oi-conn').value;
+    const ticker = document.getElementById('f-oi-ticker').value.trim();
+    const params = new URLSearchParams({ Ticker: ticker });
+    if (history) params.set('TimeFrame', document.getElementById('f-oi-timeframe').value);
+    const path = history ? 'open-interest/history' : 'open-interest';
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/${path}?${params}`);
+      showResponse('open-interest', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('open-interest', 'ERR', 'status-net', e.message, 0);
     }
   }
 
