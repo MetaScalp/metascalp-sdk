@@ -1605,11 +1605,13 @@ GET http://127.0.0.1:{port}/api/ui/state
 
 `standaloneCharts` is a top-level array of chart documents (same document shape) for chart windows not attached to any tab; each includes its own `chart.geometry` and never appears under a tab.
 
-**«Trades» windows (MC-704).** `userTrades` keeps its `{ id, isOpen, geometry }` shape but describes the
-**newest** open «Trades» window (`id` 0 and `isOpen: false` when none is open; for a docked window `geometry`
+**«Trades» windows (MC-704, MET-2229).** `userTrades` keeps its `{ id, isOpen, geometry }` shape and describes
+the open «Trades» window (`id` 0 and `isOpen: false` when none is open; for a docked window `geometry`
 is its stored rect, not where it floats on screen — the open response carries where it landed). `userTradesWindows` lists
 every open one, oldest first, each `{ id, externalId, tabId }` — `tabId` is the workspace tab it is docked
-in, `null` for a standalone window.
+in, `null` for a standalone window. Since MET-2229 there is one «Trades» window (a terminal upgraded from a
+multi-window build may still restore several; `userTrades` is then the newest); a closed window keeps its row
+and id but is not listed until it is opened again.
 
 #### Get One Window
 
@@ -1710,8 +1712,9 @@ id `1`, so the body's `windowType` is what routes the id to the correct window.
 `screener`, `lineNotifications`, `finres`, `userTrades`, `listing`.
 
 The three **singleton** surfaces (`lineNotifications`, `finres`, `listing`) ignore the
-path id entirely — each has one fixed row. `userTrades` is **not** a singleton any more (MC-704): every
-open creates a new «Trades» window and its `windowId` addresses that one window.
+path id entirely — each has one fixed row. `userTrades` takes the path id (MC-704): its `windowId`
+addresses the «Trades» window. Since MET-2229 there is one «Trades» window: a closed one keeps its id, and the
+next open brings it back.
 
 #### Open a Window
 
@@ -1741,12 +1744,13 @@ Content-Type: application/json
 fixed row (id `1`, which would collide with the main workspace) and its close/activate routes ignore
 the id, so there is no addressable per-surface id to return.
 
-> **`userTrades` (changed in MC-704).** Every call opens a **new** «Trades» window, docked as a floating
-> window in the current tab of the active workspace (the main workspace when none is active) — the window
-> the toolbar «Trades» button opens. `windowId` is now that window's id (it was `null` while «Your trades»
+> **`userTrades` (changed in MC-704, MET-2229).** Opens THE «Trades» window — the window the toolbar
+> «Trades» button opens. There is one: while it is open, a call brings it to the front where it is (supplied
+> geometry is ignored) and returns the same `windowId`; a window closed earlier comes back with the user's last
+> size, position, columns, sort and filters (supplied geometry places it); only the very first call creates it
+> (at the cursor when geometry is omitted). `windowId` is that window's id (it was `null` while «Your trades»
 > was a singleton); pass it to close / activate and to `GET /api/ui/windows/{windowId}?windowType=userTrades`.
-> Omitted geometry opens it at the cursor, as the button does. The former standalone «Your trades» window
-> no longer exists.
+> The former standalone «Your trades» window no longer exists.
 
 > **Opening the screener on a template.** For `windowType: "screener"` a supplied `templateId` is
 > threaded onto the window so it loads that template exactly as picking it by hand would; because the
