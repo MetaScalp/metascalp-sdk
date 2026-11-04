@@ -129,6 +129,8 @@ export interface ComboRequest {
   connections?: number[];
   /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive): every active connection of these exchanges where the ticker trades, exchanges in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
   exchanges?: string[];
+  /** Only with `exchanges`: keep only this market on every listed exchange - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
+  market?: string;
 }
 
 /** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */

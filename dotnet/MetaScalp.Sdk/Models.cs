@@ -135,6 +135,11 @@ public class ComboRequest
     /// <see cref="Connections"/>. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<string>? Exchanges { get; set; }
+
+    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange - "spot",
+    /// "futures" (every futures/perpetual type) or an exact market type name, case-insensitive. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Market { get; set; }
 }
 
 public class StatusResponse

@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` picks the books and their order) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -348,6 +348,7 @@ request flag:
 | `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
 | `Connections` | integer[] | Optional. Connection ids from `GET /api/connections`. Present: the combo opens with the books of exactly these connections, in this order (for `Tickers`: in every combo). Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
 | `Exchanges` | string[] | Optional. Exchange names as `GET /api/connections` returns them in `exchange` (case-insensitive), e.g. `"Binance"`. Present: the terminal opens every active connection of these exchanges on which the ticker trades; the exchanges in this order, inside one exchange the connection list order (for `Tickers`: every combo with the set of its own ticker). Not together with `Connections`. Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Market` | string | Optional, only with `Exchanges`. Keeps only the connections of this market on every listed exchange. A market name, case-insensitive: `spot` (spot and stock), `futures` (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or `null`: every connected market of the exchange. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
@@ -376,7 +377,9 @@ With `Exchanges` the terminal picks the connections: every active connection of 
 exchanges keep the request order; inside one exchange the connections keep the connection list order, the
 order the combo uses without a list. As with `Connections`, the venue checkboxes and the TOP mode are not
 applied and every other combo setting (the book cap and its split included) is. On the `Tickers` form every
-combo gets the set of its own ticker, so two combos of one request can differ.
+combo gets the set of its own ticker, so two combos of one request can differ. `Market` narrows each listed
+exchange to that market: `{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}` opens
+Binance USDT Futures and Gate Futures only.
 
 **Response**
 
@@ -410,11 +413,14 @@ With `Exchanges` the checks run in this order; the first failing one answers and
 |---|-----------|---------------|
 | 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
 | 2 | Both `Connections` and `Exchanges` | `Provide either 'connections' or 'exchanges', not both.` |
-| 3 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
-| 4 | The same exchange is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated name, in request order) |
-| 5 | A name has no active connection (unknown, or the exchange is not connected) | `Combo not opened. No active connection for exchanges: Foo.` (every such name, in request order) |
-| 6 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
-| 7 | A ticker trades on none of the active connections of a listed exchange | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
+| 3 | `Market` is not a market name (a number or an empty string included) | `Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.` |
+| 4 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
+| 5 | The same exchange is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated name, in request order) |
+| 6 | A name has no active connection (unknown, or the exchange is not connected); with `Market`: none in that market | `Combo not opened. No active connection for exchanges: Foo.` / `Combo not opened. No active Futures connection for exchanges: Gate.` (every such name, in request order) |
+| 7 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 8 | A ticker trades on none of the active connections (in `Market`, when given) of a listed exchange | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
+
+`Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
 
 **Example**
 
@@ -458,6 +464,11 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
+
+# Futures only: Binance USDT Futures, then Gate Futures
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}'
 ```
 
 ---
