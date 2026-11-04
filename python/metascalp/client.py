@@ -205,6 +205,7 @@ class MetaScalpClient:
         tickers: Optional[List[str]] = None,
         activate: bool = True,
         connections: Optional[List[int]] = None,
+        exchanges: Optional[List[str]] = None,
     ) -> dict:
         """Open a combo layout.
 
@@ -212,6 +213,9 @@ class MetaScalpClient:
         validated all-or-nothing) -- never both. ``activate=False`` opens the combo(s) in the
         background: the window/tab you are on keeps focus. ``connections`` (ids from
         ``get_connections``) opens exactly these books, in this order, in every combo.
+        ``exchanges`` (names as ``get_connections`` returns them in ``exchange``) opens every
+        active connection of those exchanges where the ticker trades, exchanges in this order;
+        not together with ``connections``.
         """
         body: dict = {}
         if not activate:
@@ -222,6 +226,8 @@ class MetaScalpClient:
             body["tickers"] = tickers
         if connections is not None:
             body["connections"] = connections  # only sent when set, so older terminals (strict body) still accept the call
+        if exchanges is not None:
+            body["exchanges"] = exchanges  # only sent when set, like connections
         return await self._post("/api/combo", body)
 
     async def close_last_tab(self) -> dict:

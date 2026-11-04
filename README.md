@@ -173,7 +173,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order) |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
