@@ -439,6 +439,10 @@ public class AppearanceGeneral
     public string LimitOrderButtonPosition { get; set; } = "";
     public int ErrorDisplayDuration { get; set; }
     public string DesignType { get; set; } = "";
+    public string OrderSizeChipPosition { get; set; } = "";
+    public string SlTpChipPosition { get; set; } = "";
+    public string PriceMarkerPosition { get; set; } = "";
+    public string ClusterColorBlendMode { get; set; } = "";
 }
 
 /// <summary>Every field is optional: null = not sent = unchanged.</summary>
@@ -478,6 +482,22 @@ public class AppearanceGeneralUpdate
     /// <summary>Standard or Simplified.</summary>
     [JsonProperty("designType", NullValueHandling = NullValueHandling.Ignore)]
     public string? DesignType { get; set; }
+
+    /// <summary>Left or Right: the order-size chips («Объём заявок»).</summary>
+    [JsonProperty("orderSizeChipPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OrderSizeChipPosition { get; set; }
+
+    /// <summary>Left or Right: the SL / TP labels.</summary>
+    [JsonProperty("slTpChipPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? SlTpChipPosition { get; set; }
+
+    /// <summary>Left or Right: the MP / IP / LP price markers.</summary>
+    [JsonProperty("priceMarkerPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? PriceMarkerPosition { get; set; }
+
+    /// <summary>Classic or Soft: cluster colour blending.</summary>
+    [JsonProperty("clusterColorBlendMode", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ClusterColorBlendMode { get; set; }
 }
 
 public class AppearanceState

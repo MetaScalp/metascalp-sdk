@@ -394,6 +394,14 @@ export interface AppearanceGeneral {
   errorDisplayDuration: number;
   /** Standard or Simplified. */
   designType: string;
+  /** Left or Right: the order-size chips («Объём заявок»). */
+  orderSizeChipPosition: string;
+  /** Left or Right: the SL / TP labels. */
+  slTpChipPosition: string;
+  /** Left or Right: the MP / IP / LP price markers. */
+  priceMarkerPosition: string;
+  /** Classic or Soft: cluster colour blending. */
+  clusterColorBlendMode: string;
 }
 
 export interface AppearanceState {
