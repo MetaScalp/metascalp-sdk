@@ -429,3 +429,21 @@ class MetaScalpClient:
         return await self._get(
             f"/api/connections/{connection_id}/cluster-snapshot?{'&'.join(qs)}"
         )
+
+    async def get_open_interest(self, connection_id: int, ticker: str) -> dict:
+        """Current open interest in base coin (derivative venues with open interest; other markets answer 501 with a reason).
+
+        Returns a dict with keys: connectionId, ticker, openInterest, time, unit ('base').
+        """
+        return await self._get(f"/api/connections/{connection_id}/open-interest?Ticker={ticker}")
+
+    async def get_open_interest_history(self, connection_id: int, ticker: str, time_frame: str) -> dict:
+        """Open-interest history for a timeframe (M5, M15, M30, H1, H4, D1; seconds, M1, M3 answer
+        historyAvailable=False). About 30 days, base coin, oldest first.
+
+        Returns a dict with keys: connectionId, ticker, timeFrame, unit, historyAvailable, reason,
+        points (each: time, openInterest).
+        """
+        return await self._get(
+            f"/api/connections/{connection_id}/open-interest/history?Ticker={ticker}&TimeFrame={time_frame}"
+        )

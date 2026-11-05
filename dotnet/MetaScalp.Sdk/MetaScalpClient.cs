@@ -143,6 +143,16 @@ public class MetaScalpClient : IDisposable
         return GetAsync<ClusterSnapshotResponse>($"/api/connections/{connectionId}/cluster-snapshot?{string.Join("&", qs)}", ct);
     }
 
+    // ---- Open interest (MC-898) ----
+
+    /// <summary>Current open interest in base coin (derivative venues with open interest; other markets answer 501 with a reason).</summary>
+    public Task<OpenInterestUpdateData> GetOpenInterestAsync(long connectionId, string ticker, CancellationToken ct = default)
+        => GetAsync<OpenInterestUpdateData>($"/api/connections/{connectionId}/open-interest?Ticker={Uri.EscapeDataString(ticker)}", ct);
+
+    /// <summary>Open-interest history (M5, M15, M30, H1, H4, D1; seconds, M1, M3 answer HistoryAvailable = false), base coin, oldest first.</summary>
+    public Task<OpenInterestHistoryResponse> GetOpenInterestHistoryAsync(long connectionId, string ticker, string timeFrame, CancellationToken ct = default)
+        => GetAsync<OpenInterestHistoryResponse>($"/api/connections/{connectionId}/open-interest/history?Ticker={Uri.EscapeDataString(ticker)}&TimeFrame={timeFrame}", ct);
+
     // ---- Signal Levels ----
 
     public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)

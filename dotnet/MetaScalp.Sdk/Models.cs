@@ -304,6 +304,33 @@ public class FundingUpdateData
     public DateTimeOffset FundingTime { get; set; }
 }
 
+/// <summary>MC-898: open interest in base coin (never USD); derivative venues with open interest.</summary>
+public class OpenInterestUpdateData
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal OpenInterest { get; set; }
+    public DateTimeOffset Time { get; set; }
+    public string Unit { get; set; } = "base";
+}
+
+public class OpenInterestPoint
+{
+    public DateTimeOffset Time { get; set; }
+    public decimal OpenInterest { get; set; }
+}
+
+public class OpenInterestHistoryResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public string TimeFrame { get; set; } = "";
+    public string Unit { get; set; } = "base";
+    public bool HistoryAvailable { get; set; }
+    public string? Reason { get; set; }
+    public List<OpenInterestPoint> Points { get; set; } = new();
+}
+
 public class NotificationDto
 {
     public string Type { get; set; } = "";
