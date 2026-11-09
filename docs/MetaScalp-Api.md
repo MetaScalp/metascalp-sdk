@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` picks the books and their order) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -349,6 +349,8 @@ request flag:
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
 | `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
 | `Connections` | integer[] | Optional. Connection ids from `GET /api/connections`. Present: the combo opens with the books of exactly these connections, in this order (for `Tickers`: in every combo). Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Exchanges` | string[] | Optional. Exchange names as `GET /api/connections` returns them in `exchange` (case-insensitive), e.g. `"Binance"`. Present: the terminal opens every active connection of these exchanges on which the ticker trades; the exchanges in this order, inside one exchange the connection list order (for `Tickers`: every combo with the set of its own ticker). Not together with `Connections`. Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Market` | string | Optional, only with `Exchanges`. Keeps only the connections of this market on every listed exchange. A market name, case-insensitive: `spot` (spot and stock), `futures` (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or `null`: every connected market of the exchange. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
@@ -361,7 +363,7 @@ naming the rejected tickers.
 - `false` — the combo opens **in the background**: whatever window/tab you were on stays active. On the
   `Tickers` form *no* element of the list steals focus.
 
-**Which books open.** Without `Connections` the terminal decides: every active connection on which the
+**Which books open.** Without `Connections` or `Exchanges` the terminal decides: every active connection on which the
 ticker resolves, in the connection list order, minus the venues unchecked in Settings → Combo window, or
 the top-N venues by the screener metric when the venue mode there is TOP. With `Connections` the list IS
 the set and the order: the first listed connection is the first book (and, with charts on, every chart
@@ -371,6 +373,15 @@ mode, charts, sizes, linking, the book cap) is. The book cap splits a long list 
 A listed connection is accepted only if it is an active connection and the ticker resolves on it the
 way the combo resolves it (separator-tolerant, KRW pair preferred on Upbit and Bithumb); whatever passes
 the check is exactly what opens.
+
+With `Exchanges` the terminal picks the connections: every active connection of each listed exchange
+(every market of it that is connected: spot, futures, …) on which the ticker resolves the same way. The
+exchanges keep the request order; inside one exchange the connections keep the connection list order, the
+order the combo uses without a list. As with `Connections`, the venue checkboxes and the TOP mode are not
+applied and every other combo setting (the book cap and its split included) is. On the `Tickers` form every
+combo gets the set of its own ticker, so two combos of one request can differ. `Market` narrows each listed
+exchange to that market: `{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}` opens
+Binance USDT Futures and Gate Futures only.
 
 **Response**
 
@@ -397,6 +408,21 @@ With `Connections` the checks run in this order; the first failing one answers a
 | 4 | One or more ids are not found or not active | `Combo not opened. Unknown or inactive connections: 999, 12.` (every such id, in request order) |
 | 5 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
 | 6 | A ticker does not trade on one or more listed connections | `Combo not opened. Not traded: BTCUSDT on 4, 7; ETHUSDT on 4.` (every failing pair) |
+
+With `Exchanges` the checks run in this order; the first failing one answers and nothing is opened:
+
+| # | Condition | Error message |
+|---|-----------|---------------|
+| 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
+| 2 | Both `Connections` and `Exchanges` | `Provide either 'connections' or 'exchanges', not both.` |
+| 3 | `Market` is not a market name (a number or an empty string included) | `Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.` |
+| 4 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
+| 5 | The same exchange is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated name, in request order) |
+| 6 | A name has no active connection (unknown, or the exchange is not connected); with `Market`: none in that market | `Combo not opened. No active connection for exchanges: Foo.` / `Combo not opened. No active Futures connection for exchanges: Gate.` (every such name, in request order) |
+| 7 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 8 | A ticker trades on none of the active connections (in `Market`, when given) of a listed exchange | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
+
+`Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
 
 **Example**
 
@@ -430,6 +456,21 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Ticker": "BTCUSDT", "Connections": [1, 4], "Activate": false}'
+
+# Every active connection of these exchanges where the ticker trades: Bybit first, then Binance
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": ["Bybit", "Binance"]}'
+
+# One combo per ticker, each with the MEXC connections its own ticker trades on
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
+
+# Futures only: Binance USDT Futures, then Gate Futures
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}'
 ```
 
 ---

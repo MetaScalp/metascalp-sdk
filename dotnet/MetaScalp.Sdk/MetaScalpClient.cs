@@ -87,7 +87,8 @@ public class MetaScalpClient : IDisposable
     /// <summary>
     /// Opens a combo layout: <see cref="ComboRequest.Ticker"/> (one combo) or <see cref="ComboRequest.Tickers"/>
     /// (one per ticker, in order, validated all-or-nothing). <see cref="ComboRequest.Connections"/> opens exactly
-    /// these books, in this order. Unset fields are not sent, so older terminals still accept the call.
+    /// these books, in this order; <see cref="ComboRequest.Exchanges"/> opens every active connection of those
+    /// exchanges where the ticker trades (<see cref="ComboRequest.Market"/> narrows them to one market). Unset fields are not sent, so older terminals still accept the call.
     /// </summary>
     public async Task<StatusResponse> OpenComboAsync(ComboRequest request, CancellationToken ct = default)
         => await PostAsync<StatusResponse>("/api/combo", request, ct);

@@ -129,6 +129,17 @@ public class ComboRequest
     /// <summary>Connection ids from GET /api/connections: exactly these books, in this order. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<long>? Connections { get; set; }
+
+    /// <summary>Exchange names as GET /api/connections returns them in «exchange» (case-insensitive): every active
+    /// connection of these exchanges where the ticker trades, exchanges in this order. Not together with
+    /// <see cref="Connections"/>. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Exchanges { get; set; }
+
+    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange - "spot",
+    /// "futures" (every futures/perpetual type) or an exact market type name, case-insensitive. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Market { get; set; }
 }
 
 public class StatusResponse
