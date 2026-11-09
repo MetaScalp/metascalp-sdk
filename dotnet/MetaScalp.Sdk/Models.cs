@@ -132,16 +132,41 @@ public class ComboRequest
 
     /// <summary>Exchanges as GET /api/connections returns them in «exchange» (case-insensitive): every active
     /// connection of these exchanges where the ticker trades, items in this order. A plain name converts to an
-    /// item without a market (<c>Exchanges = new() { "MEXC", new("Binance", "futures") }</c>). Not together
-    /// with <see cref="Connections"/>. null = not sent.</summary>
+    /// item without a market (<c>Exchanges = new() { "MEXC", new("Binance", "futures") }</c>), and a
+    /// <c>List&lt;string&gt;</c> or <c>string[]</c> of names converts to the whole list, as in earlier versions. Not
+    /// together with <see cref="Connections"/>. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<ComboExchange>? Exchanges { get; set; }
+    public ComboExchangeList? Exchanges { get; set; }
 
     /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange without a market
     /// of its own - "spot", "futures" (every futures/perpetual type) or an exact market type name,
     /// case-insensitive. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Market { get; set; }
+}
+
+/// <summary>The <see cref="ComboRequest.Exchanges"/> list. Converts from a list or array of plain names, so code
+/// written for the earlier <c>List&lt;string&gt;</c> property still compiles.</summary>
+public class ComboExchangeList : List<ComboExchange>
+{
+    public ComboExchangeList()
+    {
+    }
+
+    public ComboExchangeList(IEnumerable<ComboExchange> items)
+        : base(items)
+    {
+    }
+
+    public static implicit operator ComboExchangeList(List<string> names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
+
+    public static implicit operator ComboExchangeList(string[] names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
 }
 
 /// <summary>One <see cref="ComboRequest.Exchanges"/> item: the exchange and, optionally, its own market. Sent as

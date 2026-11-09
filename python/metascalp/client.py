@@ -205,7 +205,7 @@ class MetaScalpClient:
         tickers: Optional[List[str]] = None,
         activate: bool = True,
         connections: Optional[List[int]] = None,
-        exchanges: Optional[List[Union[str, Dict[str, str]]]] = None,
+        exchanges: Optional[List[Union[str, Dict[str, Optional[str]]]]] = None,
         market: Optional[str] = None,
     ) -> dict:
         """Open a combo layout.
