@@ -118,6 +118,14 @@ export interface ChangeTickerRequest {
   binding?: string;
 }
 
+/** One `exchanges` item with its own market. */
+export interface ComboExchange {
+  /** Exchange name as GET /api/connections returns it in `exchange` (case-insensitive). */
+  exchange: string;
+  /** "spot", "futures" or an exact MarketType name, case-insensitive. Omitted or null: the request's `market`, or every connected market. */
+  market?: string | null;
+}
+
 export interface ComboRequest {
   /** One combo for a single ticker (e.g. 'BTCUSDT'). Mutually exclusive with `tickers`. */
   ticker?: string;
@@ -127,9 +135,9 @@ export interface ComboRequest {
   activate?: boolean;
   /** Connection ids from GET /api/connections: exactly these books, in this order. Omitted: the terminal picks (today's behaviour). */
   connections?: number[];
-  /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive): every active connection of these exchanges where the ticker trades, exchanges in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
-  exchanges?: string[];
-  /** Only with `exchanges`: keep only this market on every listed exchange - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
+  /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive), or `{ exchange, market }` to give one exchange its own market: every active connection of these exchanges where the ticker trades, items in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
+  exchanges?: (string | ComboExchange)[];
+  /** Only with `exchanges`: keep only this market on every listed exchange without a market of its own - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
   market?: string;
 }
 

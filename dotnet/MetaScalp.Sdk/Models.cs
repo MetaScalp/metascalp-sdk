@@ -130,16 +130,107 @@ public class ComboRequest
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<long>? Connections { get; set; }
 
-    /// <summary>Exchange names as GET /api/connections returns them in «exchange» (case-insensitive): every active
-    /// connection of these exchanges where the ticker trades, exchanges in this order. Not together with
-    /// <see cref="Connections"/>. null = not sent.</summary>
+    /// <summary>Exchanges as GET /api/connections returns them in «exchange» (case-insensitive): every active
+    /// connection of these exchanges where the ticker trades, items in this order. A plain name converts to an
+    /// item without a market (<c>Exchanges = new() { "MEXC", new("Binance", "futures") }</c>), and a
+    /// <c>List&lt;string&gt;</c> or <c>string[]</c> of names converts to the whole list, as in earlier versions. Not
+    /// together with <see cref="Connections"/>. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<string>? Exchanges { get; set; }
+    public ComboExchangeList? Exchanges { get; set; }
 
-    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange - "spot",
-    /// "futures" (every futures/perpetual type) or an exact market type name, case-insensitive. null = not sent.</summary>
+    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange without a market
+    /// of its own - "spot", "futures" (every futures/perpetual type) or an exact market type name,
+    /// case-insensitive. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Market { get; set; }
+}
+
+/// <summary>The <see cref="ComboRequest.Exchanges"/> list. Converts from a list or array of plain names, so code
+/// written for the earlier <c>List&lt;string&gt;</c> property still compiles.</summary>
+public class ComboExchangeList : List<ComboExchange>
+{
+    public ComboExchangeList()
+    {
+    }
+
+    public ComboExchangeList(IEnumerable<ComboExchange> items)
+        : base(items)
+    {
+    }
+
+    public static implicit operator ComboExchangeList(List<string> names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
+
+    public static implicit operator ComboExchangeList(string[] names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
+}
+
+/// <summary>One <see cref="ComboRequest.Exchanges"/> item: the exchange and, optionally, its own market. Sent as
+/// the plain name when <see cref="Market"/> is null, so older terminals still accept it.</summary>
+[JsonConverter(typeof(ComboExchangeConverter))]
+public class ComboExchange
+{
+    public ComboExchange(string exchange, string? market = null)
+    {
+        Exchange = exchange;
+        Market = market;
+    }
+
+    public string Exchange { get; set; }
+
+    /// <summary>"spot", "futures" or an exact market type name; null = the request's Market, or every market.</summary>
+    public string? Market { get; set; }
+
+    public static implicit operator ComboExchange(string exchange)
+    {
+        return new ComboExchange(exchange);
+    }
+}
+
+internal class ComboExchangeConverter : JsonConverter<ComboExchange>
+{
+    public override void WriteJson(JsonWriter writer, ComboExchange? value, JsonSerializer serializer)
+    {
+        if (value == null)
+        {
+            writer.WriteNull();
+            return;
+        }
+
+        if (value.Market == null)
+        {
+            writer.WriteValue(value.Exchange);
+            return;
+        }
+
+        writer.WriteStartObject();
+        writer.WritePropertyName("exchange");
+        writer.WriteValue(value.Exchange);
+        writer.WritePropertyName("market");
+        writer.WriteValue(value.Market);
+        writer.WriteEndObject();
+    }
+
+    public override ComboExchange? ReadJson(JsonReader reader, Type objectType, ComboExchange? existingValue,
+        bool hasExistingValue, JsonSerializer serializer)
+    {
+        if (reader.TokenType == JsonToken.Null)
+        {
+            return null;
+        }
+
+        if (reader.TokenType == JsonToken.String)
+        {
+            return new ComboExchange((string)reader.Value!);
+        }
+
+        var item = Newtonsoft.Json.Linq.JObject.Load(reader);
+        return new ComboExchange((string?)item["exchange"] ?? "", (string?)item["market"]);
+    }
 }
 
 public class StatusResponse

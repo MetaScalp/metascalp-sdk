@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import aiohttp
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 HTTP_PORT_START = 17845
 HTTP_PORT_END = 17855
@@ -205,7 +205,7 @@ class MetaScalpClient:
         tickers: Optional[List[str]] = None,
         activate: bool = True,
         connections: Optional[List[int]] = None,
-        exchanges: Optional[List[str]] = None,
+        exchanges: Optional[List[Union[str, Dict[str, Optional[str]]]]] = None,
         market: Optional[str] = None,
     ) -> dict:
         """Open a combo layout.
@@ -216,8 +216,10 @@ class MetaScalpClient:
         ``get_connections``) opens exactly these books, in this order, in every combo.
         ``exchanges`` (names as ``get_connections`` returns them in ``exchange``) opens every
         active connection of those exchanges where the ticker trades, exchanges in this order;
-        not together with ``connections``. ``market`` (only with ``exchanges``) keeps one market
-        on every listed exchange: ``"spot"``, ``"futures"`` or an exact market type name.
+        not together with ``connections``. An item may be a dict
+        ``{"exchange": "Binance", "market": "futures"}`` giving that exchange its own market.
+        ``market`` (only with ``exchanges``) keeps one market on every listed exchange that has
+        no market of its own: ``"spot"``, ``"futures"`` or an exact market type name.
         """
         body: dict = {}
         if not activate:
