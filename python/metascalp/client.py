@@ -204,12 +204,20 @@ class MetaScalpClient:
         *,
         tickers: Optional[List[str]] = None,
         activate: bool = True,
+        connections: Optional[List[int]] = None,
+        exchanges: Optional[List[str]] = None,
+        market: Optional[str] = None,
     ) -> dict:
         """Open a combo layout.
 
         Pass either ``ticker`` (one combo) or ``tickers`` (one combo per ticker, in order,
         validated all-or-nothing) -- never both. ``activate=False`` opens the combo(s) in the
-        background: the window/tab you are on keeps focus.
+        background: the window/tab you are on keeps focus. ``connections`` (ids from
+        ``get_connections``) opens exactly these books, in this order, in every combo.
+        ``exchanges`` (names as ``get_connections`` returns them in ``exchange``) opens every
+        active connection of those exchanges where the ticker trades, exchanges in this order;
+        not together with ``connections``. ``market`` (only with ``exchanges``) keeps one market
+        on every listed exchange: ``"spot"``, ``"futures"`` or an exact market type name.
         """
         body: dict = {}
         if not activate:
@@ -218,6 +226,12 @@ class MetaScalpClient:
             body["ticker"] = ticker
         if tickers is not None:
             body["tickers"] = tickers
+        if connections is not None:
+            body["connections"] = connections  # only sent when set, so older terminals (strict body) still accept the call
+        if exchanges is not None:
+            body["exchanges"] = exchanges  # only sent when set, like connections
+        if market is not None:
+            body["market"] = market  # only sent when set, like connections
         return await self._post("/api/combo", body)
 
     async def close_last_tab(self) -> dict:
@@ -291,6 +305,73 @@ class MetaScalpClient:
             settings,
         )
 
+    # ---- Appearance (Settings -> Display) ----
+
+    async def get_appearance(self) -> dict:
+        """Active theme id, every theme {id, name, isBuiltIn, isActive} and the general display options."""
+        return await self._get("/api/appearance")
+
+    async def get_font_families(self) -> dict:
+        """Font families the ``font`` option accepts: {"count", "fonts"}."""
+        return await self._get("/api/appearance/font-families")
+
+    async def update_appearance_general(self, **options) -> dict:
+        """Change only the given display options (omitted = unchanged); applied at once.
+
+        Keys: language (ru, en, zh-Hans, hy-AM, uk-UA), font, orderBookFontSize (8-20),
+        highlightPricesOnBaseLevelsFactor, actionBarWidth (0-40), clusterColumnWidth (0-200),
+        limitOrderButtonPosition (Left / Right), errorDisplayDuration (1-7), designType (Standard / Simplified),
+        orderSizeChipPosition, slTpChipPosition, priceMarkerPosition (Left / Right), clusterColorBlendMode (Classic / Soft).
+        A bad value or range -> 400 and nothing is saved.
+        """
+        return await self._put("/api/appearance/general", options)
+
+    async def set_active_theme(self, theme_id: int) -> dict:
+        """Make the theme active in the running terminal (kept after a restart). 404 for an unknown id."""
+        return await self._put("/api/appearance/active-theme", {"themeId": theme_id})
+
+    async def create_theme(self, name: Optional[str] = None, copy_from_theme_id: Optional[int] = None) -> dict:
+        """Create an editable copy of copy_from_theme_id (default: the active theme); not activated.
+
+        No name = "<source> (N)".
+        """
+        body: dict = {}
+        if name is not None:
+            body["name"] = name
+        if copy_from_theme_id is not None:
+            body["copyFromThemeId"] = copy_from_theme_id
+        return await self._post("/api/appearance/themes", body)
+
+    async def rename_theme(self, theme_id: int, name: str) -> dict:
+        """Rename an own theme. 409 for a built-in theme (copy it first)."""
+        return await self._put(f"/api/appearance/themes/{theme_id}", {"name": name})
+
+    async def delete_theme(self, theme_id: int) -> dict:
+        """Delete an own theme; deleting the active one activates its neighbour. 409 built-in, 400 last theme."""
+        return await self._delete(f"/api/appearance/themes/{theme_id}")
+
+    async def get_theme_colors(self, theme_id: int) -> dict:
+        """Every colour row of the four Display colour sections: {"themeId", "colors": [{key, section, label, value, options}]}."""
+        return await self._get(f"/api/appearance/themes/{theme_id}/colors")
+
+    async def update_theme_colors(self, theme_id: int, colors: dict) -> dict:
+        """Write colour rows: key -> "#RRGGBB" / "#AARRGGBB" ("Light" / "Dark" for the two choice rows).
+
+        All-or-nothing: one bad key or value -> 400 and nothing is saved. 409 for a built-in theme.
+        """
+        return await self._put(f"/api/appearance/themes/{theme_id}/colors", {"colors": colors})
+
+    async def get_theme_text_styles(self, theme_id: int) -> dict:
+        """Every «Fonts» row: {"themeId", "textStyles": [{element, group, label, size, bold, italic, color, hasStyle}]}."""
+        return await self._get(f"/api/appearance/themes/{theme_id}/text-styles")
+
+    async def update_theme_text_styles(self, theme_id: int, text_styles: dict) -> dict:
+        """Write «Fonts» rows: element -> {"size": 8-20, "bold", "italic", "color"}.
+
+        The two chip-background rows take color only. 409 for a built-in theme.
+        """
+        return await self._put(f"/api/appearance/themes/{theme_id}/text-styles", {"textStyles": text_styles})
+
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 
     async def get_order_book_snapshot(
@@ -357,4 +438,22 @@ class MetaScalpClient:
             qs.append(f"Columns={columns}")
         return await self._get(
             f"/api/connections/{connection_id}/cluster-snapshot?{'&'.join(qs)}"
+        )
+
+    async def get_open_interest(self, connection_id: int, ticker: str) -> dict:
+        """Current open interest in base coin (derivative venues with open interest; other markets answer 501 with a reason).
+
+        Returns a dict with keys: connectionId, ticker, openInterest, time, unit ('base').
+        """
+        return await self._get(f"/api/connections/{connection_id}/open-interest?Ticker={ticker}")
+
+    async def get_open_interest_history(self, connection_id: int, ticker: str, time_frame: str) -> dict:
+        """Open-interest history for a timeframe (M5, M15, M30, H1, H4, D1; seconds, M1, M3 answer
+        historyAvailable=False). About 30 days, base coin, oldest first.
+
+        Returns a dict with keys: connectionId, ticker, timeFrame, unit, historyAvailable, reason,
+        points (each: time, openInterest).
+        """
+        return await self._get(
+            f"/api/connections/{connection_id}/open-interest/history?Ticker={ticker}&TimeFrame={time_frame}"
         )

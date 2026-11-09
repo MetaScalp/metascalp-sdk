@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace MetaScalp.Sdk;
 
 // ============ REST Models ============
@@ -110,6 +112,39 @@ public class PlaceOrderRequest
     public decimal Size { get; set; }
     public int Type { get; set; }
     public bool ReduceOnly { get; set; }
+}
+
+public class ComboRequest
+{
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Ticker { get; set; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Tickers { get; set; }
+
+    /// <summary>null (default) = not sent = the combo takes focus; false = opens in the background.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Activate { get; set; }
+
+    /// <summary>Connection ids from GET /api/connections: exactly these books, in this order. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<long>? Connections { get; set; }
+
+    /// <summary>Exchange names as GET /api/connections returns them in «exchange» (case-insensitive): every active
+    /// connection of these exchanges where the ticker trades, exchanges in this order. Not together with
+    /// <see cref="Connections"/>. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Exchanges { get; set; }
+
+    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange - "spot",
+    /// "futures" (every futures/perpetual type) or an exact market type name, case-insensitive. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Market { get; set; }
+}
+
+public class StatusResponse
+{
+    public string Status { get; set; } = "";
 }
 
 public class PlaceOrderResponse
@@ -280,6 +315,33 @@ public class FundingUpdateData
     public DateTimeOffset FundingTime { get; set; }
 }
 
+/// <summary>MC-898: open interest in base coin (never USD); derivative venues with open interest.</summary>
+public class OpenInterestUpdateData
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal OpenInterest { get; set; }
+    public DateTimeOffset Time { get; set; }
+    public string Unit { get; set; } = "base";
+}
+
+public class OpenInterestPoint
+{
+    public DateTimeOffset Time { get; set; }
+    public decimal OpenInterest { get; set; }
+}
+
+public class OpenInterestHistoryResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public string TimeFrame { get; set; } = "";
+    public string Unit { get; set; } = "base";
+    public bool HistoryAvailable { get; set; }
+    public string? Reason { get; set; }
+    public List<OpenInterestPoint> Points { get; set; } = new();
+}
+
 public class NotificationDto
 {
     public string Type { get; set; } = "";
@@ -390,6 +452,179 @@ public class OrderBookSettingsResponse
     public long ConnectionId { get; set; }
     public string Ticker { get; set; } = "";
     public OrderBookSettingsDto Settings { get; set; } = new();
+}
+
+// ============ Appearance (Settings -> Display) ============
+
+public class AppearanceTheme
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = "";
+
+    /// <summary>Built-in themes are read-only: copy one and change the copy.</summary>
+    public bool IsBuiltIn { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class AppearanceGeneral
+{
+    public string Language { get; set; } = "";
+    public string Font { get; set; } = "";
+    public double OrderBookFontSize { get; set; }
+    public bool HighlightPricesOnBaseLevelsFactor { get; set; }
+    public int ActionBarWidth { get; set; }
+    public int ClusterColumnWidth { get; set; }
+    public string LimitOrderButtonPosition { get; set; } = "";
+    public int ErrorDisplayDuration { get; set; }
+    public string DesignType { get; set; } = "";
+    public string OrderSizeChipPosition { get; set; } = "";
+    public string SlTpChipPosition { get; set; } = "";
+    public string PriceMarkerPosition { get; set; } = "";
+    public string ClusterColorBlendMode { get; set; } = "";
+}
+
+/// <summary>Every field is optional: null = not sent = unchanged.</summary>
+public class AppearanceGeneralUpdate
+{
+    /// <summary>ru, en, zh-Hans, hy-AM or uk-UA.</summary>
+    [JsonProperty("language", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Language { get; set; }
+
+    /// <summary>One of GET /api/appearance/font-families.</summary>
+    [JsonProperty("font", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Font { get; set; }
+
+    /// <summary>8-20, whole.</summary>
+    [JsonProperty("orderBookFontSize", NullValueHandling = NullValueHandling.Ignore)]
+    public double? OrderBookFontSize { get; set; }
+
+    [JsonProperty("highlightPricesOnBaseLevelsFactor", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? HighlightPricesOnBaseLevelsFactor { get; set; }
+
+    /// <summary>0-40.</summary>
+    [JsonProperty("actionBarWidth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ActionBarWidth { get; set; }
+
+    /// <summary>0-200; a change sets the cluster width of every order book.</summary>
+    [JsonProperty("clusterColumnWidth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ClusterColumnWidth { get; set; }
+
+    /// <summary>Left or Right.</summary>
+    [JsonProperty("limitOrderButtonPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? LimitOrderButtonPosition { get; set; }
+
+    /// <summary>1-7 seconds.</summary>
+    [JsonProperty("errorDisplayDuration", NullValueHandling = NullValueHandling.Ignore)]
+    public int? ErrorDisplayDuration { get; set; }
+
+    /// <summary>Standard or Simplified.</summary>
+    [JsonProperty("designType", NullValueHandling = NullValueHandling.Ignore)]
+    public string? DesignType { get; set; }
+
+    /// <summary>Left or Right: the order-size chips («Объём заявок»).</summary>
+    [JsonProperty("orderSizeChipPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OrderSizeChipPosition { get; set; }
+
+    /// <summary>Left or Right: the SL / TP labels.</summary>
+    [JsonProperty("slTpChipPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? SlTpChipPosition { get; set; }
+
+    /// <summary>Left or Right: the MP / IP / LP price markers.</summary>
+    [JsonProperty("priceMarkerPosition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? PriceMarkerPosition { get; set; }
+
+    /// <summary>Classic or Soft: cluster colour blending.</summary>
+    [JsonProperty("clusterColorBlendMode", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ClusterColorBlendMode { get; set; }
+}
+
+public class AppearanceState
+{
+    public long ActiveThemeId { get; set; }
+    public List<AppearanceTheme> Themes { get; set; } = new();
+    public AppearanceGeneral General { get; set; } = new();
+}
+
+public class FontFamiliesResponse
+{
+    public int Count { get; set; }
+    public List<string> Fonts { get; set; } = new();
+}
+
+public class CreateThemeRequest
+{
+    /// <summary>null = «&lt;source&gt; (N)».</summary>
+    [JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Name { get; set; }
+
+    /// <summary>Theme to copy; null = the active theme.</summary>
+    [JsonProperty("copyFromThemeId", NullValueHandling = NullValueHandling.Ignore)]
+    public long? CopyFromThemeId { get; set; }
+}
+
+public class DeleteThemeResponse
+{
+    public bool Deleted { get; set; }
+    public long ThemeId { get; set; }
+}
+
+public class AppearanceColor
+{
+    public string Key { get; set; } = "";
+
+    /// <summary>application, timeAndSales, chart or infoPanel.</summary>
+    public string Section { get; set; } = "";
+    public string Label { get; set; } = "";
+
+    /// <summary>#AARRGGBB, or Light / Dark for a choice row.</summary>
+    public string? Value { get; set; }
+
+    /// <summary>Allowed values of a choice row; null for a colour row.</summary>
+    public List<string>? Options { get; set; }
+}
+
+public class ThemeColorsResponse
+{
+    public long ThemeId { get; set; }
+    public List<AppearanceColor> Colors { get; set; } = new();
+}
+
+public class AppearanceTextStyle
+{
+    public string Element { get; set; } = "";
+
+    /// <summary>orderBook, tapeClusters, windows or charts.</summary>
+    public string Group { get; set; } = "";
+    public string Label { get; set; } = "";
+    public double? Size { get; set; }
+    public bool? Bold { get; set; }
+    public bool? Italic { get; set; }
+    public string? Color { get; set; }
+
+    /// <summary>false for the two chip-background rows: colour only.</summary>
+    public bool HasStyle { get; set; }
+}
+
+/// <summary>Every field is optional: null = not sent = unchanged.</summary>
+public class AppearanceTextStyleUpdate
+{
+    [JsonProperty("size", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Size { get; set; }
+
+    [JsonProperty("bold", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Bold { get; set; }
+
+    [JsonProperty("italic", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Italic { get; set; }
+
+    [JsonProperty("color", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Color { get; set; }
+}
+
+public class ThemeTextStylesResponse
+{
+    public long ThemeId { get; set; }
+    public List<AppearanceTextStyle> TextStyles { get; set; } = new();
 }
 
 // ============ Signal Level Socket Models ============

@@ -50,6 +50,8 @@ public class MetaScalpSocket : IDisposable
     public event Action<MarkPriceUpdateData>? OnMarkPriceUpdate;
     /// <summary>Fired when the funding rate or funding time changes for a subscribed ticker (perpetual futures only). Requires SubscribeFunding().</summary>
     public event Action<FundingUpdateData>? OnFundingUpdate;
+    /// <summary>Fired with every open-interest value (base coin, about every 5 s (4 s on Binance and MEXC); derivative venues with open interest). Requires SubscribeOpenInterest().</summary>
+    public event Action<OpenInterestUpdateData>? OnOpenInterestUpdate;
 
     // Notification events — fired after calling SubscribeNotifications().
     // These are app-wide (not scoped to a connection).
@@ -278,6 +280,14 @@ public class MetaScalpSocket : IDisposable
     public void UnsubscribeFunding(long connectionId, string ticker)
         => Send("funding_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
 
+    /// <summary>Subscribe to open interest (base coin) — derivative venues with open interest; other markets get an error with the reason.</summary>
+    public void SubscribeOpenInterest(long connectionId, string ticker)
+        => Send("open_interest_subscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
+    /// <summary>Unsubscribe from open interest for a specific ticker.</summary>
+    public void UnsubscribeOpenInterest(long connectionId, string ticker)
+        => Send("open_interest_unsubscribe", new { ConnectionId = connectionId, Ticker = ticker });
+
     // ---- Notification subscriptions ----
     // App-wide notifications (trades, signal levels, large amounts, screener).
     // Independent from Subscribe() — no connectionId required.
@@ -440,6 +450,9 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "funding_update":
                     OnFundingUpdate?.Invoke(data.ToObject<FundingUpdateData>()!);
+                    break;
+                case "open_interest_update":
+                    OnOpenInterestUpdate?.Invoke(data.ToObject<OpenInterestUpdateData>()!);
                     break;
                 case "notification_snapshot":
                     OnNotificationSnapshot?.Invoke(data.ToObject<NotificationSnapshotData>()!);

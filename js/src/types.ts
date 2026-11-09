@@ -125,6 +125,12 @@ export interface ComboRequest {
   tickers?: string[];
   /** Omitted or true: the combo takes focus (today's behaviour). false: it opens in the background. */
   activate?: boolean;
+  /** Connection ids from GET /api/connections: exactly these books, in this order. Omitted: the terminal picks (today's behaviour). */
+  connections?: number[];
+  /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive): every active connection of these exchanges where the ticker trades, exchanges in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
+  exchanges?: string[];
+  /** Only with `exchanges`: keep only this market on every listed exchange - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
+  market?: string;
 }
 
 /** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */
@@ -235,6 +241,36 @@ export interface FundingUpdateData {
   ticker: string;
   fundingRate: number;
   fundingTime: string;
+}
+
+/** MC-898: open interest in BASE COIN (never USD); derivative venues with open interest. */
+export interface OpenInterestUpdateData {
+  connectionId: number;
+  ticker: string;
+  openInterest: number;
+  /** Exchange timestamp of the value (ISO 8601). */
+  time: string;
+  unit: 'base';
+}
+
+export interface OpenInterestResponse {
+  connectionId: number;
+  ticker: string;
+  openInterest: number;
+  time: string;
+  unit: 'base';
+}
+
+export interface OpenInterestHistoryResponse {
+  connectionId: number;
+  ticker: string;
+  timeFrame: string;
+  unit: 'base';
+  /** false on timeframes the exchange has no period for (seconds, M1, M3): points is empty, see reason. */
+  historyAvailable: boolean;
+  reason: string | null;
+  /** Oldest first. A point at `time` is the open interest AT that time. */
+  points: { time: string; openInterest: number }[];
 }
 
 export interface SignalLevel {
@@ -362,6 +398,97 @@ export interface OrderBookSettingsResponse {
     connectionId: number;
     ticker: string;
     settings: OrderBookSettings;
+}
+
+// ---- Appearance (Settings -> Display) ----
+
+export interface AppearanceTheme {
+  id: number;
+  name: string;
+  /** Built-in themes are read-only: copy one (createTheme) and change the copy. */
+  isBuiltIn: boolean;
+  isActive: boolean;
+}
+
+export interface AppearanceGeneral {
+  /** ru, en, zh-Hans, hy-AM or uk-UA. */
+  language: string;
+  /** One of getFontFamilies(). */
+  font: string;
+  /** 8-20, whole. */
+  orderBookFontSize: number;
+  highlightPricesOnBaseLevelsFactor: boolean;
+  /** 0-40. */
+  actionBarWidth: number;
+  /** 0-200; a change sets the cluster width of every order book. */
+  clusterColumnWidth: number;
+  /** Left or Right. */
+  limitOrderButtonPosition: string;
+  /** 1-7 seconds. */
+  errorDisplayDuration: number;
+  /** Standard or Simplified. */
+  designType: string;
+  /** Left or Right: the order-size chips («Объём заявок»). */
+  orderSizeChipPosition: string;
+  /** Left or Right: the SL / TP labels. */
+  slTpChipPosition: string;
+  /** Left or Right: the MP / IP / LP price markers. */
+  priceMarkerPosition: string;
+  /** Classic or Soft: cluster colour blending. */
+  clusterColorBlendMode: string;
+}
+
+export interface AppearanceState {
+  activeThemeId: number;
+  themes: AppearanceTheme[];
+  general: AppearanceGeneral;
+}
+
+export interface CreateThemeRequest {
+  name?: string;
+  /** Theme to copy; omitted = the active theme. */
+  copyFromThemeId?: number;
+}
+
+export interface AppearanceColor {
+  key: string;
+  /** application, timeAndSales, chart or infoPanel. */
+  section: string;
+  label: string;
+  /** #AARRGGBB, or Light / Dark for a choice row. */
+  value?: string;
+  /** Allowed values of a choice row; absent for a colour row. */
+  options?: string[];
+}
+
+export interface ThemeColorsResponse {
+  themeId: number;
+  colors: AppearanceColor[];
+}
+
+export interface AppearanceTextStyle {
+  element: string;
+  /** orderBook, tapeClusters, windows or charts. */
+  group: string;
+  label: string;
+  size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  /** false for the two chip-background rows: colour only. */
+  hasStyle: boolean;
+}
+
+export interface AppearanceTextStyleUpdate {
+  size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+}
+
+export interface ThemeTextStylesResponse {
+  themeId: number;
+  textStyles: AppearanceTextStyle[];
 }
 
 export interface GetOrderBookSnapshotOptions {
@@ -613,6 +740,9 @@ export interface SocketEventMap {
   orderbook_update: OrderBookUpdateData;
   mark_price_update: MarkPriceUpdateData;
   funding_update: FundingUpdateData;
+  open_interest_update: OpenInterestUpdateData;
+  open_interest_subscribed: { connectionId: number; ticker: string };
+  open_interest_unsubscribed: { connectionId: number; ticker: string };
   subscribed: { connectionId: number };
   unsubscribed: { connectionId: number };
   trade_subscribed: { connectionId: number; ticker: string };

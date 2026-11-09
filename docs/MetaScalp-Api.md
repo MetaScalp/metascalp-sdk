@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -28,6 +28,8 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/connections/{id}/orders/cancel-all` | Cancel all orders for a ticker |
 | `GET /api/connections/{id}/orderbook-snapshot?Ticker=` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `GET /api/link-groups/{groupId}/orderbook-snapshots` | Read-only order books of every panel currently in link group N (live membership; per-entry `reason` on partial failure) |
+| `GET /api/connections/{id}/open-interest` | Current open interest in base coin (derivative venues with open interest; `501` + reason elsewhere) |
+| `GET /api/connections/{id}/open-interest/history` | Open-interest history per timeframe (base coin; `historyAvailable=false` on seconds/M1/M3) |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
 | `GET /api/connections/{id}/leverage-limits?Ticker=` | Max leverage and max position size, live from the venue's own risk-limit tiers |
 | `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
@@ -62,6 +64,15 @@ Use HTTP to discover connections, query data, and execute trades:
 | `PUT /api/screener/templates/{templateId}` | Update a template (partial) |
 | `DELETE /api/screener/templates/{templateId}` | Delete a template |
 | `GET /api/screener/templates/{templateId}/data` | One headless snapshot of a template's full row set — no screener window is opened |
+| `GET /api/appearance` | Settings → Display: the active theme, every theme (`isBuiltIn`, `isActive`) and the nine display options |
+| `GET /api/appearance/font-families` | Font families the `font` display option accepts |
+| `PUT /api/appearance/general` | Change display options (partial; applied at once) |
+| `PUT /api/appearance/active-theme` | Switch the active theme (applied at once, kept after a restart) |
+| `POST /api/appearance/themes` | Create an editable copy of a theme (default: the active one) |
+| `PUT /api/appearance/themes/{themeId}` | Rename an own theme |
+| `DELETE /api/appearance/themes/{themeId}` | Delete an own theme (the active one hands over to its neighbour) |
+| `GET/PUT /api/appearance/themes/{themeId}/colors` | Read / write every colour row of the four Display colour sections |
+| `GET/PUT /api/appearance/themes/{themeId}/text-styles` | Read / write every «Шрифты» row (size, bold, italic, colour) |
 
 ### WebSocket streaming
 
@@ -240,7 +251,7 @@ GET http://127.0.0.1:{port}/ping
 
 #### Change Ticker
 
-Switches the active ticker in MetaScalp. The active window is always notified. When a named binding is provided, that binding's linked panels are notified as well.
+Switches the active ticker in MetaScalp. A named binding addresses that binding's linked panels; omit it and the call reaches no panel. Panels bound to **Active window** are **not** notified — the active window follows user actions inside the terminal only (MC-720).
 
 ```
 POST http://127.0.0.1:{port}/api/change-ticker
@@ -256,7 +267,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | Field           | Type   | Required | Description                                                                 |
 |-----------------|--------|----------|-----------------------------------------------------------------------------|
 | `TickerPattern` | string | yes      | Pattern string (see [Ticker pattern format](#ticker-pattern-format) below). |
-| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`       | string | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Option B — Explicit fields**
 
@@ -265,7 +276,7 @@ The endpoint accepts two request formats. Include **either** `TickerPattern` **o
 | `Exchange` | integer | yes      | Exchange identifier (see [Exchange values](#exchange-values))   |
 | `Market`   | integer | yes      | Market type identifier (see [MarketType values](#markettype-values)) |
 | `Ticker`   | string  | yes      | Trading pair symbol, e.g. `"BTCUSDT"`             |
-| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string to only notify the active window. |
+| `Binding`  | string  | no       | Named binding (`"001"`–`"500"`). Omit or send empty string and no panel is notified. |
 
 **Bindings**
 
@@ -273,8 +284,8 @@ A **binding** is a named group of linked panels inside MetaScalp (e.g. a chart, 
 
 | `Binding` value        | Active window notified | Named binding notified |
 |------------------------|:----------------------:|:----------------------:|
-| omitted / empty / null | yes                    | —                      |
-| `"001"` … `"500"`      | yes                    | yes                    |
+| omitted / empty / null | no                     | —                      |
+| `"001"` … `"500"`      | no                     | yes                    |
 
 **Response**
 
@@ -334,9 +345,12 @@ request flag:
 
 | Field     | Type     | Description |
 |-----------|----------|-------------|
-| `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. The combo opens on the currently active exchange and market connection. |
+| `Ticker`  | string   | Opens **one** combo layout for a single ticker (unchanged behaviour). Not a pattern, e.g. `"BTCUSDT"`. Which books open: see *Which books open* below. |
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
 | `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
+| `Connections` | integer[] | Optional. Connection ids from `GET /api/connections`. Present: the combo opens with the books of exactly these connections, in this order (for `Tickers`: in every combo). Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Exchanges` | string[] | Optional. Exchange names as `GET /api/connections` returns them in `exchange` (case-insensitive), e.g. `"Binance"`. Present: the terminal opens every active connection of these exchanges on which the ticker trades; the exchanges in this order, inside one exchange the connection list order (for `Tickers`: every combo with the set of its own ticker). Not together with `Connections`. Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Market` | string | Optional, only with `Exchanges`. Keeps only the connections of this market on every listed exchange. A market name, case-insensitive: `spot` (spot and stock), `futures` (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or `null`: every connected market of the exchange. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
@@ -348,6 +362,26 @@ naming the rejected tickers.
   `Tickers` form exactly one window (the last in the list) comes to the front, as today.
 - `false` — the combo opens **in the background**: whatever window/tab you were on stays active. On the
   `Tickers` form *no* element of the list steals focus.
+
+**Which books open.** Without `Connections` or `Exchanges` the terminal decides: every active connection on which the
+ticker resolves, in the connection list order, minus the venues unchecked in Settings → Combo window, or
+the top-N venues by the screener metric when the venue mode there is TOP. With `Connections` the list IS
+the set and the order: the first listed connection is the first book (and, with charts on, every chart
+follows its book); the venue checkboxes and the TOP mode are not applied, every other combo setting (open
+mode, charts, sizes, linking, the book cap) is. The book cap splits a long list into several windows named
+`BTCUSDT 1/K` … `BTCUSDT K/K`; the order runs across them (window 1 holds the first listed connections).
+A listed connection is accepted only if it is an active connection and the ticker resolves on it the
+way the combo resolves it (separator-tolerant, KRW pair preferred on Upbit and Bithumb); whatever passes
+the check is exactly what opens.
+
+With `Exchanges` the terminal picks the connections: every active connection of each listed exchange
+(every market of it that is connected: spot, futures, …) on which the ticker resolves the same way. The
+exchanges keep the request order; inside one exchange the connections keep the connection list order, the
+order the combo uses without a list. As with `Connections`, the venue checkboxes and the TOP mode are not
+applied and every other combo setting (the book cap and its split included) is. On the `Tickers` form every
+combo gets the set of its own ticker, so two combos of one request can differ. `Market` narrows each listed
+exchange to that market: `{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}` opens
+Binance USDT Futures and Gate Futures only.
 
 **Response**
 
@@ -363,6 +397,32 @@ naming the rejected tickers.
 | Missing or empty `Ticker` | `Invalid request body. 'ticker' is required.` |
 | Both `Ticker` and `Tickers` supplied, or an empty `Tickers` array with no `Ticker` | `400` |
 | One or more tickers resolve on no eligible connection | `400` naming the rejected tickers (nothing is opened) |
+
+With `Connections` the checks run in this order; the first failing one answers and nothing is opened:
+
+| # | Condition | Error message |
+|---|-----------|---------------|
+| 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
+| 2 | `Connections` is an empty array | `Invalid request body. 'connections' must not be empty.` |
+| 3 | The same id is listed twice or more | `Invalid request body. Duplicate connections: 4.` (every duplicated id, in request order) |
+| 4 | One or more ids are not found or not active | `Combo not opened. Unknown or inactive connections: 999, 12.` (every such id, in request order) |
+| 5 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 6 | A ticker does not trade on one or more listed connections | `Combo not opened. Not traded: BTCUSDT on 4, 7; ETHUSDT on 4.` (every failing pair) |
+
+With `Exchanges` the checks run in this order; the first failing one answers and nothing is opened:
+
+| # | Condition | Error message |
+|---|-----------|---------------|
+| 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
+| 2 | Both `Connections` and `Exchanges` | `Provide either 'connections' or 'exchanges', not both.` |
+| 3 | `Market` is not a market name (a number or an empty string included) | `Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.` |
+| 4 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
+| 5 | The same exchange is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated name, in request order) |
+| 6 | A name has no active connection (unknown, or the exchange is not connected); with `Market`: none in that market | `Combo not opened. No active connection for exchanges: Foo.` / `Combo not opened. No active Futures connection for exchanges: Gate.` (every such name, in request order) |
+| 7 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 8 | A ticker trades on none of the active connections (in `Market`, when given) of a listed exchange | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
+
+`Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
 
 **Example**
 
@@ -381,6 +441,36 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Ticker": "BTCUSDT", "Activate": false}'
+
+# Exactly these books, in this order (ids from GET /api/connections)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Connections": [1, 4]}'
+
+# The same list for every combo of the request
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Connections": [1, 4]}'
+
+# The listed books, in the background
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Connections": [1, 4], "Activate": false}'
+
+# Every active connection of these exchanges where the ticker trades: Bybit first, then Binance
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": ["Bybit", "Binance"]}'
+
+# One combo per ticker, each with the MEXC connections its own ticker trades on
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
+
+# Futures only: Binance USDT Futures, then Gate Futures
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}'
 ```
 
 ---
@@ -733,6 +823,8 @@ Content-Type: application/json
 { "status": "ok" }
 ```
 
+**Response `400`** for an app-side stop or SL/TP (stop / SL/TP location «Application», MC-868): such an order lives in the terminal, not on the exchange, and carries a negative `OrderId` below −2^40. The local API never sends that id to the exchange and answers `{ "error": "Order {OrderId} is an app-side stop or SL/TP held by the terminal; the local API cannot cancel it — cancel it in the order book." }`.
+
 **Example:**
 ```bash
 curl -X POST http://127.0.0.1:17845/api/connections/1/orders/cancel \
@@ -923,6 +1015,11 @@ When `ZoomIndex > 1`, prices are grouped into buckets of `ZoomIndex * PriceIncre
 ```bash
 # Get 5-minute clusters for BTCUSDT with default zoom
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5"
+
+# Open interest (MC-898; derivative venues with open interest, base coin)
+curl "http://127.0.0.1:17845/api/connections/1/open-interest?Ticker=BTCUSDT"
+curl "http://127.0.0.1:17845/api/connections/1/open-interest/history?Ticker=BTCUSDT&TimeFrame=M5"
+# WS: { "Type": "open_interest_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } } -> open_interest_update { connectionId, ticker, openInterest, time, unit }
 
 # Get 1-hour clusters with 5x price aggregation
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=H1&ZoomIndex=5"
@@ -1605,6 +1702,14 @@ GET http://127.0.0.1:{port}/api/ui/state
 
 `standaloneCharts` is a top-level array of chart documents (same document shape) for chart windows not attached to any tab; each includes its own `chart.geometry` and never appears under a tab.
 
+**«Trades» windows (MC-704, MET-2229).** `userTrades` keeps its `{ id, isOpen, geometry }` shape and describes
+the open «Trades» window (`id` 0 and `isOpen: false` when none is open; for a docked window `geometry`
+is its stored rect, not where it floats on screen — the open response carries where it landed). `userTradesWindows` lists
+every open one, oldest first, each `{ id, externalId, tabId }` — `tabId` is the workspace tab it is docked
+in, `null` for a standalone window. Since MET-2229 there is one «Trades» window (a terminal upgraded from a
+multi-window build may still restore several; `userTrades` is then the newest); a closed window keeps its row
+and id but is not listed until it is opened again.
+
 #### Get One Window
 
 Returns exactly the same single-window object as that window's entry in `/api/ui/state` — same geometry, tabs and documents.
@@ -1612,6 +1717,11 @@ Returns exactly the same single-window object as that window's entry in `/api/ui
 ```
 GET http://127.0.0.1:{port}/api/ui/windows/{windowId}
 ```
+
+Optional `?windowType=` (`chart`, `tradingViewChart`, `watchlist`, `screener`, `userTrades`) resolves the id
+within that surface — the address `POST /api/ui/windows` returned. The response is then
+`{ id, type, document | watchlist | screener | userTrades }`; for `userTrades` the block is
+`{ id, externalId, tabId }`.
 
 **Errors:**
 
@@ -1656,7 +1766,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 
 #### Re-ticker a Panel
 
-Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives the active window and a whole named link group. `{externalId}` is the document's GUID.
+Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives a whole named link group. `{externalId}` is the document's GUID.
 
 ```
 PUT http://127.0.0.1:{port}/api/ui/documents/{externalId}/ticker
@@ -1698,8 +1808,10 @@ id `1`, so the body's `windowType` is what routes the id to the correct window.
 `windowType` is one of: `workspace`, `lightWorkspace`, `chart`, `tradingViewChart`, `watchlist`,
 `screener`, `lineNotifications`, `finres`, `userTrades`, `listing`.
 
-The four **singleton** surfaces (`lineNotifications`, `finres`, `userTrades`, `listing`) ignore the
-path id entirely — each has one fixed row.
+The three **singleton** surfaces (`lineNotifications`, `finres`, `listing`) ignore the
+path id entirely — each has one fixed row. `userTrades` takes the path id (MC-704): its `windowId`
+addresses the «Trades» window. Since MET-2229 there is one «Trades» window: a closed one keeps its id, and the
+next open brings it back.
 
 #### Open a Window
 
@@ -1725,9 +1837,17 @@ Content-Type: application/json
 | `templateId` | integer | no | **Screener only.** Open the screener already showing this saved template's filters and rows. Omit for today's Default view. The synthetic Default (`-1`) is accepted. Ignored for any non-screener `windowType`. |
 
 **Response `200 OK`:** `{ windowId, windowType, top, left, height, width }` — where the window
-*actually* landed (post-clamp). For the four singleton types `windowId` is `null`: each has a single
+*actually* landed (post-clamp). For the three singleton types `windowId` is `null`: each has a single
 fixed row (id `1`, which would collide with the main workspace) and its close/activate routes ignore
 the id, so there is no addressable per-surface id to return.
+
+> **`userTrades` (changed in MC-704, MET-2229).** Opens THE «Trades» window — the window the toolbar
+> «Trades» button opens. There is one: while it is open, a call brings it to the front where it is (supplied
+> geometry is ignored) and returns the same `windowId`; a window closed earlier comes back with the user's last
+> size, position, columns, sort and filters (supplied geometry places it); only the very first call creates it
+> (at the cursor when geometry is omitted). `windowId` is that window's id (it was `null` while «Your trades»
+> was a singleton); pass it to close / activate and to `GET /api/ui/windows/{windowId}?windowType=userTrades`.
+> The former standalone «Your trades» window no longer exists.
 
 > **Opening the screener on a template.** For `windowType: "screener"` a supplied `templateId` is
 > threaded onto the window so it loads that template exactly as picking it by hand would; because the
@@ -1961,7 +2081,7 @@ Settings field reference:
 | `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
 | `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
-| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | string | Ruler display mode: `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | string | Zoom type: `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | string | How one mouse-wheel notch moves the compression: `"Linear"` (by one unit) or `"Logarithmic"` (to the next rung of the 1, 2, 5, 10, 20, 50 … ladder). `null` on a settings row saved before this field existed — the terminal treats that as `"Linear"` |
 | `AutoZoom` | boolean | Enable automatic zoom |
@@ -1995,7 +2115,7 @@ Settings field reference:
 
 | Field | Valid values |
 |-------|-------------|
-| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"` |
+| `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
@@ -2030,7 +2150,7 @@ Content-Type: application/json
 | Condition | Error message |
 |-----------|---------------|
 | Missing ticker | `Query parameter 'Ticker' is required` |
-| Invalid enum value | `Invalid value 'X' for field 'ShowRuler'. Valid values: None, Points, Percent, PercentVolume` |
+| Invalid enum value | `Invalid ShowRuler value: 'X'` |
 | No settings found | `No order book settings found for this ticker` |
 
 **Examples:**
@@ -2173,6 +2293,169 @@ curl "http://127.0.0.1:17845/api/screener/templates/-1/data"
 ```
 
 ---
+
+### Appearance (Settings → Display)
+
+Everything on **Settings → Display**: the active theme, theme copies, every colour section («Цвета приложения»,
+«Построчная лента сделок», «Цвета графиков», «Цвета информационной панели»), the «Шрифты» (Fonts) rows and the
+general display options. A change is saved and applied by the running terminal at once — the same save + live
+apply the Display page runs for the same edit. Answers are camelCase; bodies are read case-insensitively.
+
+- **Built-in themes are read-only**, as on the Display page: an edit, rename or delete of one → `409` with
+  `Theme '<name>' is built in and read-only. Copy it first (POST /api/appearance/themes with copyFromThemeId=<id>) and change the copy.`
+- **All-or-nothing**: a bad key, value, range or an unknown body field → `400` naming it, and **nothing** is saved.
+- Unknown theme id → `404 Theme {id} not found.`; non-numeric `{themeId}` → `400 Invalid theme ID`.
+- A Display settings window that is already open shows API changes after it is reopened.
+
+#### Get Appearance
+
+```
+GET http://127.0.0.1:{port}/api/appearance
+```
+
+Returns `{ activeThemeId, themes[], general }`. Each theme is `{ id, name, isBuiltIn, isActive }`.
+`general` carries the thirteen display options («Общие» rows):
+
+| Field | Type | Values |
+|---|---|---|
+| `language` | string | `ru`, `en`, `zh-Hans`, `hy-AM`, `uk-UA` |
+| `font` | string | One of `GET /api/appearance/font-families` |
+| `orderBookFontSize` | number | 8–20, whole |
+| `highlightPricesOnBaseLevelsFactor` | bool | Highlight prices on base levels |
+| `actionBarWidth` | int | 0–40 |
+| `clusterColumnWidth` | int | 0–200 (a change sets the cluster width of **every** order book, as the page does) |
+| `limitOrderButtonPosition` | string | `Left`, `Right` |
+| `errorDisplayDuration` | int | 1–7 (seconds) |
+| `designType` | string | `Standard`, `Simplified` |
+| `orderSizeChipPosition` | string | `Left`, `Right` — «Объём заявок» (order-size chips) |
+| `slTpChipPosition` | string | `Left`, `Right` — «Метки SL / TP» |
+| `priceMarkerPosition` | string | `Left`, `Right` — «Маркеры цен MP / IP / LP» |
+| `clusterColorBlendMode` | string | `Classic`, `Soft` — «Смешивание цветов кластеров» |
+
+The last four are the values the page shows, also when the row was never changed (a fresh profile: `Right`, the
+cancel button's side, the cancel button's side, `Classic`).
+
+#### Get Font Families
+
+```
+GET http://127.0.0.1:{port}/api/appearance/font-families
+```
+
+Returns `{ count, fonts[] }`: custom fonts first, then the installed system fonts that pass validation — the
+list of the «Шрифт» drop-down.
+
+#### Update Display Options
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/general
+Content-Type: application/json
+```
+
+Any of the thirteen `general` fields above (enum values are case-insensitive); an omitted field keeps its value and
+is not written. Applied at once (a new `language` switches the menu immediately; the order-size chips, SL / TP
+labels, price markers and cluster colours of every open order book repaint) and saved. Changing
+`limitOrderButtonPosition` moves only the cancel button: the SL / TP labels and price markers keep their side, as on
+the page. Returns the thirteen options after the change.
+
+```json
+{ "orderBookFontSize": 14, "errorDisplayDuration": 3 }
+```
+
+#### Set Active Theme
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/active-theme
+Content-Type: application/json
+```
+
+Body `{ "themeId": 5 }` (required). The terminal switches at once and the theme stays active after a restart.
+Returns `{ id, name, isBuiltIn, isActive }`.
+
+#### Create Theme (copy)
+
+```
+POST http://127.0.0.1:{port}/api/appearance/themes
+Content-Type: application/json
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no | Omitted / blank = a unique `<source> (N)`, as «Дублировать» names it. |
+| `copyFromThemeId` | integer | no | Theme to copy; omitted = the active theme. A built-in theme can be copied. |
+
+The body may be empty. The copy is always editable (`isBuiltIn: false`) and is **not** activated. Returns
+`{ id, name, isBuiltIn, isActive }`.
+
+#### Rename Theme
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}
+Content-Type: application/json
+```
+
+Body `{ "name": "My theme" }`; a blank name → `400`. Returns `{ id, name, isBuiltIn, isActive }`.
+
+#### Delete Theme
+
+```
+DELETE http://127.0.0.1:{port}/api/appearance/themes/{themeId}
+```
+
+Returns `{ deleted: true, themeId }`. Deleting the **active** theme first activates its neighbour in the list (the
+next one, or the previous one at the end). The last theme → `400 The last theme cannot be deleted.`
+
+#### Get Theme Colours
+
+```
+GET http://127.0.0.1:{port}/api/appearance/themes/{themeId}/colors
+```
+
+Returns `{ themeId, colors[] }`, one row per colour row of the four Display colour sections, in page order:
+`{ key, section, label, value, options }`. `section` is `application`, `timeAndSales`, `chart` or `infoPanel`;
+`label` is the row's name in the terminal's current language; `value` is `#AARRGGBB`. The two choice rows
+(`TradingViewMenuColor`, `MessengerThemeColor`) carry `Light` / `Dark` and list them in `options`.
+
+#### Update Theme Colours
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}/colors
+Content-Type: application/json
+```
+
+Body `{ "colors": { "<key>": "<value>", ... } }` with keys from the GET (case-insensitive) and values `#RRGGBB` /
+`#AARRGGBB` (`Light` / `Dark` for a choice row). Returns the whole `{ themeId, colors[] }` after the write. An
+edit of the **active** theme repaints the terminal at once.
+
+```json
+{ "colors": { "Asks": "#FFFF8080", "ChartBackground": "#101418" } }
+```
+
+#### Get Theme Text Styles («Шрифты»)
+
+```
+GET http://127.0.0.1:{port}/api/appearance/themes/{themeId}/text-styles
+```
+
+Returns `{ themeId, textStyles[] }`, one row per «Шрифты» row: `{ element, group, label, size, bold, italic, color,
+hasStyle }`. `group` is `orderBook`, `tapeClusters`, `windows` or `charts`; `size` / `bold` / `italic` are the
+effective values. The info-panel rows' `color` is that metric's colour and large volume level 1 / 2 show the
+level's colour, as on the page. The two chip-background rows have `hasStyle: false` (colour only).
+
+#### Update Theme Text Styles
+
+```
+PUT http://127.0.0.1:{port}/api/appearance/themes/{themeId}/text-styles
+Content-Type: application/json
+```
+
+Body `{ "textStyles": { "<element>": { "size": 8-20, "bold": true, "italic": false, "color": "#RRGGBB" }, ... } }`;
+every field is optional, at least one per element. A value equal to the element's default is stored as «not set»,
+as on the page. A chip-background row takes `color` only (`size` / `bold` / `italic` → `400`). Returns the whole
+`{ themeId, textStyles[] }`.
+
+```json
+{ "textStyles": { "OrderBookPriceScale": { "size": 14, "bold": true } } }
+```
 
 ### Real-time WebSocket
 

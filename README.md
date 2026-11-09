@@ -153,6 +153,8 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
+| `GET` | `/api/connections/{id}/open-interest?Ticker=X` | Current open interest in base coin (derivative venues with open interest; `501` with a reason elsewhere) |
+| `GET` | `/api/connections/{id}/open-interest/history?Ticker=X&TimeFrame=M5` | Open-interest history (base coin; `historyAvailable=false` on seconds/M1/M3) |
 | `GET` | `/api/connections/{id}/cluster-snapshot?Ticker=X&TimeFrame=M5` | Cluster (volume profile) snapshot; `Columns=1..100` fills more history than the default 10 columns |
 | `GET` | `/api/connections/{id}/leverage-limits?Ticker=X` | Max leverage / max position, live from the venue's risk-limit tiers |
 | `GET` | `/api/link-groups/{groupId}/orderbook-snapshots` | Order books of every panel currently in a link group |
@@ -168,9 +170,12 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
+| `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the thirteen display options (`GET .../font-families` lists the fonts) |
+| `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
+| `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background) |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
