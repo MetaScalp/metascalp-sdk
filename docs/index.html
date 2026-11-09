@@ -826,15 +826,17 @@
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
           <tr><td><code>connections</code></td><td>integer array</td><td>no</td><td>Connection ids from <code>GET /api/connections</code>. Present: the combo opens with the books of exactly these connections, in this order (for <code>tickers</code>: in every combo); the venue checkboxes and the TOP mode of the Combo window settings are not applied, every other combo setting (open mode, charts, sizes, linking, the book cap and its split) is. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
-          <tr><td><code>exchanges</code></td><td>string array</td><td>no</td><td>Exchange names as <code>GET /api/connections</code> returns them in <code>exchange</code> (case-insensitive), e.g. <code>"Binance"</code>. Present: the terminal opens every active connection of these exchanges on which the ticker trades (every connected market of the exchange: spot, futures, &hellip;) &mdash; the exchanges in this order, inside one exchange the connection list order. For <code>tickers</code> every combo gets the set of its own ticker. As with <code>connections</code>, the venue checkboxes and the TOP mode are not applied and every other combo setting is. Not together with <code>connections</code>. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
-          <tr><td><code>market</code></td><td>string</td><td>no</td><td>Only with <code>exchanges</code>: keeps only the connections of this market on every listed exchange. A market name, case-insensitive: <code>spot</code> (spot and stock), <code>futures</code> (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or <code>null</code>: every connected market of the exchange.</td></tr>
+          <tr><td><code>exchanges</code></td><td>array of strings or objects</td><td>no</td><td>Each item is an exchange name as <code>GET /api/connections</code> returns it in <code>exchange</code> (case-insensitive), e.g. <code>"Binance"</code>, or an object <code>{ "exchange": "Binance", "market": "futures" }</code> that gives this exchange its own market. Present: the terminal opens every active connection of these exchanges on which the ticker trades (in the item&rsquo;s market when it has one, otherwise every connected market of the exchange: spot, futures, &hellip;) &mdash; the items in this order, inside one item the connection list order. One exchange may be listed more than once with different markets, e.g. Binance futures and Binance spot. For <code>tickers</code> every combo gets the set of its own ticker. As with <code>connections</code>, the venue checkboxes and the TOP mode are not applied and every other combo setting is. Not together with <code>connections</code>. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
+          <tr><td><code>market</code></td><td>string</td><td>no</td><td>Only with <code>exchanges</code>: keeps only the connections of this market on every listed exchange that has no market of its own (an item&rsquo;s own <code>market</code> wins). A market name, case-insensitive, the same names as an item&rsquo;s <code>market</code>: <code>spot</code> (spot and stock), <code>futures</code> (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or <code>null</code>: every connected market of the exchange (an item&rsquo;s <code>"market": null</code> is the same as no market in that item).</td></tr>
         </table>
         <pre>{ "ticker": "BTCUSDT", "connections": [1, 4] }
 { "tickers": ["BTCUSDT", "ETHUSDT"], "connections": [1, 4] }
 { "ticker": "BTCUSDT", "connections": [1, 4], "activate": false }
 { "ticker": "BTCUSDT", "exchanges": ["Bybit", "Binance"] }
 { "tickers": ["BTCUSDT", "ETHUSDT"], "exchanges": ["MEXC"], "activate": false }
-{ "ticker": "BTCUSDT", "exchanges": ["Binance", "Gate"], "market": "futures" }</pre>
+{ "ticker": "BTCUSDT", "exchanges": ["Binance", "Gate"], "market": "futures" }
+{ "ticker": "BTCUSDT", "exchanges": [{ "exchange": "Binance", "market": "futures" }, { "exchange": "Bybit", "market": "spot" }, "MEXC"] }
+{ "ticker": "BTCUSDT", "exchanges": [{ "exchange": "Binance", "market": "futures" }, { "exchange": "Binance", "market": "spot" }] }</pre>
         <p>With <code>connections</code> the checks run in this order and the first failing one answers <code>400</code>; nothing opens:</p>
         <table>
           <tr><th>Condition</th><th>Error message</th></tr>
@@ -851,10 +853,11 @@
           <tr><td>Both <code>ticker</code> and a non-empty <code>tickers</code>; missing <code>ticker</code></td><td>unchanged (see above)</td></tr>
           <tr><td><code>market</code> without <code>exchanges</code></td><td><code>Invalid request body. 'market' is used only together with 'exchanges'.</code></td></tr>
           <tr><td>Both <code>connections</code> and <code>exchanges</code></td><td><code>Provide either 'connections' or 'exchanges', not both.</code></td></tr>
-          <tr><td><code>market</code> is not a market name (a number or an empty string included)</td><td><code>Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.</code></td></tr>
+          <tr><td><code>market</code>, or an item&rsquo;s <code>market</code>, is not a market name (a number or an empty string included)</td><td><code>Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.</code></td></tr>
           <tr><td><code>exchanges</code> is an empty array</td><td><code>Invalid request body. 'exchanges' must not be empty.</code></td></tr>
-          <tr><td>The same exchange listed twice or more (in any letter case)</td><td><code>Invalid request body. Duplicate exchanges: MEXC.</code> (every duplicated name, in request order)</td></tr>
-          <tr><td>A name with no active connection (unknown, or the exchange is not connected)</td><td><code>Combo not opened. No active connection for exchanges: Foo.</code> (every such name, in request order); with <code>market</code>: <code>Combo not opened. No active Futures connection for exchanges: Gate.</code></td></tr>
+          <tr><td>The same exchange with the same market listed twice or more (in any letter case)</td><td><code>Invalid request body. Duplicate exchanges: MEXC.</code> (every duplicated item, in request order; once any item has a market of its own, every item is named with its market: <code>Binance (Spot)</code>)</td></tr>
+          <tr><td>A name with no active connection (unknown, or the exchange is not connected)</td><td><code>Combo not opened. No active connection for exchanges: Foo.</code> (every such name, in request order); with <code>market</code>: <code>Combo not opened. No active Futures connection for exchanges: Gate.</code>; with markets per item: <code>Combo not opened. No active connection for exchanges: Gate (Futures).</code></td></tr>
+          <tr><td>Two items of one exchange pick the same connection (e.g. <code>"Binance"</code> and <code>{ "exchange": "Binance", "market": "spot" }</code>, or <code>futures</code> and <code>UsdtFutures</code>)</td><td><code>Combo not opened. These exchanges pick the same connections: Binance, Binance (Spot).</code> (every such item, in request order)</td></tr>
           <tr><td>A <code>tickers</code> element is null or blank</td><td>unchanged: <code>Combo not opened. Rejected tickers: &lt;names&gt;.</code></td></tr>
           <tr><td>A ticker trades on none of the active connections of a listed exchange</td><td><code>Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.</code> (every failing pair)</td></tr>
         </table>
@@ -869,8 +872,8 @@
           <input type="text" id="f-combo-connections" value="" placeholder="e.g. 1, 4">
         </div>
         <div class="form-group">
-          <label>Exchanges (optional, comma-separated names, in order; not with Connections)</label>
-          <input type="text" id="f-combo-exchanges" value="" placeholder="e.g. Bybit, Binance">
+          <label>Exchanges (optional, comma-separated names, in order; Name:market gives one exchange its own market; not with Connections)</label>
+          <input type="text" id="f-combo-exchanges" value="" placeholder="e.g. Bybit:spot, Binance:futures, MEXC">
         </div>
         <div class="form-group">
           <label>Market (optional, only with Exchanges)</label>
@@ -4516,6 +4519,7 @@
       <tr><td><code>/api/combo</code></td><td>Duplicated exchange</td><td>400</td><td><code>Invalid request body. Duplicate exchanges: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Exchange with no active connection</td><td>400</td><td><code>Combo not opened. No active connection for exchanges: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Exchange with no active connection in <code>market</code></td><td>400</td><td><code>Combo not opened. No active {market} connection for exchanges: {names}.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Two <code>exchanges</code> items pick the same connection</td><td>400</td><td><code>Combo not opened. These exchanges pick the same connections: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Unknown <code>market</code></td><td>400</td><td><code>Invalid request body. Unknown market '{market}'. Use one of: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td><code>market</code> without <code>exchanges</code></td><td>400</td><td><code>Invalid request body. 'market' is used only together with 'exchanges'.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Ticker not traded on a listed exchange</td><td>400</td><td><code>Combo not opened. Not traded: {ticker} on {exchanges}; ...</code></td></tr>
@@ -4874,7 +4878,8 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     const body = { ticker };
     if (connectionsText) body.connections = connectionsText.split(',').map(s => Number(s.trim()));
     const exchangesText = document.getElementById('f-combo-exchanges').value.trim();
-    if (exchangesText) body.exchanges = exchangesText.split(',').map(s => s.trim()).filter(s => s);
+    if (exchangesText) body.exchanges = exchangesText.split(',').map(s => s.trim()).filter(s => s)
+      .map(s => s.includes(':') ? { exchange: s.split(':')[0].trim(), market: s.split(':')[1].trim() } : s);
     const marketText = document.getElementById('f-combo-market').value.trim();
     if (marketText) body.market = marketText;
     try {
