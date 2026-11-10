@@ -82,8 +82,8 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **Connection-level subscriptions:** Send a `subscribe` message with a connection ID to receive order, position, balance, and finres updates
 - **Market data subscriptions:** Send `trade_subscribe`, `orderbook_subscribe`, `mark_price_subscribe`, `index_price_subscribe`, or `funding_subscribe` with a connection ID + ticker to receive trade, order book, mark price, index price, or funding updates for a specific symbol
 - **Notification subscriptions:** Send `notification_subscribe` to receive app-wide notification events (no connection ID required)
-- **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required)
-- **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required)
+- **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required; optional `connectionId` / `ticker` narrow the initial snapshot)
+- **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required; optional `connectionId` / `ticker` narrow the initial snapshot)
 - **Chart annotation subscriptions:** Send `annotation_subscribe` with a connection ID + ticker to receive a one-shot `annotations_snapshot` of the current shapes
 - **UI change subscriptions:** Send `ui_subscribe` to receive a `ui_snapshot` of the open UI followed by `ui_update` events (no connection ID required)
 - **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; no MetaBroker login needed)
@@ -2585,14 +2585,14 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `signal_level_subscribe` | `{}` | Subscribe to signal level updates. Receives an initial snapshot of all signal levels, then live events. Idempotent. |
+| `signal_level_subscribe` | `{}` or `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to signal level updates. Every subscribe receives the ack, then an initial `signal_levels_snapshot` of all signal levels, then live events. Optional `connectionId` / `ticker` narrow the initial snapshot only (live events stay global); with no matching levels the snapshot is an empty list. Idempotent. |
 | `signal_level_unsubscribe` | `{}` | Stop receiving signal level updates. Idempotent. |
 
 **User level subscriptions** — subscribe globally (no data payload) to receive user (plain) level lifecycle events (placed, updated, removed):
 
 | Type | Data | Description |
 |---|---|---|
-| `user_level_subscribe` | `{}` | Subscribe to user level events. Receives an initial snapshot of all user levels, then live events. Idempotent. |
+| `user_level_subscribe` | `{}` or `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to user level events. Every subscribe receives the ack, then an initial `user_levels_snapshot` of all user levels, then live events. Optional `connectionId` / `ticker` narrow the initial snapshot only (live events stay global); with no matching levels the snapshot is an empty list. Idempotent. |
 | `user_level_unsubscribe` | `{}` | Stop receiving user level events. Idempotent. |
 
 **Chart annotation subscriptions** — subscribe per `(connectionId, ticker)` to receive the current shapes. This family delivers a subscribe/unsubscribe ack and a **one-shot snapshot only** — there is no `annotations_updated` push (the annotation service exposes no change-notification mechanism). A client that needs fresh state after an edit re-subscribes or re-issues `GET .../annotations`:
