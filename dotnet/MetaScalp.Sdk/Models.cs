@@ -789,6 +789,36 @@ public class SignalLevelRemovedData
     public long Id { get; set; }
 }
 
+/// <summary>A user (plain) level as sent on the user_level_* WebSocket family.</summary>
+public class UserLevelDto
+{
+    public long Id { get; set; }
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+    public string? Name { get; set; }
+    public DateTimeOffset? Date { get; set; }
+    public string? Note { get; set; }
+    public double? LineThickness { get; set; }
+    public string? LineStyle { get; set; }
+    public string? LineColor { get; set; }
+    public double? TextSize { get; set; }
+    public string? TextColor { get; set; }
+    public string? TextAlignment { get; set; }
+    public string? TextStyle { get; set; }
+}
+
+/// <summary>Sent after every user_level_subscribe (empty list when nothing matches the optional filter).</summary>
+public class UserLevelsSnapshotData
+{
+    public List<UserLevelDto> UserLevels { get; set; } = new();
+}
+
+public class UserLevelRemovedData
+{
+    public List<long> Ids { get; set; } = new();
+}
+
 // ============ MetaBroker Analytics Models ============
 // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
 // backend (the same data the terminal's analytics windows show). Enum-like fields are

@@ -71,6 +71,15 @@ public class MetaScalpSocket : IDisposable
     public event Action? OnSignalLevelsRemovedAll;
     public event Action? OnSignalLevelsRemovedTriggered;
 
+    // User (plain) level events — fired after calling SubscribeUserLevels().
+    // App-wide (not scoped to a connection). The snapshot follows every subscribe.
+
+    public event Action<UserLevelsSnapshotData>? OnUserLevelsSnapshot;
+    public event Action<UserLevelDto>? OnUserLevelPlaced;
+    public event Action<UserLevelDto>? OnUserLevelUpdated;
+    public event Action<UserLevelRemovedData>? OnUserLevelRemoved;
+    public event Action? OnUserLevelsRemovedAll;
+
     // MetaBroker analytics events — fired after calling SubscribeDensityMap(),
     // SubscribeLargeTrades() or SubscribeLiquidations(). App-wide (not scoped to a connection).
 
@@ -503,6 +512,21 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "signal_levels_removed_triggered":
                     OnSignalLevelsRemovedTriggered?.Invoke();
+                    break;
+                case "user_levels_snapshot":
+                    OnUserLevelsSnapshot?.Invoke(data.ToObject<UserLevelsSnapshotData>()!);
+                    break;
+                case "user_level_placed":
+                    OnUserLevelPlaced?.Invoke(data.ToObject<UserLevelDto>()!);
+                    break;
+                case "user_level_updated":
+                    OnUserLevelUpdated?.Invoke(data.ToObject<UserLevelDto>()!);
+                    break;
+                case "user_level_removed":
+                    OnUserLevelRemoved?.Invoke(data.ToObject<UserLevelRemovedData>()!);
+                    break;
+                case "user_levels_removed_all":
+                    OnUserLevelsRemovedAll?.Invoke();
                     break;
                 case "density_map_snapshot":
                     OnDensityMapSnapshot?.Invoke(data.ToObject<DensityMapSnapshotData>()!);

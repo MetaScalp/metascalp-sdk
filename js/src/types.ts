@@ -337,6 +337,34 @@ export interface SignalLevelsSnapshotData {
   signalLevels: SignalLevel[];
 }
 
+/** A user (plain) level as sent on the user_level_* WebSocket family. */
+export interface UserLevel {
+  id: number;
+  connectionId: number;
+  ticker: string;
+  price: number;
+  name: string | null;
+  /** ISO-8601 timestamp, or null when unset. */
+  date: string | null;
+  note: string | null;
+  lineThickness: number | null;
+  lineStyle: string | null;
+  lineColor: string | null;
+  textSize: number | null;
+  textColor: string | null;
+  textAlignment: string | null;
+  textStyle: string | null;
+}
+
+/** Sent after every user_level_subscribe (empty list when nothing matches the optional filter). */
+export interface UserLevelsSnapshotData {
+  userLevels: UserLevel[];
+}
+
+export interface UserLevelRemovedData {
+  ids: number[];
+}
+
 export interface SignalLevelPlacedData {
   id: number;
   connectionId: number;
@@ -803,6 +831,13 @@ export interface SocketEventMap {
   signal_level_removed: SignalLevelRemovedData;
   signal_levels_removed_all: Record<string, never>;
   signal_levels_removed_triggered: Record<string, never>;
+  user_level_subscribed: Record<string, never>;
+  user_level_unsubscribed: Record<string, never>;
+  user_levels_snapshot: UserLevelsSnapshotData;
+  user_level_placed: UserLevel;
+  user_level_updated: UserLevel;
+  user_level_removed: UserLevelRemovedData;
+  user_levels_removed_all: Record<string, never>;
   density_map_subscribed: Record<string, never>;
   density_map_unsubscribed: Record<string, never>;
   density_map_snapshot: DensityMapSnapshotData;
