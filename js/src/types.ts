@@ -139,7 +139,7 @@ export interface ComboRequest {
   exchanges?: (string | ComboExchange)[];
   /** Only with `exchanges`: keep only this market on every listed exchange without a market of its own - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
   market?: string;
-  /** An arbitrage pair: one book per leg, buy legs on the left, sell legs on the right. Alone - not with any other field but `activate`. At least 2 legs. */
+  /** An arbitrage pair: one book per leg, in this order (the first leg on the left). Alone - not with any other field but `activate`. At least 2 legs. */
   legs?: ComboLeg[];
 }
 
@@ -151,8 +151,6 @@ export interface ComboLeg {
   market: string;
   /** e.g. "ZKLUSDT"; the terminal finds the venue's own symbol and keeps the quote. */
   ticker: string;
-  /** "buy" (left) or "sell" (right). */
-  side?: 'buy' | 'sell';
 }
 
 /** POST /api/combo answer. `opened`/`existing` come with `legs` (existing: the pair was already open and was brought to the front). */
@@ -167,7 +165,6 @@ export interface ComboLegFailure {
   exchange: string;
   market: string;
   ticker: string;
-  side?: string | null;
   reason: 'no_connection' | 'connection_inactive' | 'connections_loading' | 'exchange_not_supported' | 'instrument_not_found';
 }
 
