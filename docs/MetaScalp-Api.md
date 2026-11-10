@@ -430,8 +430,8 @@ With `Exchanges` the checks run in this order; the first failing one answers and
 `Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
 
 **An arbitrage pair — `Legs`.** The Metabroker web arbitrage screener sends each leg of a pair as `exchange` +
-`market` + `ticker` + `side`; the terminal finds its own connection and instrument for each leg and opens **one combo
-with one book per leg**: buy legs on the left, sell legs on the right. `Legs` is a form of its own: not together with
+`market` + `ticker`; the terminal finds its own connection and instrument for each leg and opens **one combo
+with one book per leg**, in the legs' order: the first leg on the left (send the buy leg first, then the sell leg). `Legs` is a form of its own: not together with
 `Ticker`, `Tickers`, `Connections`, `Exchanges` or `Market`; `Activate` works as above.
 
 | Leg field | Type | Description |
@@ -439,7 +439,6 @@ with one book per leg**: buy legs on the left, sell legs on the right. `Legs` is
 | `exchange` | string | Required. The exchange as `GET /api/connections` names it in `exchange`; case, spaces and dots do not matter (`"gate"` = `"Gate"`, `"cryptocom"` = `"Crypto.com"`). |
 | `market` | string | Required. A market type name, as for `Exchanges`: `spot` (Spot and Stock), `futures` (every futures and perpetual type) or one exact type. |
 | `ticker` | string | Required. The instrument, e.g. `"ZKLUSDT"`. The terminal finds the venue's own symbol (OKX `ZKL-USDT-SWAP`, KuCoin futures `…USDTM`, `1000PEPE`-style contracts). The quote is kept: a USDC leg never opens a USDT instrument, and back. |
-| `side` | string | Optional. `"buy"` (book on the left) or `"sell"` (book on the right). Legs without a side keep their order between the two. |
 
 Each leg opens on the **first active connection** of its exchange and market (connection list order) where its
 ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs.
@@ -453,7 +452,7 @@ connection ids never appear:
 ```json
 { "opened": false,
   "error": "Combo not opened. Bybit Futures ZKLUSDT: no connection.",
-  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell", "reason": "no_connection" } ] }
+  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "reason": "no_connection" } ] }
 ```
 
 | `reason` | When |
@@ -467,7 +466,7 @@ connection ids never appear:
 A bad request answers `400` `{"error": "...", "opened": false, "reason": "bad_request"}` (the first failing check, in
 this order): `Invalid request body. 'legs' cannot be combined with 'ticker', 'tickers', 'connections', 'exchanges' or 'market'.` ·
 `Invalid request body. 'legs' must have at least 2 legs.` · `Invalid request body. Every leg needs 'exchange', 'market' and 'ticker'.` ·
-`Invalid request body. Unknown market '<value>'. Use one of: …` · `Invalid request body. A leg's 'side' must be 'buy' or 'sell'.` ·
+`Invalid request body. Unknown market '<value>'. Use one of: …` ·
 `Invalid request body. Duplicate legs: Binance Spot ZKLUSDT.` (the same exchange, market and ticker twice). A body that
 does not parse (an unknown field in a leg included) answers its usual text with `"reason": "bad_request"` too. If the
 window cannot be created: `400` `{"error": "Failed to open combo layouts.", "opened": false, "reason": "open_failed"}`.
@@ -515,10 +514,10 @@ curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
 
-# An arbitrage pair: buy ZKLUSDT on Binance spot (left), sell it on Bybit futures (right)
+# An arbitrage pair: Binance spot (left), Bybit futures (right)
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
-  -d '{"legs": [{"exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT", "side": "buy"}, {"exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell"}]}'
+  -d '{"legs": [{"exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT"}, {"exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT"}]}'
 
 # Futures only: Binance USDT Futures, then Gate Futures
 curl -X POST http://127.0.0.1:17845/api/combo \
