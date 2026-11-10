@@ -144,7 +144,7 @@ public class ComboRequest
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Market { get; set; }
 
-    /// <summary>An arbitrage pair: one book per leg, buy legs on the left, sell legs on the right. Alone - with no
+    /// <summary>An arbitrage pair: one book per leg, in this order (the first leg on the left). Alone - with no
     /// other field but <see cref="Activate"/>; at least 2 legs. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<ComboLeg>? Legs { get; set; }
@@ -153,12 +153,11 @@ public class ComboRequest
 /// <summary>One <see cref="ComboRequest.Legs"/> item.</summary>
 public class ComboLeg
 {
-    public ComboLeg(string exchange, string market, string ticker, string? side = null)
+    public ComboLeg(string exchange, string market, string ticker)
     {
         Exchange = exchange;
         Market = market;
         Ticker = ticker;
-        Side = side;
     }
 
     /// <summary>As GET /api/connections returns it in «exchange»; case, spaces and dots do not matter.</summary>
@@ -172,10 +171,6 @@ public class ComboLeg
     /// <summary>e.g. "ZKLUSDT"; the terminal finds the venue's own symbol and keeps the quote.</summary>
     [JsonProperty("ticker")]
     public string Ticker { get; set; }
-
-    /// <summary>"buy" (left) or "sell" (right); null = not sent.</summary>
-    [JsonProperty("side", NullValueHandling = NullValueHandling.Ignore)]
-    public string? Side { get; set; }
 }
 
 /// <summary>POST /api/combo answer. Opened / Existing come with <see cref="ComboRequest.Legs"/> (Existing: the pair

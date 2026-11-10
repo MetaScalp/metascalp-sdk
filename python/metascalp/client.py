@@ -223,9 +223,9 @@ class MetaScalpClient:
         ``market`` (only with ``exchanges``) keeps one market on every listed exchange that has
         no market of its own: ``"spot"``, ``"futures"`` or an exact market type name.
         ``legs`` (alone, no ``ticker``) opens an arbitrage pair: one book per leg, e.g.
-        ``[{"exchange": "Binance", "market": "spot", "ticker": "ZKLUSDT", "side": "buy"},
-        {"exchange": "Bybit", "market": "futures", "ticker": "ZKLUSDT", "side": "sell"}]`` - buy legs
-        on the left, sell legs on the right. Answers ``{"status": "ok", "opened": True, "existing": ...}``;
+        ``[{"exchange": "Binance", "market": "spot", "ticker": "ZKLUSDT"},
+        {"exchange": "Bybit", "market": "futures", "ticker": "ZKLUSDT"}]`` - in this order, the first
+        leg on the left. Answers ``{"status": "ok", "opened": True, "existing": ...}``;
         a pair that cannot open raises ``MetaScalpApiError`` with the failing legs and their
         ``reason`` in ``error.body["legs"]``.
         """
