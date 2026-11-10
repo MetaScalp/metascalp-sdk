@@ -4164,7 +4164,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Signal levels</strong> &mdash; subscribe (globally, no data payload) to receive signal-level lifecycle events:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>signal_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving signal-level events</td><td>&mdash;</td></tr>
+          <tr><td><code>signal_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving signal-level events</td><td>optional <code>connectionId</code>, <code>ticker</code> &mdash; narrow the snapshot only (live events stay global)</td></tr>
           <tr><td><code>signal_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>signal_levels_snapshot</code> follows immediately)</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -4180,9 +4180,9 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>User levels</strong> &mdash; subscribe (globally, no data payload) to receive user-level lifecycle events. <code>date</code> is a nullable ISO-8601 timestamp:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>user_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving user-level events</td><td>&mdash;</td></tr>
+          <tr><td><code>user_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving user-level events</td><td>optional <code>connectionId</code>, <code>ticker</code> &mdash; narrow the snapshot only (live events stay global)</td></tr>
           <tr><td><code>user_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
-          <tr><td><code>user_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>user_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>user_levels_snapshot</code> follows immediately)</td><td>&mdash;</td></tr>
           <tr><td><code>user_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
           <tr><td><code>user_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>userLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and (MC-421) <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>, <code>textSize</code>, <code>textColor</code>, <code>textAlignment</code>, <code>textStyle</code> (null when unset). <code>note</code> is a real stored field, distinct from <code>name</code></td></tr>
           <tr><td><code>user_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and the same MC-421 appearance fields</td></tr>

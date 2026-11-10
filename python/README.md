@@ -198,14 +198,14 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | Subscribe | Updates received |
 |-----------|-----------------|
 | `notification_subscribe` | `notification_update` (including custom rows injected via `POST /api/notifications`) |
-| `signal_level_subscribe` | `signal_level_placed/updated/triggered/removed/...` |
-| `user_level_subscribe` | `user_level_placed/updated/removed/...` |
+| `signal_level_subscribe` | `signal_levels_snapshot` (on every subscribe; optional `connectionId` / `ticker` filter), then `signal_level_placed/updated/triggered/removed/...` |
+| `user_level_subscribe` | `user_levels_snapshot` (on every subscribe; optional `connectionId` / `ticker` filter), then `user_level_placed/updated/removed/...` |
 | `ui_subscribe` | `ui_snapshot`, then `ui_update` on UI changes |
 | `density_map_subscribe` | `density_map_snapshot`, then `density_map_update` — MetaBroker order-book walls, one notification per wall |
 | `large_trades_subscribe` | `large_trades_update` — MetaBroker aggregated large trade prints (append-only, no snapshot) |
 | `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (no MetaBroker login needed) |
 
-> **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship.
+> **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship. Level WS subscriptions already have wrappers: `subscribeSignalLevels` / `subscribeUserLevels` (js), `subscribe_signal_levels` / `subscribe_user_levels` (python), `SubscribeSignalLevels` / `SubscribeUserLevels` (dotnet), each with an optional `connectionId` / `ticker` snapshot filter.
 
 > **Mass-subscribe optimization.** `orderbook_subscribe` accepts an optional `fetchSnapshot` field (default `true`). Pass `false` to skip the exchange REST snapshot fetch when subscribing — useful when subscribing to 100+ tickers at once without hitting exchange REST rate limits. Seed state separately via `GET /api/connections/{id}/orderbook-snapshot` when you need it. A later subscriber that wants a snapshot triggers a lazy fetch that fans out to all listeners.
 

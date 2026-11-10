@@ -242,13 +242,33 @@ class MetaScalpSocket:
 
     # ---- Signal level subscriptions ----
 
-    def subscribe_signal_levels(self) -> None:
-        """Subscribe to signal level events."""
-        self._send("signal_level_subscribe", {})
+    def subscribe_signal_levels(
+        self, connection_id: int | None = None, ticker: str | None = None
+    ) -> None:
+        """Subscribe to signal level events.
+
+        Every subscribe receives ``signal_level_subscribed``, then a ``signal_levels_snapshot``,
+        then live events. ``connection_id`` / ``ticker`` narrow the snapshot only.
+        """
+        self._send("signal_level_subscribe", _level_filter(connection_id, ticker))
 
     def unsubscribe_signal_levels(self) -> None:
         """Unsubscribe from signal level events."""
         self._send("signal_level_unsubscribe", {})
+
+    def subscribe_user_levels(
+        self, connection_id: int | None = None, ticker: str | None = None
+    ) -> None:
+        """Subscribe to user (plain) level events.
+
+        Every subscribe receives ``user_level_subscribed``, then a ``user_levels_snapshot``,
+        then live events. ``connection_id`` / ``ticker`` narrow the snapshot only.
+        """
+        self._send("user_level_subscribe", _level_filter(connection_id, ticker))
+
+    def unsubscribe_user_levels(self) -> None:
+        """Unsubscribe from user level events."""
+        self._send("user_level_unsubscribe", {})
 
     # ---- MetaBroker analytics streams ----
     # Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
@@ -473,3 +493,13 @@ class MetaScalpSocket:
                 fn(data)
             except Exception:
                 pass
+
+
+def _level_filter(connection_id: int | None, ticker: str | None) -> dict[str, Any]:
+    """Optional snapshot filter for signal_level_subscribe / user_level_subscribe."""
+    data: dict[str, Any] = {}
+    if connection_id is not None:
+        data["connectionId"] = connection_id
+    if ticker:
+        data["ticker"] = ticker
+    return data

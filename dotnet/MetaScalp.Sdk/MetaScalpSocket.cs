@@ -308,11 +308,37 @@ public class MetaScalpSocket : IDisposable
 
     // ---- Signal level subscriptions ----
 
-    public void SubscribeSignalLevels()
-        => Send("signal_level_subscribe", new { });
+    /// <summary>
+    /// Subscribe to signal level events. Every subscribe receives <c>signal_level_subscribed</c>, then a
+    /// <c>signal_levels_snapshot</c>, then live events. <paramref name="connectionId"/> /
+    /// <paramref name="ticker"/> narrow the snapshot only.
+    /// </summary>
+    public void SubscribeSignalLevels(long? connectionId = null, string? ticker = null)
+        => Send("signal_level_subscribe", LevelFilter(connectionId, ticker));
 
     public void UnsubscribeSignalLevels()
         => Send("signal_level_unsubscribe", new { });
+
+    /// <summary>
+    /// Subscribe to user (plain) level events. Every subscribe receives <c>user_level_subscribed</c>,
+    /// then a <c>user_levels_snapshot</c>, then live events. <paramref name="connectionId"/> /
+    /// <paramref name="ticker"/> narrow the snapshot only.
+    /// </summary>
+    public void SubscribeUserLevels(long? connectionId = null, string? ticker = null)
+        => Send("user_level_subscribe", LevelFilter(connectionId, ticker));
+
+    public void UnsubscribeUserLevels()
+        => Send("user_level_unsubscribe", new { });
+
+    private static Dictionary<string, object> LevelFilter(long? connectionId, string? ticker)
+    {
+        var data = new Dictionary<string, object>();
+        if (connectionId.HasValue)
+            data["connectionId"] = connectionId.Value;
+        if (!string.IsNullOrEmpty(ticker))
+            data["ticker"] = ticker;
+        return data;
+    }
 
     // ---- MetaBroker analytics streams ----
     // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
