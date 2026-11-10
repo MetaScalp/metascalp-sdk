@@ -139,6 +139,36 @@ export interface ComboRequest {
   exchanges?: (string | ComboExchange)[];
   /** Only with `exchanges`: keep only this market on every listed exchange without a market of its own - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
   market?: string;
+  /** An arbitrage pair: one book per leg, buy legs on the left, sell legs on the right. Alone - not with any other field but `activate`. At least 2 legs. */
+  legs?: ComboLeg[];
+}
+
+/** One `legs` item. */
+export interface ComboLeg {
+  /** Exchange as GET /api/connections returns it in `exchange`; case, spaces and dots do not matter. */
+  exchange: string;
+  /** "spot", "futures" or an exact MarketType name, case-insensitive. */
+  market: string;
+  /** e.g. "ZKLUSDT"; the terminal finds the venue's own symbol and keeps the quote. */
+  ticker: string;
+  /** "buy" (left) or "sell" (right). */
+  side?: 'buy' | 'sell';
+}
+
+/** POST /api/combo answer. `opened`/`existing` come with `legs` (existing: the pair was already open and was brought to the front). */
+export interface ComboResponse {
+  status: string;
+  opened?: boolean;
+  existing?: boolean;
+}
+
+/** A `legs` leg that could not open (in `MetaScalpApiError.body.legs`). */
+export interface ComboLegFailure {
+  exchange: string;
+  market: string;
+  ticker: string;
+  side?: string | null;
+  reason: 'no_connection' | 'connection_inactive' | 'connections_loading' | 'exchange_not_supported' | 'instrument_not_found';
 }
 
 /** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */
