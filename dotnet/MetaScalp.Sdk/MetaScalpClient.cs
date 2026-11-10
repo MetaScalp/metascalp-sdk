@@ -89,11 +89,13 @@ public class MetaScalpClient : IDisposable
     /// (one per ticker, in order, validated all-or-nothing). <see cref="ComboRequest.Connections"/> opens exactly
     /// these books, in this order; <see cref="ComboRequest.Exchanges"/> opens every active connection of those
     /// exchanges where the ticker trades (<see cref="ComboRequest.Market"/> narrows them to one market, a
-    /// <see cref="ComboExchange"/> with a market gives one exchange its own). Unset fields are not sent, so older
-    /// terminals still accept the call.
+    /// <see cref="ComboExchange"/> with a market gives one exchange its own). <see cref="ComboRequest.Legs"/> opens an
+    /// arbitrage pair; a pair that cannot open throws <see cref="MetaScalpApiException"/> whose
+    /// <see cref="MetaScalpApiException.Body"/> lists the failing legs and their «reason». Unset fields are not sent, so
+    /// older terminals still accept the call.
     /// </summary>
-    public async Task<StatusResponse> OpenComboAsync(ComboRequest request, CancellationToken ct = default)
-        => await PostAsync<StatusResponse>("/api/combo", request, ct);
+    public async Task<ComboResponse> OpenComboAsync(ComboRequest request, CancellationToken ct = default)
+        => await PostAsync<ComboResponse>("/api/combo", request, ct);
 
     // ---- Order Book Settings ----
 
@@ -277,10 +279,14 @@ public class MetaScalpApiException : Exception
     public int StatusCode { get; }
     public string Path { get; }
 
+    /// <summary>The raw error body (JSON), e.g. «error», «opened» and «legs» from OpenComboAsync with legs.</summary>
+    public string Body { get; }
+
     public MetaScalpApiException(int statusCode, string error, string path)
         : base($"MetaScalp API error {statusCode} on {path}: {error}")
     {
         StatusCode = statusCode;
         Path = path;
+        Body = error;
     }
 }
