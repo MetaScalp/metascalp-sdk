@@ -863,6 +863,32 @@
           <tr><td>A <code>tickers</code> element is null or blank</td><td>unchanged: <code>Combo not opened. Rejected tickers: &lt;names&gt;.</code></td></tr>
           <tr><td>A ticker trades on none of the active connections of a listed exchange (in the item&rsquo;s market, or the request&rsquo;s <code>market</code>, when given; with markets per item the exchange is named with its market: <code>Binance (Futures)</code>)</td><td><code>Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.</code> (every failing pair)</td></tr>
         </table>
+        <p><strong>An arbitrage pair &mdash; <code>legs</code>.</strong> The Metabroker web arbitrage screener sends each leg of a pair as <code>exchange</code> + <code>market</code> + <code>ticker</code> + <code>side</code>; the terminal finds its own connection and instrument for each leg and opens <strong>one combo with one book per leg</strong>: buy legs on the left, sell legs on the right. <code>legs</code> is a form of its own: not together with <code>ticker</code>, <code>tickers</code>, <code>connections</code>, <code>exchanges</code> or <code>market</code>; <code>activate</code> works as above.</p>
+        <table>
+          <tr><th>Leg field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>exchange</code></td><td>string</td><td>yes</td><td>The exchange as <code>GET /api/connections</code> names it in <code>exchange</code>; case, spaces and dots do not matter (<code>"gate"</code> = <code>"Gate"</code>, <code>"cryptocom"</code> = <code>"Crypto.com"</code>).</td></tr>
+          <tr><td><code>market</code></td><td>string</td><td>yes</td><td>A market type name, as for <code>exchanges</code>: <code>spot</code> (Spot and Stock), <code>futures</code> (every futures and perpetual type) or one exact type.</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>The instrument, e.g. <code>"ZKLUSDT"</code>. The terminal finds the venue&rsquo;s own symbol (OKX <code>ZKL-USDT-SWAP</code>, KuCoin futures <code>&hellip;USDTM</code>, <code>1000PEPE</code>-style contracts). The quote is kept: a USDC leg never opens a USDT instrument, and back.</td></tr>
+          <tr><td><code>side</code></td><td>string</td><td>no</td><td><code>"buy"</code> (book on the left) or <code>"sell"</code> (book on the right). Legs without a side keep their order between the two.</td></tr>
+        </table>
+        <p>Each leg opens on the <strong>first active connection</strong> of its exchange and market (connection list order) where its ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs. Charts, open mode, sizes and linking follow the Combo window settings. The <strong>same pair again</strong> brings its open combo to the front (restored if minimized) instead of opening a second one; a double click opens exactly one.</p>
+        <pre>{ "legs": [
+    { "exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT", "side": "buy" },
+    { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell" }
+] }</pre>
+        <p>Answers. <code>200</code>: <code>{ "status": "ok", "opened": true, "existing": false }</code> (<code>existing: true</code> = the pair was already open and was brought to the front). A leg that cannot open: <code>400</code>, nothing opens, <strong>every</strong> failing leg listed with its reason; connection ids never appear:</p>
+        <pre>{ "opened": false,
+  "error": "Combo not opened. Bybit Futures ZKLUSDT: no connection.",
+  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell", "reason": "no_connection" } ] }</pre>
+        <table>
+          <tr><th>reason</th><th>When</th></tr>
+          <tr><td><code>no_connection</code></td><td>No saved connection of this exchange and market.</td></tr>
+          <tr><td><code>connection_inactive</code></td><td>A connection is saved but none is connected (disconnected, wrong or expired key, no futures permission, &hellip;).</td></tr>
+          <tr><td><code>connections_loading</code></td><td>A connection of this exchange and market is still connecting, or MetaScalp has just started and has not finished connecting the auto-connect connections. Try again in a few seconds.</td></tr>
+          <tr><td><code>exchange_not_supported</code></td><td>MetaScalp has no such exchange, or the exchange has no such market.</td></tr>
+          <tr><td><code>instrument_not_found</code></td><td>The ticker is not an instrument of the active connections of this exchange and market (delisted, not listed, or only with another quote).</td></tr>
+        </table>
+        <p>A bad request answers <code>400</code> <code>{ "error": "...", "opened": false, "reason": "bad_request" }</code> (the first failing check, in this order): <code>Invalid request body. 'legs' cannot be combined with 'ticker', 'tickers', 'connections', 'exchanges' or 'market'.</code> &middot; <code>Invalid request body. 'legs' must have at least 2 legs.</code> &middot; <code>Invalid request body. Every leg needs 'exchange', 'market' and 'ticker'.</code> &middot; <code>Invalid request body. Unknown market '&lt;value&gt;'. Use one of: &hellip;</code> &middot; <code>Invalid request body. A leg's 'side' must be 'buy' or 'sell'.</code> &middot; <code>Invalid request body. Duplicate legs: Binance Spot ZKLUSDT.</code> (the same exchange, market and ticker twice). A body that does not parse (an unknown field in a leg included) answers its usual text with <code>"reason": "bad_request"</code> too. If the window cannot be created: <code>400</code> <code>{ "error": "Failed to open combo layouts.", "opened": false, "reason": "open_failed" }</code>.</p>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -880,6 +906,10 @@
         <div class="form-group">
           <label>Market (optional, only with Exchanges)</label>
           <input type="text" id="f-combo-market" value="" placeholder="e.g. futures">
+        </div>
+        <div class="form-group">
+          <label>Legs (optional, alone: Exchange:market:ticker:side, separated by ";"; side is buy / sell)</label>
+          <input type="text" id="f-combo-legs" value="" placeholder="e.g. Binance:spot:ZKLUSDT:buy; Bybit:futures:ZKLUSDT:sell">
         </div>
       </div>
       <div class="actions-row">
@@ -4527,6 +4557,8 @@
       <tr><td><code>/api/combo</code></td><td>Unknown <code>market</code></td><td>400</td><td><code>Invalid request body. Unknown market '{market}'. Use one of: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td><code>market</code> without <code>exchanges</code></td><td>400</td><td><code>Invalid request body. 'market' is used only together with 'exchanges'.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Ticker not traded on a listed exchange</td><td>400</td><td><code>Combo not opened. Not traded: {ticker} on {exchanges}; ...</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>legs</code>: a leg cannot open</td><td>400</td><td><code>{ "opened": false, "error": "Combo not opened. {leg}: {reason}; ...", "legs": [{ exchange, market, ticker, side, reason }] }</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>legs</code>: bad request</td><td>400</td><td><code>{ "opened": false, "error": "...", "reason": "bad_request" }</code></td></tr>
       <tr><td><code>/api/connections/{id}</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Invalid connection ID</td><td>400</td><td><code>Invalid connection ID</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
@@ -4886,6 +4918,14 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       .map(s => s.includes(':') ? { exchange: s.split(':')[0].trim(), market: s.split(':')[1].trim() } : s);
     const marketText = document.getElementById('f-combo-market').value.trim();
     if (marketText) body.market = marketText;
+    const legsText = document.getElementById('f-combo-legs').value.trim();
+    if (legsText) {
+      for (const key of Object.keys(body)) delete body[key];
+      body.legs = legsText.split(';').map(s => s.trim()).filter(s => s).map(s => {
+        const [exchange, market, ticker, side] = s.split(':').map(p => p.trim());
+        return side ? { exchange, market, ticker, side } : { exchange, market, ticker };
+      });
+    }
     try {
       const { status, data, ms } = await apiCall('POST', '/api/combo', body);
       showResponse('combo', status, statusClass(status), data, ms);

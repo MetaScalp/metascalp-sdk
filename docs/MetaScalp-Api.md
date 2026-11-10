@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order; `Legs` opens an arbitrage pair, one book per leg) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -429,6 +429,49 @@ With `Exchanges` the checks run in this order; the first failing one answers and
 
 `Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
 
+**An arbitrage pair — `Legs`.** The Metabroker web arbitrage screener sends each leg of a pair as `exchange` +
+`market` + `ticker` + `side`; the terminal finds its own connection and instrument for each leg and opens **one combo
+with one book per leg**: buy legs on the left, sell legs on the right. `Legs` is a form of its own: not together with
+`Ticker`, `Tickers`, `Connections`, `Exchanges` or `Market`; `Activate` works as above.
+
+| Leg field | Type | Description |
+|-----------|------|-------------|
+| `exchange` | string | Required. The exchange as `GET /api/connections` names it in `exchange`; case, spaces and dots do not matter (`"gate"` = `"Gate"`, `"cryptocom"` = `"Crypto.com"`). |
+| `market` | string | Required. A market type name, as for `Exchanges`: `spot` (Spot and Stock), `futures` (every futures and perpetual type) or one exact type. |
+| `ticker` | string | Required. The instrument, e.g. `"ZKLUSDT"`. The terminal finds the venue's own symbol (OKX `ZKL-USDT-SWAP`, KuCoin futures `…USDTM`, `1000PEPE`-style contracts). The quote is kept: a USDC leg never opens a USDT instrument, and back. |
+| `side` | string | Optional. `"buy"` (book on the left) or `"sell"` (book on the right). Legs without a side keep their order between the two. |
+
+Each leg opens on the **first active connection** of its exchange and market (connection list order) where its
+ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs.
+Charts, open mode, sizes and linking follow the Combo window settings. The **same pair again** brings its open combo to
+the front (restored if minimized) instead of opening a second one; a double click opens exactly one.
+
+`200`: `{"status": "ok", "opened": true, "existing": false}` (`existing: true` = the pair was already open and was
+brought to the front). A leg that cannot open: `400`, nothing opens, **every** failing leg listed with its reason;
+connection ids never appear:
+
+```json
+{ "opened": false,
+  "error": "Combo not opened. Bybit Futures ZKLUSDT: no connection.",
+  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell", "reason": "no_connection" } ] }
+```
+
+| `reason` | When |
+|----------|------|
+| `no_connection` | No saved connection of this exchange and market. |
+| `connection_inactive` | A connection is saved but none is connected (disconnected, wrong or expired key, no futures permission, …). |
+| `connections_loading` | A connection of this exchange and market is still connecting, or MetaScalp has just started and has not finished connecting the auto-connect connections. Try again in a few seconds. |
+| `exchange_not_supported` | MetaScalp has no such exchange, or the exchange has no such market. |
+| `instrument_not_found` | The ticker is not an instrument of the active connections of this exchange and market (delisted, not listed, or only with another quote). |
+
+A bad request answers `400` `{"error": "...", "opened": false, "reason": "bad_request"}` (the first failing check, in
+this order): `Invalid request body. 'legs' cannot be combined with 'ticker', 'tickers', 'connections', 'exchanges' or 'market'.` ·
+`Invalid request body. 'legs' must have at least 2 legs.` · `Invalid request body. Every leg needs 'exchange', 'market' and 'ticker'.` ·
+`Invalid request body. Unknown market '<value>'. Use one of: …` · `Invalid request body. A leg's 'side' must be 'buy' or 'sell'.` ·
+`Invalid request body. Duplicate legs: Binance Spot ZKLUSDT.` (the same exchange, market and ticker twice). A body that
+does not parse (an unknown field in a leg included) answers its usual text with `"reason": "bad_request"` too. If the
+window cannot be created: `400` `{"error": "Failed to open combo layouts.", "opened": false, "reason": "open_failed"}`.
+
 **Example**
 
 ```bash
@@ -471,6 +514,11 @@ curl -X POST http://127.0.0.1:17845/api/combo \
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
+
+# An arbitrage pair: buy ZKLUSDT on Binance spot (left), sell it on Bybit futures (right)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"legs": [{"exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT", "side": "buy"}, {"exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "side": "sell"}]}'
 
 # Futures only: Binance USDT Futures, then Gate Futures
 curl -X POST http://127.0.0.1:17845/api/combo \

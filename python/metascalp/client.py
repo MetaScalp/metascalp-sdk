@@ -12,10 +12,11 @@ HTTP_PORT_END = 17855
 class MetaScalpApiError(Exception):
     """Raised when the MetaScalp API returns an error response."""
 
-    def __init__(self, status: int, error: str, path: str):
+    def __init__(self, status: int, error: str, path: str, body: Any = None):
         self.status = status
         self.error = error
         self.path = path
+        self.body = body  # the parsed error body, e.g. {"error", "opened", "legs"} from open_combo(legs=...)
         super().__init__(f"MetaScalp API error {status} on {path}: {error}")
 
 
@@ -65,7 +66,7 @@ class MetaScalpClient:
         async with session.get(f"{self.base_url}{path}") as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _post(self, path: str, body: Any) -> Any:
@@ -75,7 +76,7 @@ class MetaScalpClient:
         ) as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _put(self, path: str, body: dict) -> Any:
@@ -83,7 +84,7 @@ class MetaScalpClient:
         async with session.put(f"{self.base_url}{path}", json=body) as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _delete(self, path: str) -> Any:
@@ -91,7 +92,7 @@ class MetaScalpClient:
         async with session.delete(f"{self.base_url}{path}") as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     # ---- Discovery ----
@@ -207,6 +208,7 @@ class MetaScalpClient:
         connections: Optional[List[int]] = None,
         exchanges: Optional[List[Union[str, Dict[str, Optional[str]]]]] = None,
         market: Optional[str] = None,
+        legs: Optional[List[Dict[str, str]]] = None,
     ) -> dict:
         """Open a combo layout.
 
@@ -220,6 +222,12 @@ class MetaScalpClient:
         ``{"exchange": "Binance", "market": "futures"}`` giving that exchange its own market.
         ``market`` (only with ``exchanges``) keeps one market on every listed exchange that has
         no market of its own: ``"spot"``, ``"futures"`` or an exact market type name.
+        ``legs`` (alone, no ``ticker``) opens an arbitrage pair: one book per leg, e.g.
+        ``[{"exchange": "Binance", "market": "spot", "ticker": "ZKLUSDT", "side": "buy"},
+        {"exchange": "Bybit", "market": "futures", "ticker": "ZKLUSDT", "side": "sell"}]`` - buy legs
+        on the left, sell legs on the right. Answers ``{"status": "ok", "opened": True, "existing": ...}``;
+        a pair that cannot open raises ``MetaScalpApiError`` with the failing legs and their
+        ``reason`` in ``error.body["legs"]``.
         """
         body: dict = {}
         if not activate:
@@ -234,6 +242,8 @@ class MetaScalpClient:
             body["exchanges"] = exchanges  # only sent when set, like connections
         if market is not None:
             body["market"] = market  # only sent when set, like connections
+        if legs is not None:
+            body["legs"] = legs  # only sent when set, like connections
         return await self._post("/api/combo", body)
 
     async def close_last_tab(self) -> dict:
