@@ -438,7 +438,7 @@ with one book per leg**, in the legs' order: the first leg on the left (send the
 |-----------|------|-------------|
 | `exchange` | string | Required. The exchange as `GET /api/connections` names it in `exchange`; case, spaces and dots do not matter (`"gate"` = `"Gate"`, `"cryptocom"` = `"Crypto.com"`). |
 | `market` | string | Required. A market type name, as for `Exchanges`: `spot` (Spot and Stock), `futures` (every futures and perpetual type) or one exact type. |
-| `ticker` | string | Required. The instrument, e.g. `"ZKLUSDT"`. The terminal finds the venue's own symbol (OKX `ZKL-USDT-SWAP`, KuCoin futures `…USDTM`, `1000PEPE`-style contracts). The quote is kept: a USDC leg never opens a USDT instrument, and back. |
+| `ticker` | string | Required. The instrument, e.g. `"ZKLUSDT"`. The terminal finds the venue's own symbol (OKX `ZKL-USDT-SWAP`, KuCoin futures `…USDTM`, `1000PEPE`-style contracts). The quote is kept: a USDT leg opens only a USDT instrument, a USDC leg only a USDC one, and a coin-margined USD contract (Binance COIN-M, Bybit Inverse) never stands in for either. |
 
 Each leg opens on the **first active connection** of its exchange and market (connection list order) where its
 ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs.
