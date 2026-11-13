@@ -310,7 +310,9 @@ class MetaScalpClient:
         a row saved before the field existed reads back null and behaves as Linear).
 
         Any settings key is passed straight through, e.g.
-        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip).
+        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip);
+        ``AutoCenterThreshold=5`` sets auto-centering (whole 0..10, 0 = off; outside the range -> HTTP 400).
+        The legacy ``Autoscroll`` still works: False sets the threshold to 0, True while it is 0 sets the default.
         """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",

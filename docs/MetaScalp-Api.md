@@ -2094,6 +2094,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "BasicLevelsFactor": 50.0,
     "NotificationSignalLevelTriggered": true,
     "Autoscroll": false,
+    "AutoCenterThreshold": 0,
     "FullDepth": true,
     "TicksLargeAmount": 0.0,
     "TicksLargeAmountUsd": 0.0,
@@ -2147,7 +2148,8 @@ Settings field reference:
 | `SlimLevelsFactor` | decimal | Factor for slim price levels |
 | `BasicLevelsFactor` | decimal | Factor for basic price levels |
 | `NotificationSignalLevelTriggered` | boolean | Notify when a signal level is triggered |
-| `Autoscroll` | boolean | Auto-scroll order book to current price |
+| `Autoscroll` | boolean | Legacy auto-centering flag, kept for old clients: reads `true` when `AutoCenterThreshold` > 0; writing `false` sets `AutoCenterThreshold` = 0, writing `true` while it is 0 sets the default |
+| `AutoCenterThreshold` | integer | Auto-centering threshold, whole `0`–`10`: `0` = off; `N` = the book re-centres once the spread is more than (10 − N)/10 of the way from the centre to the window edge. Outside the range or a fraction → `400`, nothing written |
 | `FullDepth` | boolean | Show full order book depth |
 | `SizeType` | string | Size display type: `"Coin"`, `"Usd"` |
 | `SoundNotification` | boolean | Enable sound notifications |
