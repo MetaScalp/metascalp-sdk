@@ -261,6 +261,49 @@ class MetaScalpClient:
         """Make ONE tab (by id) the selected tab of its window. Returns {"tabId", "activated", "outcome"}."""
         return await self._post(f"/api/ui/tabs/{tab_id}/activate", {})
 
+    async def open_window(
+        self,
+        window_type: str,
+        top: float | None = None,
+        left: float | None = None,
+        height: float | None = None,
+        width: float | None = None,
+        monitor: int | None = None,
+        template_id: int | None = None,
+        connection_id: int | None = None,
+        ticker: str | None = None,
+    ) -> dict:
+        """Open ONE terminal window (POST /api/ui/windows); returns where it landed.
+
+        Geometry omitted: the window lands where it does today. ``template_id`` is screener-only. A ``chart`` or
+        ``tradingViewChart`` given ``connection_id`` + ``ticker`` (together) opens already showing that instrument
+        (the ticker is found by search on the connection, e.g. "ETH" finds ETHUSDT); without them it opens empty.
+        """
+        body: dict = {"windowType": window_type}
+        optional = {
+            "top": top,
+            "left": left,
+            "height": height,
+            "width": width,
+            "monitor": monitor,
+            "templateId": template_id,
+            "connectionId": connection_id,
+            "ticker": ticker,
+        }
+        body.update({k: v for k, v in optional.items() if v is not None})  # only set fields are sent
+        return await self._post("/api/ui/windows", body)
+
+    async def set_document_ticker(self, external_id: str, ticker: str, connection_id: int | None = None) -> dict:
+        """Switch ONE open order book or chart (``externalId`` from GET /api/ui/state) to a ticker.
+
+        Works as the user's own pick in its header: an unlinked or empty document takes it (give ``connection_id``
+        for an empty one), a linked one moves its whole link group. The link number never changes.
+        """
+        body: dict = {"ticker": ticker}
+        if connection_id is not None:
+            body["connectionId"] = connection_id
+        return await self._put(f"/api/ui/documents/{external_id}/ticker", body)
+
     # ---- Signal Levels ----
 
     async def get_signal_levels(self, connection_id: int, ticker: str) -> dict:
