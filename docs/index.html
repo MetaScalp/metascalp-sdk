@@ -3843,7 +3843,7 @@
         <p>Re-points <strong>one</strong> addressed panel (order book or chart) to a different market.
         It works as the user's own pick in the panel's header, for <strong>any</strong> open panel: one in no link group, an
         empty one (no instrument yet &mdash; give <code>connectionId</code>) and a linked one. A linked panel moves its <strong>whole
-        link group</strong> (every book and chart of that link number), as a manual pick does; the link number never changes. You address
+        link group</strong> (every book and chart of that link number), as a manual pick does, and the tab holding it takes the new ticker when the tab is named after the old one (a combo tab; a tab the user named keeps its name); the link number never changes. You address
         the panel, not the group as <code>POST /api/change-ticker</code> does. <code>{externalId}</code> is the document's GUID. (MC-1086; before it only a
         panel in a link group took the change, and its group's charts stayed behind.)</p>
         <p><strong>Request body:</strong></p>

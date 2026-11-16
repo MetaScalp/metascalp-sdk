@@ -1823,7 +1823,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 
 #### Re-ticker a Panel
 
-Re-points one addressed panel (order book or chart) to a different market, exactly as the user's own pick in the panel's header does. It works for **any open panel**: one in no link group, an empty one (no instrument yet — give `connectionId`), and a linked one. A panel in a link group moves its **whole group** with it (every book and chart of that link number), as a manual pick does; the link number itself never changes. Unlike `POST /api/change-ticker` you address the panel, not the group. `{externalId}` is the document's GUID (from `GET /api/ui/state`).
+Re-points one addressed panel (order book or chart) to a different market, exactly as the user's own pick in the panel's header does. It works for **any open panel**: one in no link group, an empty one (no instrument yet — give `connectionId`), and a linked one. A panel in a link group moves its **whole group** with it (every book and chart of that link number), as a manual pick does, and the tab holding it takes the new ticker when the tab is named after the old one (a combo tab, `SOLUSDT` or `SOLUSDT / BTCUSDT`; a tab the user named keeps its name). The link number itself never changes. Unlike `POST /api/change-ticker` you address the panel, not the group. `{externalId}` is the document's GUID (from `GET /api/ui/state`).
 
 ```
 PUT http://127.0.0.1:{port}/api/ui/documents/{externalId}/ticker
