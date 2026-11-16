@@ -556,7 +556,10 @@ public class OrderBookSettingsDto
     public decimal? SlimLevelsFactor { get; set; }
     public decimal? BasicLevelsFactor { get; set; }
     public bool? NotificationSignalLevelTriggered { get; set; }
+    /// <summary>Legacy: true when AutoCenterThreshold &gt; 0; false sets it to 0, true while it is 0 sets the default.</summary>
     public bool? Autoscroll { get; set; }
+    /// <summary>Auto-centering threshold, whole 0..10 (0 = off; N = re-centre beyond (10 - N)/10 of the half window height).</summary>
+    public int? AutoCenterThreshold { get; set; }
     public bool? FullDepth { get; set; }
 
     // Ticks

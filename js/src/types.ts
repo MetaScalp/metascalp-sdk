@@ -438,7 +438,10 @@ export interface OrderBookSettings {
     slimLevelsFactor?: number;
     basicLevelsFactor?: number;
     notificationSignalLevelTriggered?: boolean;
+    /** Legacy: true when autoCenterThreshold > 0; false sets it to 0, true while it is 0 sets the default. */
     autoscroll?: boolean;
+    /** Auto-centering threshold, whole 0..10 (0 = off; N = re-centre beyond (10 - N)/10 of the half window height). */
+    autoCenterThreshold?: number;
     fullDepth?: boolean;
 
     // Ticks
