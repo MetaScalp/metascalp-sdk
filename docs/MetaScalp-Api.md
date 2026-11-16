@@ -1818,7 +1818,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 |-----------|-------------|---------------|
 | Non-GUID `externalId` | `400` | `Invalid document ID` |
 | Missing `linkNumber` | `400` | `Request body must set 'linkNumber'.` |
-| Non-positive `linkNumber` | `400` | `linkNumber must be a positive binding-group id (1-500, or 9999 to cancel).` |
+| `linkNumber` outside 1-500 and not 9999 (9999 removes the document's link, as the link menu's cancel item does) | `400` | `linkNumber must be a binding-group id 1-500, or 9999 to cancel the link.` |
 | Unknown document | `404` | `Document {externalId} not found` |
 
 #### Re-ticker a Panel
@@ -3522,7 +3522,7 @@ This means you can pass symbols in **any case** and with or without common separ
 
 **Which market type should I use?** If you are unsure, use the `TickerPattern` approach (Option A) instead — the `.p` suffix automatically resolves to the correct futures type for the given exchange. If you must use explicit fields, the most common choice for perpetual futures is `2` (UsdtFutures).
 
-> **Note:** When the requested market type is not Spot and no exact connection match is found, MetaScalp falls back to any non-Spot connection on the same exchange.
+> **Note:** When no connection of exactly the requested market type is open, MetaScalp takes the first connection (in the user's connection order) of the same market group on that exchange: `Futures` = any futures or perpetual type (`UsdtFutures`, `CoinFutures`, `InverseFutures`, `UsdtPerpetual`, `UsdcPerpetual`), `Spot` = Spot or Stock; every other market only itself. It never falls back to another market class (an Options connection never answers a Futures request). The exact ticker is matched first; on an Options connection a search hit with another name is not accepted.
 
 ## ClusterTimeFrame values
 

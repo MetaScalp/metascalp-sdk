@@ -4497,7 +4497,7 @@
           <tr><td>9</td><td>Stock</td><td>Stock / equity markets</td></tr>
         </table>
         <div class="note">Unsure which market type to use? Use the <strong>ticker pattern</strong> approach instead &mdash; the <code>.p</code> suffix auto-resolves to the right futures type. For explicit fields, <code>2</code> (UsdtFutures) is the most common choice for perpetual futures.</div>
-        <div class="note" style="margin-top:8px;">When the requested market is not Spot and no exact match is found, MetaScalp falls back to any non-Spot connection on the same exchange.</div>
+        <div class="note" style="margin-top:8px;">When no connection of exactly the requested market type is open, MetaScalp takes the first connection (in the user's connection order) of the same market group on that exchange: <code>Futures</code> = any futures or perpetual type (<code>UsdtFutures</code>, <code>CoinFutures</code>, <code>InverseFutures</code>, <code>UsdtPerpetual</code>, <code>UsdcPerpetual</code>), <code>Spot</code> = Spot or Stock; every other market only itself. It never falls back to another market class (an Options connection never answers a Futures request). The exact ticker is matched first; on an Options connection a search hit with another name is not accepted.</div>
       </div>
     </div>
   </div>
@@ -4591,7 +4591,7 @@
       <tr><td><code>POST /api/ui/windows</code></td><td>Unknown screener templateId</td><td>404</td><td><code>Screener template {templateId} not found</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Missing linkNumber</td><td>400</td><td><code>Request body must set 'linkNumber'.</code></td></tr>
-      <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-positive linkNumber</td><td>400</td><td><code>linkNumber must be a positive binding-group id (1-500, or 9999 to cancel).</code></td></tr>
+      <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>linkNumber outside 1-500 and not 9999 (9999 removes the document's link, as the link menu's cancel item does)</td><td>400</td><td><code>linkNumber must be a binding-group id 1-500, or 9999 to cancel the link.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Unknown document</td><td>404</td><td><code>Document {externalId} not found</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Missing ticker</td><td>400</td><td><code>Request body must set 'ticker'.</code></td></tr>
