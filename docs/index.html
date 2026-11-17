@@ -3861,7 +3861,8 @@
         <p><strong>Errors:</strong> a non-GUID <code>externalId</code> &rarr; <code>400 Invalid document ID</code>;
         a missing <code>ticker</code> &rarr; <code>400</code>; an unknown document &rarr;
         <code>404 Document {externalId} not found</code>; a document with no current connection and no
-        supplied <code>connectionId</code> &rarr; <code>400</code>; a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>.</p>
+        supplied <code>connectionId</code> &rarr; <code>400</code>; a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>;
+        an open panel that did not take the ticker (its picker found no such instrument, so it keeps the one it shows) &rarr; <code>400 Document {externalId} did not take ticker '{ticker}' on connection {connectionId}</code>.</p>
       </div>
       <div class="form-grid triple">
         <div class="form-group">
@@ -4602,6 +4603,7 @@
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Missing ticker</td><td>400</td><td><code>Request body must set 'ticker'.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>No connection to inherit</td><td>400</td><td><code>connectionId is required: the document has no current connection to inherit.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Ticker not on the connection</td><td>400</td><td><code>Ticker '{ticker}' not found on connection {connectionId}</code></td></tr>
+      <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>The open panel did not take the ticker</td><td>400</td><td><code>Document {externalId} did not take ticker '{ticker}' on connection {connectionId}</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Unknown document</td><td>404</td><td><code>Document {externalId} not found</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>

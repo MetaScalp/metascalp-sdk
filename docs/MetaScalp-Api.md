@@ -1855,6 +1855,7 @@ Asynchronous with respect to the UI thread: the API resolves the document and th
 | Missing `ticker` | `400` | `Request body must set 'ticker'.` |
 | No connection to inherit | `400` | `connectionId is required: the document has no current connection to inherit.` |
 | Ticker not found on the connection | `400` | `Ticker '{ticker}' not found on connection {connectionId}` |
+| The open panel did not take the ticker (its picker found no such instrument; it keeps the one it shows) | `400` | `Document {externalId} did not take ticker '{ticker}' on connection {connectionId}` |
 | Unknown document | `404` | `Document {externalId} not found` |
 
 #### Window addressing
