@@ -218,6 +218,128 @@ export interface ActivateTabResponse {
   outcome: number;
 }
 
+/** MC-1129: POST /api/ui/quick-layouts, the «+» menu's quick layout. An unknown field answers 400. */
+export interface QuickLayoutRequest {
+  /** 1-4, the picker's rows. */
+  rows: number;
+  /** 1-20, the picker's columns. */
+  columns: number;
+  /** Each book with its own linked chart. Omitted: the picker's saved «With charts» choice (never changed by the route). */
+  withCharts?: boolean;
+  /** An open workspace window (GET /api/ui/state): the grid becomes a new tab there. Omitted: a new workspace window. */
+  windowId?: number;
+  /** Omitted: the menu's name (Tab N). */
+  tabName?: string;
+}
+
+/** One cell of a quick layout, in grid order (row by row, 0-based). */
+export interface QuickLayoutCell {
+  row: number;
+  column: number;
+  /** The order book's externalId; fill it with `setDocumentTicker`, its linked chart follows. */
+  orderBook: string;
+  /** The book's linked chart's externalId; null without charts. */
+  chart: string | null;
+}
+
+/** Response from `MetaScalpClient.openQuickLayout`. */
+export interface QuickLayoutResponse {
+  windowId: number;
+  tabId: number;
+  tabName: string | null;
+  newWindow: boolean;
+  rows: number;
+  columns: number;
+  withCharts: boolean;
+  cells: QuickLayoutCell[];
+}
+
+/** MC-1129: POST /api/ui/combo-charts, the order book's «Open combo chart». */
+export interface ComboChartRequest {
+  connectionId: number;
+  /** Found by search on the connection, e.g. BTCUSDT. */
+  ticker: string;
+}
+
+/** Response from `MetaScalpClient.openComboChart`: one window, one tab named after the ticker, 4 charts. */
+export interface ComboChartResponse {
+  windowId: number;
+  tabId: number | null;
+  connectionId: number;
+  ticker: string;
+  /** The 4 charts' externalIds in slot order. */
+  charts: string[];
+}
+
+export interface GetReplayAvailabilityOptions {
+  /** Range start: Unix milliseconds or an ISO 8601 time (UTC when it names no zone). Omitted with `to`: the last 31 days up to now. */
+  from?: string | number;
+  /** Range end, same format. Omitted = now. At most 93 days after `from`. */
+  to?: string | number;
+}
+
+/** Response from `MetaScalpClient.getReplayAvailability`. A market the replay does not record: supported = false with a reason, nothing else. */
+export interface ReplayAvailabilityResponse {
+  connectionId: number;
+  ticker: string;
+  supported: boolean;
+  reason?: string;
+  /** The range read, Unix milliseconds. */
+  from?: number;
+  to?: number;
+  /** The shortest and the longest replay. */
+  minLengthMs?: number;
+  maxLengthMs?: number;
+  /** The player bar's speeds. */
+  speeds?: number[];
+  /** Starts of the recorded hours (Unix milliseconds), oldest first. */
+  hours?: number[];
+  /** Runs of consecutive recorded hours, never past now. */
+  periods?: { from: number; to: number }[];
+}
+
+/** MC-1129: POST /api/ui/documents/{externalId}/replay, the replay picker's Play. */
+export interface StartReplayRequest {
+  /** Period start: Unix milliseconds or ISO 8601. */
+  from: string | number;
+  /** Period end: 1 minute to 24 hours after `from`, not in the future. */
+  to: string | number;
+  /** 0.25, 0.5, 1, 2, 4 or 10; default 1. */
+  speed?: number;
+  /** Default true = it plays once downloaded; false = paused at the start. */
+  autoPlay?: boolean;
+}
+
+/** MC-1129: POST /api/ui/documents/{externalId}/replay/control. Give at least one. */
+export interface ControlReplayRequest {
+  /** true = play, false = pause. */
+  playing?: boolean;
+  /** 0.25, 0.5, 1, 2, 4 or 10. */
+  speed?: number;
+  /** A moment inside the period: Unix milliseconds or ISO 8601. */
+  seek?: string | number;
+}
+
+/** The replay of an order book as its player bar shows it. Times in Unix milliseconds. */
+export interface ReplayState {
+  state: 'loading' | 'playing' | 'paused' | 'ended' | 'failed';
+  /** On failed: the bar's line («Nothing recorded in this range», «Replay failed: …»); otherwise null. */
+  reason: string | null;
+  /** The replay clock. */
+  time: number;
+  speed: number;
+  from: number;
+  to: number;
+  /** Download progress, 0-1. */
+  progress: number;
+}
+
+/** Response from `MetaScalpClient.stopReplay`. */
+export interface StopReplayResponse {
+  stopped: boolean;
+  externalId: string;
+}
+
 // ============ Socket Types ============
 
 export interface OrderUpdateData {

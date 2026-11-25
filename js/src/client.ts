@@ -39,6 +39,16 @@ import type {
   AppearanceTextStyleUpdate,
   ChartSettings,
   ChartSettingsResponse,
+  QuickLayoutRequest,
+  QuickLayoutResponse,
+  ComboChartRequest,
+  ComboChartResponse,
+  GetReplayAvailabilityOptions,
+  ReplayAvailabilityResponse,
+  StartReplayRequest,
+  ControlReplayRequest,
+  ReplayState,
+  StopReplayResponse,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -169,6 +179,67 @@ export class MetaScalpClient {
    */
   async setDocumentTicker(externalId: string, request: SetDocumentTickerRequest): Promise<{ status: string }> {
     return this.put(`/api/ui/documents/${encodeURIComponent(externalId)}/ticker`, request);
+  }
+
+  // ---- Quick layout, combo chart, order book replay ----
+
+  /**
+   * Opens a quick layout, as the «+» menu does: a tab with a grid of empty order books (rows 1-4, columns 1-20),
+   * each with a linked chart when `withCharts` is on. Resolves to the window, the tab and its documents by cell;
+   * fill a book with `setDocumentTicker`. 400 on a field out of range, 404 for a `windowId` that is not open.
+   */
+  async openQuickLayout(request: QuickLayoutRequest): Promise<QuickLayoutResponse> {
+    return this.post('/api/ui/quick-layouts', request);
+  }
+
+  /**
+   * Opens a combo chart, as the order book's «Open combo chart» does: one window, one tab named after the ticker,
+   * 4 charts. GET /api/ui/state marks the window `isComboChart: true`.
+   */
+  async openComboChart(request: ComboChartRequest): Promise<ComboChartResponse> {
+    return this.post('/api/ui/combo-charts', request);
+  }
+
+  /**
+   * Is the market recorded by the order book replay, and which hours / periods: what the replay picker shows.
+   * Without `options` the last 31 days up to now; at most 93 days. The replay service unreachable answers 502.
+   */
+  async getReplayAvailability(
+    connectionId: number,
+    ticker: string,
+    options: GetReplayAvailabilityOptions = {},
+  ): Promise<ReplayAvailabilityResponse> {
+    const qs: string[] = [`Ticker=${encodeURIComponent(ticker)}`];
+    if (options.from !== undefined) qs.push(`From=${encodeURIComponent(String(options.from))}`);
+    if (options.to !== undefined) qs.push(`To=${encodeURIComponent(String(options.to))}`);
+    return this.get(`/api/connections/${connectionId}/replay/availability?${qs.join('&')}`);
+  }
+
+  /**
+   * Plays a recorded period over ONE open order book (its `externalId`), as the replay picker's Play does; a replay
+   * already shown there is replaced. 400 for a chart, a book without the History button or a period with nothing
+   * recorded; 404 for an unknown document or a book whose tab is not shown.
+   */
+  async startReplay(externalId: string, request: StartReplayRequest): Promise<ReplayState> {
+    return this.post(`/api/ui/documents/${encodeURIComponent(externalId)}/replay`, request);
+  }
+
+  /** The replay of an order book as its player bar shows it. 409 when no replay is running there. */
+  async getReplayStatus(externalId: string): Promise<ReplayState> {
+    return this.get(`/api/ui/documents/${encodeURIComponent(externalId)}/replay`);
+  }
+
+  /**
+   * The player bar's play / pause, speed menu and strip click; give at least one field. Resolves to the state after
+   * the change. 409 while the period still downloads (the error body carries the state in `replay`) or with no replay.
+   */
+  async controlReplay(externalId: string, request: ControlReplayRequest): Promise<ReplayState> {
+    return this.post(`/api/ui/documents/${encodeURIComponent(externalId)}/replay/control`, request);
+  }
+
+  /** The player bar's close button: the book is live again. 409 when no replay is running there. */
+  async stopReplay(externalId: string): Promise<StopReplayResponse> {
+    return this.post(`/api/ui/documents/${encodeURIComponent(externalId)}/replay/stop`, {});
   }
 
   // ---- Order Book Settings ----
