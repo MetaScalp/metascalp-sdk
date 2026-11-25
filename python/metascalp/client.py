@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import aiohttp
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import quote
 
 HTTP_PORT_START = 17845
 HTTP_PORT_END = 17855
@@ -313,6 +314,12 @@ class MetaScalpClient:
         ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip);
         ``AutoCenterThreshold=5`` sets auto-centering (whole 0..10, 0 = off; outside the range -> HTTP 400).
         The legacy ``Autoscroll`` still works: False sets the threshold to 0, True while it is 0 sets the default.
+        Large volume levels 3 and 4 are ``LargeAmount3`` / ``LargeAmount4`` (coins), ``LargeAmountUsd3`` /
+        ``LargeAmountUsd4`` (USD) and their alerts ``NotificationLargeAmount3Detected`` /
+        ``NotificationLargeAmount4Detected`` - the same rows as ``LargeAmount`` / ``LargeAmount2``.
+        ``ShowSlTpPnl=True`` shows the expected PnL in $ under the stop-loss and take-profit labels.
+        ``SignalLevelTriggerSource="TradePrice" | "BestBidAsk"`` is what triggers this instrument's signal
+        levels (a row never changed reports TradePrice; any other value -> HTTP 400).
         """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",
@@ -385,6 +392,34 @@ class MetaScalpClient:
         The two chip-background rows take color only. 409 for a built-in theme.
         """
         return await self._put(f"/api/appearance/themes/{theme_id}/text-styles", {"textStyles": text_styles})
+
+    # ---- Chart settings (Settings -> Chart) ----
+
+    async def get_chart_settings(self) -> dict:
+        """Every row of Settings -> Chart (terminal-wide: one value for every chart) plus "allowed".
+
+        Keys: openInterestDisplayMode (None / Histogram / Chart: the open-interest pane), defaultTimeFrame,
+        timeFrames, showVolume, volumeHeight (15 / 25 / 30), showTimeFrameCountdown, showCandleParameters,
+        showUserLevels, showSignalLevels, showTradesOnAllCharts, showOrdersOnAllCharts,
+        showPercentFromCurrentPrice, magnetEnabled, magnetMode (Weak / Medium / Strong),
+        openChartFromOrderBook (SeparateWindow / Docked), chartOrderManagement (Off / On),
+        confirmChartOrderActions, autoLevelFractalWidth (1-10), autoLevelHistoryDepth (100-5000),
+        autoLevelRenderedCap (1-100). "allowed" lists the names and limits each choice row takes.
+        """
+        return await self._get("/api/chart-settings")
+
+    async def update_chart_settings(self, **settings) -> dict:
+        """Change only the given Settings -> Chart rows (omitted = unchanged; a row sent with its current
+        value is not written).
+
+        Keys: the ones get_chart_settings returns (not "allowed"), e.g.
+        ``update_chart_settings(openInterestDisplayMode="Histogram")`` shows the open-interest pane on
+        every open chart of a market with open interest, at once; "None" removes it. Choice rows take a
+        name from "allowed", in any letter case; timeFrames replaces the whole list and needs at least
+        one timeframe. Returns the rows after the change plus "changed" - the fields this request changed.
+        An unknown field, an unknown name or a number out of range -> 400 and nothing is saved.
+        """
+        return await self._put("/api/chart-settings", settings)
 
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 
@@ -470,4 +505,34 @@ class MetaScalpClient:
         """
         return await self._get(
             f"/api/connections/{connection_id}/open-interest/history?Ticker={ticker}&TimeFrame={time_frame}"
+        )
+
+    async def get_open_interest_candles(
+        self,
+        connection_id: int,
+        ticker: str,
+        time_frame: str,
+        from_time: int | str | None = None,
+        to_time: int | str | None = None,
+    ) -> dict:
+        """Open interest by the second (MET-2380): open / high / low / close candles from MetaScalp's
+        cluster service, not from the exchange. Base coin, oldest first.
+
+        time_frame is one of S1, S5, S10, S15, S30 (any other answers 400; M5 and longer:
+        get_open_interest_history). from_time / to_time are Unix milliseconds or an ISO 8601 time
+        (UTC when it names no zone). Without them the answer is the newest 1000 candles up to now;
+        from_time alone = from that time up to now. The service keeps one day.
+
+        Returns a dict with keys: connectionId, ticker, timeFrame, unit, candlesAvailable, reason,
+        candles (each: time, open, high, low, close). time is the candle's START (ISO 8601, UTC).
+        When the service has nothing for the request, candlesAvailable is False with a reason and
+        no candles. A service failure answers 502.
+        """
+        qs = [f"Ticker={quote(ticker, safe='')}", f"TimeFrame={time_frame}"]
+        if from_time is not None:
+            qs.append(f"From={quote(str(from_time), safe='')}")
+        if to_time is not None:
+            qs.append(f"To={quote(str(to_time), safe='')}")
+        return await self._get(
+            f"/api/connections/{connection_id}/open-interest/candles?{'&'.join(qs)}"
         )

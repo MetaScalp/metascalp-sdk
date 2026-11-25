@@ -30,6 +30,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `GET /api/link-groups/{groupId}/orderbook-snapshots` | Read-only order books of every panel currently in link group N (live membership; per-entry `reason` on partial failure) |
 | `GET /api/connections/{id}/open-interest` | Current open interest in base coin (derivative venues with open interest; `501` + reason elsewhere) |
 | `GET /api/connections/{id}/open-interest/history` | Open-interest history per timeframe (base coin; `historyAvailable=false` on seconds/M1/M3) |
+| `GET /api/connections/{id}/open-interest/candles` | Open interest by the second: open / high / low / close candles of 1–30 s for the last day, from MetaScalp's cluster service (`candlesAvailable=false` with a reason when the service has none) |
 | `GET /api/connections/{id}/cluster-snapshot` | Get cluster (volume profile) snapshot data |
 | `GET /api/connections/{id}/leverage-limits?Ticker=` | Max leverage and max position size, live from the venue's own risk-limit tiers |
 | `GET /api/connections/{id}/signal-levels?Ticker=` | List signal levels for a ticker |
@@ -73,6 +74,8 @@ Use HTTP to discover connections, query data, and execute trades:
 | `DELETE /api/appearance/themes/{themeId}` | Delete an own theme (the active one hands over to its neighbour) |
 | `GET/PUT /api/appearance/themes/{themeId}/colors` | Read / write every colour row of the four Display colour sections |
 | `GET/PUT /api/appearance/themes/{themeId}/text-styles` | Read / write every «Шрифты» row (size, bold, italic, colour) |
+| `GET /api/chart-settings` | Settings → Chart: every row of the page and its allowed values — the open-interest pane (`openInterestDisplayMode`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
+| `PUT /api/chart-settings` | Change Settings → Chart rows (partial; returns the rows after the change plus `changed`) |
 
 ### WebSocket streaming
 
@@ -1076,6 +1079,7 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 # Open interest (MC-898; derivative venues with open interest, base coin)
 curl "http://127.0.0.1:17845/api/connections/1/open-interest?Ticker=BTCUSDT"
 curl "http://127.0.0.1:17845/api/connections/1/open-interest/history?Ticker=BTCUSDT&TimeFrame=M5"
+curl "http://127.0.0.1:17845/api/connections/1/open-interest/candles?Ticker=BTCUSDT&TimeFrame=S5"
 # WS: { "Type": "open_interest_subscribe", "Data": { "connectionId": 1, "ticker": "BTCUSDT" } } -> open_interest_update { connectionId, ticker, openInterest, time, unit }
 
 # Get 1-hour clusters with 5x price aggregation
@@ -1083,6 +1087,64 @@ curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&T
 
 # Fill the whole 100-column history (20 backend pages of 5 columns)
 curl "http://127.0.0.1:17845/api/connections/1/cluster-snapshot?Ticker=BTCUSDT&TimeFrame=M5&Columns=100"
+```
+
+#### Open Interest Candles (by the second)
+
+Open interest **by the second**: the open / high / low / close candles the chart's open-interest pane draws on seconds timeframes, in base coin. They come from MetaScalp's cluster service, not from the exchange (the exchange history of `…/open-interest/history` has no period shorter than `M5`). Same markets as the other open-interest routes: a market without open interest answers `501` with a `reason`.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/open-interest/candles?Ticker=BTCUSDT&TimeFrame=S5
+```
+
+**Query parameters:**
+
+| Parameter   | Type   | Required | Default | Description |
+|-------------|--------|----------|---------|-------------|
+| `Ticker`    | string | yes      |         | Contract symbol, e.g. BTCUSDT |
+| `TimeFrame` | string | yes      |         | `S1`, `S5`, `S10`, `S15` or `S30`. Any other timeframe → `400` (`M5` and longer: `…/open-interest/history`) |
+| `From`      | string | no       |         | Start of the range — Unix milliseconds, or an ISO 8601 time (UTC when it names no zone), e.g. `2026-11-25T10:00:00Z` |
+| `To`        | string | no       | now     | End of the range, same format; needs `From` and is not earlier than it |
+
+Without `From` / `To` the answer is the newest 1000 candles up to now; `From` alone = from that time up to now; both = that range (inclusive); `To` without `From` answers `400`. The service keeps **one day**.
+
+**Response `200 OK`:**
+
+```json
+{
+  "connectionId": 1,
+  "ticker": "BTCUSDT",
+  "timeFrame": "S5",
+  "unit": "base",
+  "candlesAvailable": true,
+  "reason": null,
+  "candles": [
+    { "time": "2026-11-25T10:00:00+00:00", "open": 81234.5, "high": 81240.1, "low": 81230.0, "close": 81238.7 },
+    { "time": "2026-11-25T10:00:05+00:00", "open": 81238.7, "high": 81239.9, "low": 81221.4, "close": 81225.3 }
+  ]
+}
+```
+
+- `candles` — oldest first. `time` is the candle's **start** (UTC, on the timeframe grid); `open` is the previous candle's close
+- `candlesAvailable` — `false` when the service has nothing for the request (a contract it does not collect, a range with no candles, a time older than one day): `candles` is empty and `reason` says why. No candle is built from the exchange's polls instead
+- A candle the service does not have is simply absent (a gap). The newest seconds may not be published yet: a 1-second candle lands about 3–4 s late, and the open candle of a longer timeframe grows until it closes
+
+**Errors:**
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Missing `Ticker`; a `TimeFrame` that is not `S1`, `S5`, `S10`, `S15` or `S30`; a `From` / `To` that is not Unix milliseconds or an ISO 8601 time; `From` later than `To`; invalid connection ID |
+| `404`  | Connection not found |
+| `501`  | The market has no open interest (`{ error, reason, connectionId, ticker }`) |
+| `502`  | The cluster service failed (`{ error, reason }`) |
+
+**Example:**
+```bash
+# The newest 1000 five-second candles
+curl "http://127.0.0.1:17845/api/connections/1/open-interest/candles?Ticker=BTCUSDT&TimeFrame=S5"
+
+# One-second candles of a five-minute range
+curl "http://127.0.0.1:17845/api/connections/1/open-interest/candles?Ticker=BTCUSDT&TimeFrame=S1&From=2026-11-25T10:00:00Z&To=2026-11-25T10:05:00Z"
 ```
 
 #### Order Books of a Link Group
@@ -2081,6 +2143,14 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "AmountBarFilterUsd": 0.0,
     "NotificationLargeAmountDetected": false,
     "NotificationLargeAmount2Detected": false,
+    "LargeAmount3": 30000.0,
+    "LargeAmount4": 40000.0,
+    "LargeAmountUsd3": 40000.0,
+    "LargeAmountUsd4": 50000.0,
+    "NotificationLargeAmount3Detected": false,
+    "NotificationLargeAmount4Detected": false,
+    "ShowSlTpPnl": false,
+    "SignalLevelTriggerSource": "TradePrice",
     "UseLargeAmountDetectionArea": false,
     "LargeAmountDetectionMinValue": 0.0,
     "LargeAmountDetectionMaxValue": 0.0,
@@ -2136,6 +2206,11 @@ Settings field reference:
 | `AmountBarFilterUsd` | decimal | Minimum amount to display in order book (USD) |
 | `NotificationLargeAmountDetected` | boolean | Notify when large amount is detected |
 | `NotificationLargeAmount2Detected` | boolean | Notify when second large amount is detected |
+| `LargeAmount3`, `LargeAmount4` | decimal | Large volume levels 3 and 4 (base asset) — the same rows as `LargeAmount` / `LargeAmount2` |
+| `LargeAmountUsd3`, `LargeAmountUsd4` | decimal | Large volume levels 3 and 4 (USD) |
+| `NotificationLargeAmount3Detected`, `NotificationLargeAmount4Detected` | boolean | Notify when a level 3 / level 4 large amount is detected |
+| `ShowSlTpPnl` | boolean | Show the expected PnL in $ under the stop-loss and take-profit labels |
+| `SignalLevelTriggerSource` | string | What triggers this instrument's signal levels: `"TradePrice"` (the default — a row never changed reports it) or `"BestBidAsk"`. Any other value → `400`, nothing written |
 | `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
 | `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
@@ -2177,6 +2252,7 @@ Settings field reference:
 | `ShowRuler` | `"None"`, `"Points"`, `"Percent"`, `"PercentVolume"`, `"PercentVolumeOneLine"` |
 | `ZoomType` | `"Absolute"`, `"Percentage"` |
 | `ZoomStepMode` | `"Linear"`, `"Logarithmic"` |
+| `SignalLevelTriggerSource` | `"TradePrice"`, `"BestBidAsk"` |
 | `SizeType` | `"Coin"`, `"Usd"` |
 | `ClusterTimeFrame` | `"M1"`, `"M5"`, `"M15"`, `"M30"`, `"H1"`, `"H4"`, `"D1"` |
 
@@ -2516,6 +2592,111 @@ as on the page. A chip-background row takes `color` only (`size` / `bold` / `ita
 { "textStyles": { "OrderBookPriceScale": { "size": 14, "bold": true } } }
 ```
 
+---
+
+### Chart Settings (Settings → Chart)
+
+Every row of **Settings → Chart**, the open-interest pane («Отображение открытого интереса») among them. They are
+terminal-wide: one value for every chart, SciChart and TradingView. A change is saved the way the page saves it, row
+by row, so open charts apply what the page's own change applies live (the open-interest pane, levels, trades and
+orders on all charts, the percent label, automatic levels, order management); the other rows are read by a chart
+when it opens. A Chart page that is already open shows the new values after it is reopened.
+
+#### Get Chart Settings
+
+```
+GET http://127.0.0.1:{port}/api/chart-settings
+```
+
+Returns the rows as the page shows them, plus `allowed` (the names and limits each choice row takes):
+
+| Field | Type | Row of the page |
+|---|---|---|
+| `openInterestDisplayMode` | `None` / `Histogram` / `Chart` | «Отображение открытого интереса»: no pane, the change of open interest per candle, or open-interest candles. The pane appears only on markets with open interest; its values are the ones `/api/connections/{id}/open-interest` serves. |
+| `defaultTimeFrame` | string | Timeframe a new chart opens on (`S1` … `D1`) |
+| `timeFrames` | string[] | Timeframes offered in a chart's timeframe list |
+| `showVolume`, `volumeHeight` | bool, number | Volume pane and its height: `15` small, `25` medium, `30` large |
+| `showTimeFrameCountdown` | bool | Time left until the candle closes |
+| `showCandleParameters` | bool | Candle parameters (open, high, low, close) on hover |
+| `showUserLevels`, `showSignalLevels` | bool | User levels and signal levels on charts |
+| `showTradesOnAllCharts`, `showOrdersOnAllCharts` | bool | Own trades and own orders on every chart |
+| `showPercentFromCurrentPrice` | bool | Percent from the current price at the crosshair |
+| `magnetEnabled`, `magnetMode` | bool, `Weak` / `Medium` / `Strong` | Drawing magnet |
+| `openChartFromOrderBook` | `SeparateWindow` / `Docked` | Where a chart opened from an order book goes |
+| `chartOrderManagement`, `confirmChartOrderActions` | `Off` / `On`, bool | Moving and cancelling orders and setting SL / TP by dragging on the chart, and whether each action asks first |
+| `autoLevelFractalWidth`, `autoLevelHistoryDepth`, `autoLevelRenderedCap` | integer | Automatic levels: fractal width (1–10), candles scanned (100–5000), levels drawn per side (1–100) |
+
+**Response `200 OK`:**
+
+```json
+{
+  "openInterestDisplayMode": "None",
+  "defaultTimeFrame": "M5",
+  "timeFrames": ["S1", "S5", "S10", "S15", "S30", "M1", "M3", "M5", "M15", "M30", "H1", "H4", "D1"],
+  "showVolume": true,
+  "volumeHeight": 25.0,
+  "showTimeFrameCountdown": true,
+  "showCandleParameters": false,
+  "showUserLevels": true,
+  "showSignalLevels": true,
+  "showTradesOnAllCharts": false,
+  "showOrdersOnAllCharts": false,
+  "showPercentFromCurrentPrice": false,
+  "magnetEnabled": false,
+  "magnetMode": "Weak",
+  "openChartFromOrderBook": "SeparateWindow",
+  "chartOrderManagement": "Off",
+  "confirmChartOrderActions": false,
+  "autoLevelFractalWidth": 3,
+  "autoLevelHistoryDepth": 1500,
+  "autoLevelRenderedCap": 25,
+  "allowed": {
+    "openInterestDisplayMode": ["None", "Histogram", "Chart"],
+    "timeFrames": ["S1", "S5", "S10", "S15", "S30", "M1", "M3", "M5", "M15", "M30", "H1", "H4", "D1"],
+    "volumeHeight": [15.0, 25.0, 30.0],
+    "magnetMode": ["Weak", "Medium", "Strong"],
+    "openChartFromOrderBook": ["SeparateWindow", "Docked"],
+    "chartOrderManagement": ["Off", "On"],
+    "autoLevelFractalWidth": { "min": 1, "max": 10 },
+    "autoLevelHistoryDepth": { "min": 100, "max": 5000 },
+    "autoLevelRenderedCap": { "min": 1, "max": 100 }
+  }
+}
+```
+
+#### Update Chart Settings
+
+```
+PUT http://127.0.0.1:{port}/api/chart-settings
+Content-Type: application/json
+```
+
+Body: any of the fields of the GET above (not `allowed`). Omitted fields keep their value; a field sent with its
+current value is not written. Choice rows take a name from `allowed`, in any letter case. `timeFrames` replaces the
+whole list and needs at least one timeframe. Every field is checked before anything is saved. Returns the rows after
+the change, plus `changed` — the fields this request changed.
+
+```json
+{ "openInterestDisplayMode": "Histogram" }
+```
+
+This example shows the open-interest pane on every open chart of a market with open interest, at once; `"None"`
+removes it.
+
+**Errors:** unknown field, unknown name or a number out of range → `400` naming the field and the allowed values.
+
+**Examples:**
+
+```bash
+# Read the Settings → Chart rows
+curl "http://127.0.0.1:17845/api/chart-settings"
+
+# Show the open-interest pane as a histogram (partial update)
+curl -X PUT http://127.0.0.1:17845/api/chart-settings \
+  -H "Content-Type: application/json" \
+  -d '{"openInterestDisplayMode": "Histogram"}'
+```
+
 ### Real-time WebSocket
 
 Connect via WebSocket to receive live updates. Subscribe by connection ID for order, position, balance, and finres events. Subscribe by connection ID + ticker for real-time trade, order book, mark price, index price, and funding market data — or for chart annotation snapshots. Subscribe globally (no ID) for notifications, signal levels, user levels, and UI change events.
@@ -2615,9 +2796,9 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id; a wall id is delivered at most once per subscription, in the snapshot or in an update, even when the feed removes and later re-broadcasts it). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures. The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): `bdsMode: "manual"` or a `bdsValue` in an entry is refused with an error frame naming the field (MET-1828); `bdsMode: "auto"` is accepted as a no-op. These two fields belong to `large_trades_subscribe`, where they apply. A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config: the server acks with `density_map_subscribed` and sends a fresh `density_map_snapshot` of the walls that match the new filters; walls already notified are not replayed as updates. |
+| `density_map_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "largeLifetimeMinutes": 5, "mediumLifetimeMinutes": 5, "smallLifetimeMinutes": 5, "includedQuoteAssets": ["USDT"] }` | Subscribe to density-wall notifications (each wall reported once, on first sight of its id; a wall id is delivered at most once per subscription, in the snapshot or in an update, even when the feed removes and later re-broadcasts it). `exchangeMarkets` is required and must be non-empty (`[]` is rejected); every other field is optional with the defaults shown. Enums accept names or wire numbers — `exchange`: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; `market`: spot \| futures. The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): `bdsMode: "manual"` or a `bdsValue` in an entry is refused with an error frame naming the field (MET-1828); `bdsMode: "auto"` is accepted as a no-op. These two fields belong to `large_trades_subscribe`, where they apply. `assetClasses` (optional, MET-2413) is the window's «asset classes» filter: any of `crypto`, `stablecoins`, `commodities`, `stocks`, `indices`, e.g. `"assetClasses": ["crypto", "stocks"]`; omitted, empty or all five = no filter, an unknown name is refused with an `error` frame naming the field. A `density_map_snapshot` follows the ack, then `density_map_update` batches. Re-subscribing replaces the config: the server acks with `density_map_subscribed` and sends a fresh `density_map_snapshot` of the walls that match the new filters; walls already notified are not replayed as updates. |
 | `density_map_unsubscribe` | `{}` | Stop the density map stream (tears down the upstream feed). Idempotent. |
-| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor (applied by the terminal on top of the venue-side BDS threshold: a row is sent only when it passes both — MET-1832); same `exchangeMarkets` shape and defaults as the density feed. |
+| `large_trades_subscribe` | `{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000, "largeCoefficient": 3, "mediumCoefficient": 2, "smallCoefficient": 1, "includedQuoteAssets": ["USDT", "USDC", "OTHER"] }` | Subscribe to aggregated large trade prints. No snapshot — rows are final, append-only; history starts at subscribe time. `aggregationMs` 0–60000 (default 500; `0` = every raw print individually; out of range is refused with an `error` frame naming the field); optional `minAmountUsd` floor (applied by the terminal on top of the venue-side BDS threshold: a row is sent only when it passes both — MET-1832); same `exchangeMarkets` shape and defaults as the density feed. `assetClasses` (optional, MET-2413) is the window's «asset classes» filter: any of `crypto`, `stablecoins`, `commodities`, `stocks`, `indices`, e.g. `"assetClasses": ["crypto", "stocks"]`; omitted, empty or all five = no filter, an unknown name is refused with an `error` frame naming the field. |
 | `large_trades_unsubscribe` | `{}` | Stop the large trades stream. Idempotent. |
 | `liquidations_subscribe` | `{ "exchanges": ["binance", "bybit", "okx", "bitget", "gate", "htx", "aster", "lighter"], "minNotionalUsd": 1000, "minImpactBps": null, "assetClass": "all", "side": "all", "coin": "", "window": "h1", "backfill": 200 }` | Subscribe to the cross-exchange liquidations feed (futures only). **No MetaBroker login needed.** `exchanges` is required and must be non-empty; `window` (m5 \| m15 \| h1 \| h4 \| h24) affects `totals` / `topTokens` only, never the rows; `backfill` (0–500; out of range is refused with an `error` frame naming the field) is the snapshot row count; `side` filters by the side of the **liquidated** position; `coin` is a case-insensitive prefix on the resolved coin (`BTC`, not `BTCUSDT`); `assetClass` (all \| crypto \| tradfi) matches the class the terminal's Liquidations window shows for the coin — taken from the backend's clusters feed, because the per-event tape carries none (MET-1829) — so a live row of a coin first seen in the session waits up to 2 s for that class before it is sent. A `liquidations_snapshot` follows every subscribe/replace. |
 | `liquidations_unsubscribe` | `{}` | Stop the liquidations stream. Idempotent. |

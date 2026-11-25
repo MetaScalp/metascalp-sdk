@@ -360,6 +360,8 @@ public class MetaScalpSocket : IDisposable
     /// be non-empty; everything else defaults to the terminal's Density Map window defaults
     /// (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
     /// config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
+    /// <c>AssetClasses</c> (optional) is the window's «asset classes» filter: crypto, stablecoins, commodities, stocks,
+    /// indices; null, empty or all five = no filter.
     /// Events: OnDensityMapSnapshot (after the ack), then OnDensityMapUpdate (continuous).
     /// </summary>
     public void SubscribeDensityMap(DensityMapSubscribeOptions options)
@@ -375,6 +377,8 @@ public class MetaScalpSocket : IDisposable
     /// Subscribe to the MetaBroker large trades stream — aggregated trade prints, final and
     /// append-only (no snapshot; history starts at subscribe time). <c>ExchangeMarkets</c> is
     /// required and must be non-empty; <c>AggregationMs</c> defaults to 500 (0 = every raw print).
+    /// <c>AssetClasses</c> (optional) is the window's «asset classes» filter: crypto, stablecoins, commodities, stocks,
+    /// indices; null, empty or all five = no filter.
     /// Re-subscribing replaces the config. Event: OnLargeTradesUpdate.
     /// </summary>
     public void SubscribeLargeTrades(LargeTradesSubscribeOptions options)

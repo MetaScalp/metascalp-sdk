@@ -155,6 +155,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |
 | `GET` | `/api/connections/{id}/open-interest?Ticker=X` | Current open interest in base coin (derivative venues with open interest; `501` with a reason elsewhere) |
 | `GET` | `/api/connections/{id}/open-interest/history?Ticker=X&TimeFrame=M5` | Open-interest history (base coin; `historyAvailable=false` on seconds/M1/M3) |
+| `GET` | `/api/connections/{id}/open-interest/candles?Ticker=X&TimeFrame=S5` | Open interest by the second: open / high / low / close candles of 1–30 s for the last day, from MetaScalp's cluster service (optional `From` / `To`; `candlesAvailable=false` with a reason when the service has none) |
 | `GET` | `/api/connections/{id}/cluster-snapshot?Ticker=X&TimeFrame=M5` | Cluster (volume profile) snapshot; `Columns=1..100` fills more history than the default 10 columns |
 | `GET` | `/api/connections/{id}/leverage-limits?Ticker=X` | Max leverage / max position, live from the venue's risk-limit tiers |
 | `GET` | `/api/link-groups/{groupId}/orderbook-snapshots` | Order books of every panel currently in a link group |
@@ -164,7 +165,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/signal-levels[/{slId}]` | Full signal-level CRUD (+ `DELETE /api/signal-levels/triggered`) |
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
 | `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
-| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle; `AutoCenterThreshold` — auto-centering 0–10, `Autoscroll` kept as its legacy on/off view) |
+| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle; `AutoCenterThreshold` — auto-centering 0–10, `Autoscroll` kept as its legacy on/off view; `LargeAmount3` / `LargeAmount4` with their `Usd` and alert twins — large volume levels 3 and 4; `ShowSlTpPnl` — expected PnL under the SL / TP labels; `SignalLevelTriggerSource`: `TradePrice` / `BestBidAsk`) |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
@@ -173,6 +174,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the thirteen display options (`GET .../font-families` lists the fonts) |
 | `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
 | `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
+| `GET/PUT` | `/api/chart-settings` | Settings → Chart: read / partially update every row — the open-interest pane (`openInterestDisplayMode`: `None` / `Histogram` / `Chart`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market, an item `{exchange, market}` gives one exchange its own market; `legs: [{exchange, market, ticker}]` opens an arbitrage pair, one book per leg in this order, and a leg that cannot open answers its `reason`) |

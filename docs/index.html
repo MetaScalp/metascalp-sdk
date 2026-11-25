@@ -1494,18 +1494,21 @@
     <div class="endpoint-header" onclick="toggle('ep-open-interest')">
       <span class="method method-get">GET</span>
       <span class="endpoint-path">/api/connections/{connectionId}/open-interest</span>
-      <span class="endpoint-desc">Open interest (current + history)</span>
+      <span class="endpoint-desc">Open interest (current + history + seconds candles)</span>
       <span class="chevron">&#9656;</span>
     </div>
     <div class="endpoint-body">
       <div class="docs">
         <p>Open interest of a futures contract in <strong>base coin</strong> (BTC, ETH&hellip;) exactly as the exchange reports it &mdash; never converted to USD. The same values the chart's open-interest pane shows (Settings &rarr; Settings &rarr; Chart &rarr; &laquo;Open interest display&raquo;). Supported on <strong>derivative venues that publish open interest</strong> (Binance, Bybit, OKX, Bitget, Gate, MEXC, HTX, KuCoin, Hyperliquid and others); spot markets, venues without open interest, and a contract that is not trading (settling, delivered, pre-trading) answer <code>501</code> <code>{ error, reason, connectionId, ticker }</code> &mdash; never an empty success.</p>
         <p><code>GET /api/connections/{connectionId}/open-interest?Ticker=BTCUSDT</code> &rarr; <code>{ connectionId, ticker, openInterest, time, unit: "base" }</code> &mdash; the value a running chart or <code>open_interest_subscribe</code> poll last received (the terminal polls the exchange every 5 s on most venues, 4 s on Binance and MEXC), otherwise one fresh exchange call. <code>time</code> is the exchange's own timestamp (ISO 8601).</p>
-        <p><code>GET /api/connections/{connectionId}/open-interest/history?Ticker=BTCUSDT&amp;TimeFrame=M5</code> &rarr; <code>{ connectionId, ticker, timeFrame, unit: "base", historyAvailable, reason, points[] }</code>, each point <code>{ time, openInterest }</code> oldest first. A point at <code>time</code> T is the open interest AT T: the close of the candle that ends at T and the open of the next one. Binance keeps about 30 days and publishes a point about 2 minutes after its time. Timeframes with an exchange period: <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>. On seconds timeframes, <code>M1</code> and <code>M3</code> the answer is <code>historyAvailable: false</code> with an empty <code>points</code> and a <code>reason</code> &mdash; no neighbouring period is substituted. An exchange failure answers <code>502</code>.</p>
+        <p><code>GET /api/connections/{connectionId}/open-interest/history?Ticker=BTCUSDT&amp;TimeFrame=M5</code> &rarr; <code>{ connectionId, ticker, timeFrame, unit: "base", historyAvailable, reason, points[] }</code>, each point <code>{ time, openInterest }</code> oldest first. A point at <code>time</code> T is the open interest AT T: the close of the candle that ends at T and the open of the next one. Binance keeps about 30 days and publishes a point about 2 minutes after its time. Timeframes with an exchange period: <code>M5</code>, <code>M15</code>, <code>M30</code>, <code>H1</code>, <code>H4</code>, <code>D1</code>. On seconds timeframes, <code>M1</code> and <code>M3</code> the answer is <code>historyAvailable: false</code> with an empty <code>points</code> and a <code>reason</code> &mdash; no neighbouring period is substituted (for seconds use <code>&hellip;/open-interest/candles</code> below). An exchange failure answers <code>502</code>.</p>
+        <p><code>GET /api/connections/{connectionId}/open-interest/candles?Ticker=BTCUSDT&amp;TimeFrame=S5</code> &rarr; <code>{ connectionId, ticker, timeFrame, unit: "base", candlesAvailable, reason, candles[] }</code>, each candle <code>{ time, open, high, low, close }</code> oldest first &mdash; open interest <strong>by the second</strong>, the candles the chart's open-interest pane draws on seconds timeframes. They come from MetaScalp's cluster service, not from the exchange: <code>time</code> is the candle's <strong>start</strong> (UTC, on the timeframe grid) and <code>open</code> is the previous candle's close. Timeframes: <code>S1</code>, <code>S5</code>, <code>S10</code>, <code>S15</code>, <code>S30</code>; any other answers <code>400</code>. Without <code>From</code> / <code>To</code> the answer is the newest 1000 candles up to now; <code>From</code> alone = from that time up to now; both = that range (inclusive); <code>To</code> without <code>From</code> answers <code>400</code>. The service keeps <strong>one day</strong>. When it has nothing for the request (a contract it does not collect, a range with no candles, a time older than one day) the answer is <code>200</code> with <code>candlesAvailable: false</code>, an empty <code>candles</code> and a <code>reason</code> &mdash; no candle is built from the exchange's polls instead. A candle the service does not have is simply absent (a gap), and the newest seconds may not be published yet (a 1-second candle lands about 3&ndash;4 s late; the open candle of a longer timeframe grows until it closes). A service failure answers <code>502</code>.</p>
         <table>
           <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
           <tr><td><code>Ticker</code></td><td>string</td><td>yes</td><td></td><td>Contract symbol, e.g. BTCUSDT</td></tr>
-          <tr><td><code>TimeFrame</code></td><td>string</td><td>history only</td><td></td><td>S1, S5, S10, S15, S30, M1, M3, M5, M15, M30, H1, H4, D1 (or the seconds, e.g. 300)</td></tr>
+          <tr><td><code>TimeFrame</code></td><td>string</td><td>history, candles</td><td></td><td>History: S1, S5, S10, S15, S30, M1, M3, M5, M15, M30, H1, H4, D1 (or the seconds, e.g. 300). Candles: S1, S5, S10, S15, S30 only.</td></tr>
+          <tr><td><code>From</code></td><td>string</td><td>no</td><td></td><td>Candles only: start of the range &mdash; Unix milliseconds, or an ISO 8601 time (UTC when it names no zone), e.g. <code>2026-11-25T10:00:00Z</code></td></tr>
+          <tr><td><code>To</code></td><td>string</td><td>no</td><td>now</td><td>Candles only: end of the range, same format; needs <code>From</code> and is not earlier than it</td></tr>
         </table>
       </div>
       <div class="form-grid">
@@ -1529,10 +1532,29 @@
             <option value="D1">1 day</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>TimeFrame (candles)</label>
+          <select id="f-oi-candles-timeframe">
+            <option value="S1">1 second</option>
+            <option value="S5" selected>5 seconds</option>
+            <option value="S10">10 seconds</option>
+            <option value="S15">15 seconds</option>
+            <option value="S30">30 seconds</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>From (candles, optional)</label>
+          <input type="text" id="f-oi-from" placeholder="2026-11-25T10:00:00Z or Unix ms">
+        </div>
+        <div class="form-group">
+          <label>To (candles, optional)</label>
+          <input type="text" id="f-oi-to" placeholder="2026-11-25T10:05:00Z or Unix ms">
+        </div>
       </div>
       <div class="actions-row">
         <button class="btn btn-primary" onclick="sendOpenInterest(false)">Current</button>
         <button class="btn btn-primary" onclick="sendOpenInterest(true)">History</button>
+        <button class="btn btn-primary" onclick="sendOpenInterestCandles()">Seconds candles</button>
       </div>
       <div class="response-panel" id="resp-open-interest">
         <div class="response-bar">
@@ -1903,6 +1925,7 @@
         <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>, <code>PercentVolumeOneLine</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
         <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
         <p style="font-size:13px;color:var(--text-muted);">Auto-centering: <code>AutoCenterThreshold</code> (whole number <code>0</code>&ndash;<code>10</code>; <code>0</code> = off, <code>N</code> = the book re-centres once the spread is more than (10&nbsp;&minus;&nbsp;N)/10 of the way from the centre to the window edge; outside the range or a fraction &rarr; <code>400</code>, nothing written). <code>Autoscroll</code> is kept for old clients: it reads <code>true</code> when <code>AutoCenterThreshold</code> &gt; 0; writing <code>false</code> sets <code>0</code>, writing <code>true</code> while it is <code>0</code> sets the default <code>2</code>; an <code>AutoCenterThreshold</code> in the same request wins when it differs from the stored value (an unchanged echo of it does not mask the old field).</p>
+        <p style="font-size:13px;color:var(--text-muted);">Large volume levels 3 and 4: <code>LargeAmount3</code>, <code>LargeAmount4</code> (coins), <code>LargeAmountUsd3</code>, <code>LargeAmountUsd4</code> (USD) and their alerts <code>NotificationLargeAmount3Detected</code>, <code>NotificationLargeAmount4Detected</code> &mdash; the same rows as <code>LargeAmount</code> / <code>LargeAmount2</code>. SL / TP labels: <code>ShowSlTpPnl</code> (boolean) shows the expected PnL in $ under the stop-loss and take-profit labels. Signal levels: <code>SignalLevelTriggerSource</code> (<code>TradePrice</code> &mdash; the default, a row never changed reports it &mdash; or <code>BestBidAsk</code>) is what triggers this instrument's signal levels; any other value &rarr; <code>400</code>, nothing written.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -3206,6 +3229,91 @@
     </div>
   </div>
 
+  <!-- Chart settings (Settings -> Chart) -->
+  <div class="section-label">Chart settings</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>Every row of <strong>Settings &rarr; Chart</strong>, the open-interest pane (&laquo;Отображение открытого интереса&raquo;)
+    among them. They are terminal-wide: one value for every chart, SciChart and TradingView. A change is saved the way the page
+    saves it, row by row, so open charts apply what the page's own change applies live (the open-interest pane, levels,
+    trades and orders on all charts, the percent label, automatic levels, order management); the other rows are read by a
+    chart when it opens. A Chart page that is already open shows the new values after it is reopened.</p>
+  </div>
+
+  <!-- /api/chart-settings (GET) -->
+  <div class="endpoint" id="ep-chart-settings-get">
+    <div class="endpoint-header" onclick="toggle('ep-chart-settings-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/chart-settings</span>
+      <span class="endpoint-desc">The Settings &rarr; Chart rows and their allowed values</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns the rows as the page shows them, plus <code>allowed</code> (the names and limits each choice row takes):</p>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Row of the page</th></tr>
+          <tr><td><code>openInterestDisplayMode</code></td><td><code>None</code> / <code>Histogram</code> / <code>Chart</code></td><td>&laquo;Отображение открытого интереса&raquo;: no pane, the change of open interest per candle, or open-interest candles. The pane appears only on markets with open interest; its values are the ones <code>/api/connections/{id}/open-interest</code> serves.</td></tr>
+          <tr><td><code>defaultTimeFrame</code></td><td>string</td><td>Timeframe a new chart opens on (<code>S1</code> &hellip; <code>D1</code>)</td></tr>
+          <tr><td><code>timeFrames</code></td><td>string[]</td><td>Timeframes offered in a chart's timeframe list</td></tr>
+          <tr><td><code>showVolume</code>, <code>volumeHeight</code></td><td>bool, number</td><td>Volume pane and its height: <code>15</code> small, <code>25</code> medium, <code>30</code> large</td></tr>
+          <tr><td><code>showTimeFrameCountdown</code></td><td>bool</td><td>Time left until the candle closes</td></tr>
+          <tr><td><code>showCandleParameters</code></td><td>bool</td><td>Candle parameters (open, high, low, close) on hover</td></tr>
+          <tr><td><code>showUserLevels</code>, <code>showSignalLevels</code></td><td>bool</td><td>User levels and signal levels on charts</td></tr>
+          <tr><td><code>showTradesOnAllCharts</code>, <code>showOrdersOnAllCharts</code></td><td>bool</td><td>Own trades and own orders on every chart</td></tr>
+          <tr><td><code>showPercentFromCurrentPrice</code></td><td>bool</td><td>Percent from the current price at the crosshair</td></tr>
+          <tr><td><code>magnetEnabled</code>, <code>magnetMode</code></td><td>bool, <code>Weak</code> / <code>Medium</code> / <code>Strong</code></td><td>Drawing magnet</td></tr>
+          <tr><td><code>openChartFromOrderBook</code></td><td><code>SeparateWindow</code> / <code>Docked</code></td><td>Where a chart opened from an order book goes</td></tr>
+          <tr><td><code>chartOrderManagement</code>, <code>confirmChartOrderActions</code></td><td><code>Off</code> / <code>On</code>, bool</td><td>Moving and cancelling orders and setting SL / TP by dragging on the chart, and whether each action asks first</td></tr>
+          <tr><td><code>autoLevelFractalWidth</code>, <code>autoLevelHistoryDepth</code>, <code>autoLevelRenderedCap</code></td><td>integer</td><td>Automatic levels: fractal width (1&ndash;10), candles scanned (100&ndash;5000), levels drawn per side (1&ndash;100)</td></tr>
+        </table>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendChartSettingsGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-chart-settings-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-chart-settings-get-status"></span>
+          <span class="response-time" id="resp-chart-settings-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-chart-settings-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/chart-settings (PUT) -->
+  <div class="endpoint" id="ep-chart-settings-put">
+    <div class="endpoint-header" onclick="toggle('ep-chart-settings-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/chart-settings</span>
+      <span class="endpoint-desc">Change Settings &rarr; Chart rows (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: any of the fields of the GET above (not <code>allowed</code>). Omitted fields keep their value; a field sent with its current value is not written. Choice rows take a name from <code>allowed</code>, in any letter case. <code>timeFrames</code> replaces the whole list and needs at least one timeframe. Every field is checked before anything is saved. Returns the rows after the change, plus <code>changed</code> &mdash; the fields this request changed.</p>
+        <p>Example: <code>{ "openInterestDisplayMode": "Histogram" }</code> shows the open-interest pane on every open chart of a market with open interest, at once; <code>"None"</code> removes it.</p>
+        <p><strong>Errors:</strong> unknown field, unknown name or a number out of range &rarr; <code>400</code> naming the field and the allowed values.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-chart-settings-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"openInterestDisplayMode": "Histogram"}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendChartSettingsPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-chart-settings-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-chart-settings-put-status"></span>
+          <span class="response-time" id="resp-chart-settings-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-chart-settings-put-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notifications -->
   <div class="section-label">Notifications</div>
 
@@ -4226,7 +4334,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market" }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures). The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): <code>bdsMode: "manual"</code> or a <code>bdsValue</code> in an entry is refused with an error frame naming the field (MET-1828); <code>bdsMode: "auto"</code> is accepted as a no-op. These two fields belong to <code>large_trades_subscribe</code>, where they apply. On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream &mdash; a repeat subscribe re-sends the snapshot for the new filters</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code></td></tr>
+          <tr><td><code>density_map_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the density notifications stream &mdash; a repeat subscribe re-sends the snapshot for the new filters</td><td><code>exchangeMarkets[]</code> (required), <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>largeLifetimeMinutes</code>, <code>mediumLifetimeMinutes</code>, <code>smallLifetimeMinutes</code>, <code>includedQuoteAssets[]</code>, <code>assetClasses[]</code> &mdash; <code>assetClasses[]</code> (optional, MET-2413) is the window's &laquo;asset classes&raquo; filter: any of <code>crypto</code>, <code>stablecoins</code>, <code>commodities</code>, <code>stocks</code>, <code>indices</code>; omitted, empty or all five = no filter, an unknown name is refused with an <code>error</code> frame naming the field.</td></tr>
           <tr><td><code>density_map_unsubscribe</code></td><td>client &rarr; server</td><td>Stop the stream (send <code>"data": {}</code>)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>density_map_snapshot</code> follows)</td><td>&mdash;</td></tr>
           <tr><td><code>density_map_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -4237,7 +4345,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Large trades stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>large trades</strong> feed (aggregated trade prints). No snapshot exists upstream &mdash; rows are final, append-only aggregates and history starts at subscribe time. The subscribe <code>data</code> uses the same building blocks as the density stream (<code>exchangeMarkets[]</code> required, same enum names) plus the aggregation window: <code>aggregationMs</code> (0&ndash;60000, default 500 &mdash; out of range is refused with an <code>error</code> frame naming the field; <code>0</code> = every raw print individually) and an optional <code>minAmountUsd</code> floor (applied by the terminal on top of the venue-side BDS threshold: a row is sent only when it passes both &mdash; MET-1832); defaults are the window's: coefficients <code>3/2/1</code>, <code>includedQuoteAssets ["USDT","USDC","OTHER"]</code>. A repeat <code>large_trades_subscribe</code> <strong>replaces</strong> the config; if the upstream feed rejects a subscription after the ack, the standard <code>error</code> frame names <code>large_trades_subscribe</code> while the feed retries itself:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>large_trades_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the large trades stream</td><td><code>exchangeMarkets[]</code> (required), <code>aggregationMs</code>, <code>minAmountUsd</code>, <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>includedQuoteAssets[]</code></td></tr>
+          <tr><td><code>large_trades_subscribe</code></td><td>client &rarr; server</td><td>Start (or reconfigure) the large trades stream</td><td><code>exchangeMarkets[]</code> (required), <code>aggregationMs</code>, <code>minAmountUsd</code>, <code>largeCoefficient</code>, <code>mediumCoefficient</code>, <code>smallCoefficient</code>, <code>includedQuoteAssets[]</code>, <code>assetClasses[]</code> &mdash; <code>assetClasses[]</code> (optional, MET-2413) is the window's &laquo;asset classes&raquo; filter: any of <code>crypto</code>, <code>stablecoins</code>, <code>commodities</code>, <code>stocks</code>, <code>indices</code>; omitted, empty or all five = no filter, an unknown name is refused with an <code>error</code> frame naming the field.</td></tr>
           <tr><td><code>large_trades_unsubscribe</code></td><td>client &rarr; server</td><td>Stop the stream (send <code>"data": {}</code>)</td><td>&mdash;</td></tr>
           <tr><td><code>large_trades_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (no snapshot &mdash; rows follow as they happen)</td><td>&mdash;</td></tr>
           <tr><td><code>large_trades_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -4650,11 +4758,13 @@
         <tr><td><code>GET /api/link-groups/{groupId}/orderbook-snapshots</code></td><td>Read-only order books of every panel currently in link group N (live membership; per-entry <code>reason</code> on partial failure)</td></tr>
         <tr><td><code>GET/PUT /api/connections/{connectionId}/orderbook-settings</code></td><td>Read, and partially update (every field optional), the order-book settings set for a ticker &mdash; changes are pushed live to the running panels. Working volumes are stored as paired USD/coin mirrors (<code>tradeAmountUsd1..5</code> &harr; <code>tradeAmount1..5</code>): writing one side recomputes the other at the <strong>live</strong> best-ask (truncated to the ticker's size increment, floored at its min size), so the terminal's own volume buttons show USD and coin figures that agree with the current price. Writing both sides of a pair keeps the values you sent. If no order book is open for the connection+ticker there is no live price &rarr; <code>409</code> (open the order book so the conversion has a live price); unknown ticker &rarr; <code>404</code>; nothing is written in either case.</td></tr>
         <tr><td><code>GET /api/connections/{connectionId}/open-interest</code>, <code>GET /api/connections/{connectionId}/open-interest/history</code></td><td>Open interest in base coin, current and per timeframe (derivative venues with open interest; <code>501</code> with a reason on any other market)</td></tr>
+        <tr><td><code>GET /api/connections/{connectionId}/open-interest/candles</code></td><td>Open interest by the second: open / high / low / close candles of 1&ndash;30 s for the last day, from MetaScalp's cluster service (<code>candlesAvailable: false</code> with a reason when the service has none)</td></tr>
         <tr><td><code>GET /api/connections/{connectionId}/cluster-snapshot</code></td><td>Remote cluster (footprint) snapshot for a ticker at a timeframe (optional <code>ZoomIndex</code>, <code>Columns</code> = history depth up to 100)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/signal-levels</code></td><td>Read, create, modify (in place) and delete signal levels for a ticker</td></tr>
         <tr><td><code>DELETE /api/signal-levels/triggered</code></td><td>Remove all <em>triggered</em> signal levels (across every connection)</td></tr>
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/user-levels</code></td><td>Read, create, modify (in place) and delete user (plain) levels for a ticker</td></tr>
         <tr><td><code>GET/PUT/POST/DELETE /api/connections/{id}/annotations</code></td><td>Read all three chart-annotation lists, replace a list (PUT), append one (POST) or delete by index / clear all &mdash; addressed by zero-based list index</td></tr>
+        <tr><td><code>GET/PUT /api/chart-settings</code></td><td>Read, and partially update, the rows of Settings &rarr; Chart &mdash; the open-interest pane (<code>openInterestDisplayMode</code>), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels</td></tr>
         <tr><td><code>POST /api/notifications</code></td><td>Inject a custom row into the notification feed (all fields optional, arbitrary event type)</td></tr>
         <tr><td><code>GET /api/ui/state</code></td><td>Full read-only inventory of the open UI: windows, tabs, order-book/chart documents and standalone charts (rebuilt from the saved layout)</td></tr>
         <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>The same inventory object for one window; unknown id &rarr; 404</td></tr>
@@ -4734,9 +4844,9 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>funding_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving funding updates for that ticker.</td></tr>
         <tr><td><code>open_interest_subscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Start receiving open interest (base coin) on a derivative venue with open interest; other markets get <code>error</code> with the reason.</td></tr>
         <tr><td><code>open_interest_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving open interest for that ticker.</td></tr>
-        <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min) and quote assets. Re-subscribing replaces the config.</td></tr>
+        <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min), quote assets and <code>assetClasses</code> (crypto, stablecoins, commodities, stocks, indices; default all). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>density_map_unsubscribe</code></td><td><code>{}</code></td><td>Stop the density map stream.</td></tr>
-        <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Re-subscribing replaces the config.</td></tr>
+        <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Optional <code>assetClasses</code> (crypto, stablecoins, commodities, stocks, indices; default all). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>large_trades_unsubscribe</code></td><td><code>{}</code></td><td>Stop the large trades stream.</td></tr>
         <tr><td><code>liquidations_subscribe</code></td><td><code>{ "exchanges": ["binance", "bybit", "okx"], "minNotionalUsd": 1000, "window": "h1", "backfill": 200 }</code></td><td>Start the MetaBroker cross-exchange liquidations stream (futures only). No MetaBroker login is needed. Re-subscribing replaces the filters and replays a snapshot.</td></tr>
         <tr><td><code>liquidations_unsubscribe</code></td><td><code>{}</code></td><td>Stop the liquidations stream.</td></tr>
@@ -5093,6 +5203,23 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     const path = history ? 'open-interest/history' : 'open-interest';
     try {
       const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/${path}?${params}`);
+      showResponse('open-interest', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('open-interest', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Open interest by the second (MET-2380) ---
+  async function sendOpenInterestCandles() {
+    const id = document.getElementById('f-oi-conn').value;
+    const ticker = document.getElementById('f-oi-ticker').value.trim();
+    const params = new URLSearchParams({ Ticker: ticker, TimeFrame: document.getElementById('f-oi-candles-timeframe').value });
+    const from = document.getElementById('f-oi-from').value.trim();
+    const to = document.getElementById('f-oi-to').value.trim();
+    if (from) params.set('From', from);
+    if (to) params.set('To', to);
+    try {
+      const { status, data, ms } = await apiCall('GET', `/api/connections/${id}/open-interest/candles?${params}`);
       showResponse('open-interest', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('open-interest', 'ERR', 'status-net', e.message, 0);
@@ -5473,6 +5600,27 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('screener-templates-data', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('screener-templates-data', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Chart settings (Settings -> Chart) ---
+  async function sendChartSettingsGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/chart-settings');
+      showResponse('chart-settings-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('chart-settings-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendChartSettingsPut() {
+    const bodyText = document.getElementById('f-chart-settings-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/chart-settings', body);
+      showResponse('chart-settings-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('chart-settings-put', 'ERR', 'status-net', e.message, 0);
     }
   }
 

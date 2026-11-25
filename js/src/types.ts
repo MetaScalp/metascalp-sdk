@@ -308,6 +308,37 @@ export interface OpenInterestHistoryResponse {
   points: { time: string; openInterest: number }[];
 }
 
+/** MET-2380: one open-interest candle by the second, from MetaScalp's cluster service (not from the exchange). */
+export interface OpenInterestCandle {
+  /** START of the candle (ISO 8601, UTC, on the timeframe grid). */
+  time: string;
+  /** The previous candle's close. */
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface GetOpenInterestCandlesOptions {
+  /** Start of the range: Unix milliseconds, or an ISO 8601 time (UTC when it names no zone). Omitted with `to` = the newest 1000 candles. */
+  from?: string | number;
+  /** End of the range, same format; not earlier than `from`. Omitted = now. */
+  to?: string | number;
+}
+
+/** Response from `MetaScalpClient.getOpenInterestCandles`. */
+export interface OpenInterestCandlesResponse {
+  connectionId: number;
+  ticker: string;
+  timeFrame: string;
+  unit: 'base';
+  /** false when the service has nothing for the request (a contract it does not collect, a range with no candles, a time older than one day): candles is empty, see reason. */
+  candlesAvailable: boolean;
+  reason: string | null;
+  /** Oldest first. A candle the service does not have is absent (a gap). */
+  candles: OpenInterestCandle[];
+}
+
 export interface SignalLevel {
   id: number;
   connectionId: number;
@@ -425,6 +456,17 @@ export interface OrderBookSettings {
     amountBarFilterUsd?: number;
     notificationLargeAmountDetected?: boolean;
     notificationLargeAmount2Detected?: boolean;
+    /** Large volume levels 3 and 4 (coins, USD, their alerts): the same rows as largeAmount / largeAmount2. */
+    largeAmount3?: number;
+    largeAmount4?: number;
+    largeAmountUsd3?: number;
+    largeAmountUsd4?: number;
+    notificationLargeAmount3Detected?: boolean;
+    notificationLargeAmount4Detected?: boolean;
+    /** Show the expected PnL in $ under the stop-loss and take-profit labels. */
+    showSlTpPnl?: boolean;
+    /** TradePrice | BestBidAsk — what triggers this instrument's signal levels. A row never changed reports TradePrice; any other value -> 400. */
+    signalLevelTriggerSource?: string;
     useLargeAmountDetectionArea?: boolean;
     largeAmountDetectionMinValue?: number;
     largeAmountDetectionMaxValue?: number;
@@ -557,6 +599,75 @@ export interface ThemeTextStylesResponse {
   textStyles: AppearanceTextStyle[];
 }
 
+// ---- Chart settings (Settings -> Chart) ----
+
+/** The rows of Settings -> Chart. Terminal-wide: one value for every chart, SciChart and TradingView. */
+export interface ChartSettings {
+  /** None, Histogram or Chart: the open-interest pane («Отображение открытого интереса»). The pane appears only on markets with open interest. */
+  openInterestDisplayMode: string;
+  /** Timeframe a new chart opens on (S1 ... D1). */
+  defaultTimeFrame: string;
+  /** Timeframes offered in a chart's timeframe list. An update replaces the whole list and needs at least one timeframe. */
+  timeFrames: string[];
+  /** Volume pane. */
+  showVolume: boolean;
+  /** Volume pane height: 15 (small), 25 (medium) or 30 (large). */
+  volumeHeight: number;
+  /** Time left until the candle closes. */
+  showTimeFrameCountdown: boolean;
+  /** Candle parameters (open, high, low, close) on hover. */
+  showCandleParameters: boolean;
+  showUserLevels: boolean;
+  showSignalLevels: boolean;
+  /** Own trades on every chart. */
+  showTradesOnAllCharts: boolean;
+  /** Own orders on every chart. */
+  showOrdersOnAllCharts: boolean;
+  /** Percent from the current price at the crosshair. */
+  showPercentFromCurrentPrice: boolean;
+  /** Drawing magnet. */
+  magnetEnabled: boolean;
+  /** Weak, Medium or Strong. */
+  magnetMode: string;
+  /** SeparateWindow or Docked: where a chart opened from an order book goes. */
+  openChartFromOrderBook: string;
+  /** Off or On: moving and cancelling orders and setting SL / TP by dragging on the chart. */
+  chartOrderManagement: string;
+  /** Whether each chart order action asks first. */
+  confirmChartOrderActions: boolean;
+  /** Automatic levels: fractal width, 1-10. */
+  autoLevelFractalWidth: number;
+  /** Automatic levels: candles scanned, 100-5000. */
+  autoLevelHistoryDepth: number;
+  /** Automatic levels: levels drawn per side, 1-100. */
+  autoLevelRenderedCap: number;
+}
+
+export interface ChartSettingsRange {
+  min: number;
+  max: number;
+}
+
+/** The names and limits each choice row of `ChartSettings` takes. */
+export interface ChartSettingsAllowed {
+  openInterestDisplayMode: string[];
+  timeFrames: string[];
+  volumeHeight: number[];
+  magnetMode: string[];
+  openChartFromOrderBook: string[];
+  chartOrderManagement: string[];
+  autoLevelFractalWidth: ChartSettingsRange;
+  autoLevelHistoryDepth: ChartSettingsRange;
+  autoLevelRenderedCap: ChartSettingsRange;
+}
+
+/** Response from `MetaScalpClient.getChartSettings` / `updateChartSettings`. */
+export interface ChartSettingsResponse extends ChartSettings {
+  /** updateChartSettings only: the fields this request changed (a field sent with its current value is not one of them). */
+  changed?: string[];
+  allowed: ChartSettingsAllowed;
+}
+
 export interface GetOrderBookSnapshotOptions {
     /** Price aggregation factor. `0`/`1` = no aggregation; `> 1` = bucket and sum sizes. */
     zoomIndex?: number;
@@ -662,6 +773,11 @@ export interface DensityMapSubscribeOptions {
   smallLifetimeMinutes?: number;
   /** 'USDT' | 'USDC' | 'OTHER'. Default: ['USDT']. */
   includedQuoteAssets?: string[];
+  /**
+   * The window's «asset classes» filter: any of 'crypto' | 'stablecoins' | 'commodities' | 'stocks' | 'indices'.
+   * Omitted, empty or all five = no filter; an unknown name is refused with an error frame naming the field.
+   */
+  assetClasses?: string[];
 }
 
 export interface LargeTradesSubscribeOptions {
@@ -677,6 +793,11 @@ export interface LargeTradesSubscribeOptions {
   smallCoefficient?: number;
   /** 'USDT' | 'USDC' | 'OTHER'. Default: ['USDT', 'USDC', 'OTHER']. */
   includedQuoteAssets?: string[];
+  /**
+   * The window's «asset classes» filter: any of 'crypto' | 'stablecoins' | 'commodities' | 'stocks' | 'indices'.
+   * Omitted, empty or all five = no filter; an unknown name is refused with an error frame naming the field.
+   */
+  assetClasses?: string[];
 }
 
 export type LiquidationExchangeName =
