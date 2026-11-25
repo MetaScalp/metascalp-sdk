@@ -2373,7 +2373,7 @@ GET http://127.0.0.1:{port}/api/appearance
 ```
 
 Returns `{ activeThemeId, themes[], general }`. Each theme is `{ id, name, isBuiltIn, isActive }`.
-`general` carries the thirteen display options («Общие» rows):
+`general` carries the fourteen display options («Общие» rows):
 
 | Field | Type | Values |
 |---|---|---|
@@ -2390,6 +2390,7 @@ Returns `{ activeThemeId, themes[], general }`. Each theme is `{ id, name, isBui
 | `slTpChipPosition` | string | `Left`, `Right` — «Метки SL / TP» |
 | `priceMarkerPosition` | string | `Left`, `Right` — «Маркеры цен MP / IP / LP» |
 | `clusterColorBlendMode` | string | `Classic`, `Soft` — «Смешивание цветов кластеров» |
+| `newYearMood` | bool | «Новогоднее настроение» (default `false`); the festive look shows only from 15 December to 14 January |
 
 The last four are the values the page shows, also when the row was never changed (a fresh profile: `Right`, the
 cancel button's side, the cancel button's side, `Classic`).
@@ -2410,11 +2411,11 @@ PUT http://127.0.0.1:{port}/api/appearance/general
 Content-Type: application/json
 ```
 
-Any of the thirteen `general` fields above (enum values are case-insensitive); an omitted field keeps its value and
+Any of the fourteen `general` fields above (enum values are case-insensitive); an omitted field keeps its value and
 is not written. Applied at once (a new `language` switches the menu immediately; the order-size chips, SL / TP
 labels, price markers and cluster colours of every open order book repaint) and saved. Changing
 `limitOrderButtonPosition` moves only the cancel button: the SL / TP labels and price markers keep their side, as on
-the page. Returns the thirteen options after the change.
+the page. Returns the fourteen options after the change.
 
 ```json
 { "orderBookFontSize": 14, "errorDisplayDuration": 3 }

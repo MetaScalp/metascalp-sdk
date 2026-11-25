@@ -502,6 +502,8 @@ export interface AppearanceGeneral {
   priceMarkerPosition: string;
   /** Classic or Soft: cluster colour blending. */
   clusterColorBlendMode: string;
+  /** «Новогоднее настроение»; the festive look shows only from 15 December to 14 January. */
+  newYearMood: boolean;
 }
 
 export interface AppearanceState {
