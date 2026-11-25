@@ -39,6 +39,8 @@ import type {
   AppearanceTextStyleUpdate,
   ChartSettings,
   ChartSettingsResponse,
+  SettingsPageResponse,
+  HotkeysResponse,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -365,6 +367,53 @@ export class MetaScalpClient {
    */
   async updateChartSettings(update: Partial<ChartSettings>): Promise<ChartSettingsResponse> {
     return this.put('/api/chart-settings', update);
+  }
+
+  // ---- Settings pages (MC-1132): General, Combo, Recording, Sound notifications, Hotkeys ----
+
+  /** Settings -> General («Общие»): the order book FPS, magnetic windows, the close confirmations, the warning before closing with active orders or positions, the clock on every window, order drag and drop, zoom presets, fill edges, tab / position panel placement, centering, saving clusters locally; allowShortOnSpotMarket is read only. Rows as the page shows them plus `allowed`. */
+  async getGeneralSettings(): Promise<SettingsPageResponse> {
+    return this.get('/api/settings/general');
+  }
+
+  /** Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus `changed`. */
+  async updateGeneralSettings(update: Record<string, unknown>): Promise<SettingsPageResponse> {
+    return this.put('/api/settings/general', update);
+  }
+
+  /** Settings -> General -> Combo: where a combo opens, its chart, sizes, order books per combo window, headers, linking, venue selection and the exchange list (exchanges: [{ marketId, included }]). Rows as the page shows them plus `allowed`. */
+  async getComboSettings(): Promise<SettingsPageResponse> {
+    return this.get('/api/settings/combo');
+  }
+
+  /** Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus `changed`. */
+  async updateComboSettings(update: Record<string, unknown>): Promise<SettingsPageResponse> {
+    return this.put('/api/settings/combo', update);
+  }
+
+  /** Settings -> General -> Recording: frames per second, quality, the instant-replay buffer; the output folder and the microphone are read only. Rows as the page shows them plus `allowed`. */
+  async getRecordingSettings(): Promise<SettingsPageResponse> {
+    return this.get('/api/settings/recording');
+  }
+
+  /** Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus `changed`. */
+  async updateRecordingSettings(update: Record<string, unknown>): Promise<SettingsPageResponse> {
+    return this.put('/api/settings/recording', update);
+  }
+
+  /** Settings -> Sound notifications: per event (Trade, SignalLevel, LargeAmount1, LargeAmount2, LargeAmountTicks) allowRepeat, duration (1-60 s) and a built-in sound name. Rows as the page shows them plus `allowed`. */
+  async getSoundSettings(): Promise<SettingsPageResponse> {
+    return this.get('/api/settings/sounds');
+  }
+
+  /** Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus `changed`. */
+  async updateSoundSettings(update: Record<string, unknown>): Promise<SettingsPageResponse> {
+    return this.put('/api/settings/sounds', update);
+  }
+
+  /** Every hotkey action of the common, order book and chart pages with its key, or `bound: false`. Read only. */
+  async getHotkeys(): Promise<HotkeysResponse> {
+    return this.get('/api/settings/hotkeys');
   }
 
   // ---- HTTP helpers ----

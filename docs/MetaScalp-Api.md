@@ -76,6 +76,15 @@ Use HTTP to discover connections, query data, and execute trades:
 | `GET/PUT /api/appearance/themes/{themeId}/text-styles` | Read / write every «Шрифты» row (size, bold, italic, colour) |
 | `GET /api/chart-settings` | Settings → Chart: every row of the page and its allowed values — the open-interest pane (`openInterestDisplayMode`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
 | `PUT /api/chart-settings` | Change Settings → Chart rows (partial; returns the rows after the change plus `changed`) |
+| `GET /api/settings/general` | Settings → General («Общие»): every row and its allowed values, `allowShortOnSpotMarket` read only |
+| `PUT /api/settings/general` | Change General rows (partial; applied at once as on the page; returns the rows plus `changed`) |
+| `GET /api/settings/combo` | Settings → General → Combo: every row and the exchange list |
+| `PUT /api/settings/combo` | Change Combo rows (partial; the next combo window uses them) |
+| `GET /api/settings/recording` | Settings → General → Recording: every row (folder and microphone read only) |
+| `PUT /api/settings/recording` | Change frames per second, quality, the instant-replay buffer |
+| `GET /api/settings/sounds` | Settings → Sound notifications: per event repeat, duration, sound; the built-in sounds |
+| `PUT /api/settings/sounds` | Change sound notifications per event (built-in sounds only) |
+| `GET /api/settings/hotkeys` | Every hotkey action of the three hotkey pages with its key or unbound (read only) |
 
 ### WebSocket streaming
 
@@ -2220,6 +2229,12 @@ Settings field reference:
 | `NotificationLargeAmount3Detected`, `NotificationLargeAmount4Detected` | boolean | Notify when a level 3 / level 4 large amount is detected |
 | `ShowSlTpPnl` | boolean | Show the expected PnL in $ under the stop-loss and take-profit labels |
 | `SignalLevelTriggerSource` | string | What triggers this instrument's signal levels: `"TradePrice"` (the default — a row never changed reports it) or `"BestBidAsk"`. Any other value → `400`, nothing written |
+| `InfoPanel` | object | The info panel: `Enabled`, `PanelWidth` (28–220), `RowHighlightEnabled`, `RowHighlightColor`, `Buttons[{Kind, Enabled, Order}]`, `Metrics[{Kind, Enabled, Order, TimeFrame, Threshold, ThresholdColor}]`. GET lists every kind in the panel's order; a PUT changes only the kinds named; the open book shows it at once |
+| `AmountBarFillMode`, `ClusterBarFillMode` | string | `"Manual"` / `"Automatic"`; with `AutomaticFillLargeOrdersCount` (≥ 1), `AutomaticFillMultiplicationFactor`, `ClusterAutomaticFillMultiplicationFactor` (≥ 0) |
+| `TicksDisplayMode`, `SmoothTicksUpdateSpeed` | string, int | `"Standard"` / `"Smooth"`; speed 2–20 |
+| `HighlightTicksLargeAmount`, `ShowLiquidations`, `LiquidationsMinAmount`, `LiquidationsMinAmountUsd` | boolean, decimal | Tape: large-trade highlight, liquidations and their minimum size (≥ 0) |
+| `ClusterDataDisplayMode`, `StretchLevelsAcrossClusters`, `StretchHoverToClusters`, `ClusterVisibleColumns`, `CustomClusterTimeFrames` | string, boolean, int, string[] | `"Sum"` / `"Delta"` / `"BuyXSell"`; columns 1–100; up to 10 own timeframes such as `"15s"`, `"2m"`, `"2h"` |
+| `MaxDigitsInPriceScale`, `ShowIndexPrice`, `ShowLiquidationPrice`, `Show24hPriceChangePercent`, `ShowMarketDataPing`, `ShowMaxPositionSize` | int, boolean | Price digits 1–15 (`0` = nothing cut) and what the book shows |
 | `UseLargeAmountDetectionArea` | boolean | Use price range for large amount detection |
 | `LargeAmountDetectionMinValue` | decimal | Minimum price for large amount detection area |
 | `LargeAmountDetectionMaxValue` | decimal | Maximum price for large amount detection area |
@@ -2704,6 +2719,39 @@ curl "http://127.0.0.1:17845/api/chart-settings"
 curl -X PUT http://127.0.0.1:17845/api/chart-settings \
   -H "Content-Type: application/json" \
   -d '{"openInterestDisplayMode": "Histogram"}'
+```
+
+### Settings Pages (General, Combo, Recording, Sound notifications, Hotkeys)
+
+The pages Settings → General («Общие», Combo, Recording), Sound notifications and the hotkeys. Terminal-wide. Every
+field of a PUT is optional and checked before the first one is saved: a wrong field among right ones → `400` naming the
+field and its allowed values or limits, nothing saved; an unknown field → `400`. Each changed row is saved the way the
+page saves it, so open windows react as to a change on the page (the clock on every window, the close warning, fill
+edges, tab strip …). Answers: the rows + `changed` (PUT) + `allowed` (+ `readOnly`). Names are accepted in any case.
+
+| Route | Rows | Read only |
+|---|---|---|
+| `GET/PUT /api/settings/general` | `orderBookFps` (1–240), `magneticWindowEnabled`, `showPopupWhenClosingTerminal`, `showPopupWhenClosingWindowsAndTabs`, `showWarningWhenClosingWithActiveOrders`, `showTimeOnAllWindows`, `enableOrdersDragDrop`, `zoomPercentagePresets` / `zoomAbsolutePresets` (5 numbers, ≥ 0 / ≥ 1), `amountBarFillEdge` / `clusterBarFillEdge` (`Left` / `Right`), `showClusterChangePercent`, `tabStripPosition` / `openPositionPanelPosition` (`Top` / `Bottom`), `centeringMode` (`AllOrderBooks` / `ActiveWindowOnly`), `saveClusterDataLocally` | `allowShortOnSpotMarket` (a PUT naming it → `400`) |
+| `GET/PUT /api/settings/combo` | `openIn` (`Window` / `WindowWithoutDock` / `Tab`), `defaultChart` (`TradingView` / `Regular`), `chartPosition` (`Bottom` / `Top` / `None`), `chartHeightPercent` (10–80), `windowHeight`, `orderBookWidth` (≥ 0), `maxOrderBooksPerComboWindow` (3–100), `showComboChartHeader`, `showComboOrderBookHeader`, `linking` (`Separately` / `AllTogether`), `venueSelection` (`AllChecked` / `TopByTradesCount` / `TopByTurnover`), `venueMetricTimeFrame`, `topVenuesCount` (1–100), `exchanges` (GET: `marketId`, `exchange`, `marketType`, `included`; PUT: `[{"marketId": 3, "included": false}]`) | — |
+| `GET/PUT /api/settings/recording` | `framesPerSecond` (10–60), `quality` (`Low` / `Medium` / `High` / `Ultra`), `instantReplayBufferMinutes` (1–20) | `outputFolder`, `recordMicrophone`, `microphone` (a PUT naming one → `400`) |
+| `GET/PUT /api/settings/sounds` | `events[]`: `event` (`Trade`, `SignalLevel`, `LargeAmount1`, `LargeAmount2`, `LargeAmountTicks`), `allowRepeat`, `duration` (1–60 s), `sound` (a built-in file name, `allowed.sound`); GET adds `custom` | a custom sound file |
+| `GET /api/settings/hotkeys` | `common`, `orderBook`, `chart`: `[{"action": "cancel_all_orders", "binding": "O", "bound": true}]`, `writable: false` | everything — no write route |
+
+**Examples:**
+
+```bash
+# Warn before closing the terminal with active orders or positions
+curl -X PUT http://127.0.0.1:17845/api/settings/general \
+  -H "Content-Type: application/json" \
+  -d '{"showWarningWhenClosingWithActiveOrders": true}'
+
+# Repeat off for the trade sound, 5 s for the signal-level sound
+curl -X PUT http://127.0.0.1:17845/api/settings/sounds \
+  -H "Content-Type: application/json" \
+  -d '{"events": [{"event": "Trade", "allowRepeat": false}, {"event": "SignalLevel", "duration": 5}]}'
+
+# Which key cancels all orders
+curl "http://127.0.0.1:17845/api/settings/hotkeys"
 ```
 
 ### Real-time WebSocket
