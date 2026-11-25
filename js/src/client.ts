@@ -367,6 +367,45 @@ export class MetaScalpClient {
     return this.put('/api/chart-settings', update);
   }
 
+  // ---- Arbitrage / TWAP screener tables, merged screener table (MC-1130, read only) ----
+
+  private static filtersQuery(filters: Record<string, string | number | boolean | Array<string | number>> = {}): string {
+    const parts = Object.entries(filters)
+      .filter(([, v]) => v !== undefined && v !== null)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(Array.isArray(v) ? v.join(',') : String(v))}`);
+    return parts.length ? `?${parts.join('&')}` : '';
+  }
+
+  /**
+   * The Arbitrage screener window's pairs, in its order. No filter = the window's saved settings; a filter is a setting
+   * of the window by its name and applies to this read only, e.g. `{ netSpreadMin: 1, pairSpotSpot: false, search: 'ETH' }`.
+   * Each row carries both legs in the terminal's names and `comboLegs` (a POST /api/combo `legs` value as it is).
+   * 400 names a wrong filter; 503 = the feed is not reachable (with the reason).
+   */
+  async getArbitrageScreener(filters?: Record<string, string | number | boolean | Array<string | number>>): Promise<Record<string, any>> {
+    return this.get('/api/arbitrage-screener/data' + MetaScalpClient.filtersQuery(filters));
+  }
+
+  /** The Arbitrage screener window's saved settings and every filter name a read takes. */
+  async getArbitrageScreenerSettings(): Promise<Record<string, any>> {
+    return this.get('/api/arbitrage-screener/settings');
+  }
+
+  /** The TWAP screener window's lines (filtered, grouped by coin, sorted as the window), e.g. `{ search: 'ETH', side: 'buy' }`. */
+  async getTwapScreener(filters?: Record<string, string | number | boolean | Array<string | number>>): Promise<Record<string, any>> {
+    return this.get('/api/twap-screener/data' + MetaScalpClient.filtersQuery(filters));
+  }
+
+  /** The TWAP screener window's saved settings and every filter name a read takes. */
+  async getTwapScreenerSettings(): Promise<Record<string, any>> {
+    return this.get('/api/twap-screener/settings');
+  }
+
+  /** The joined rows a screener window with these templates checked shows, each with `templateNames`. */
+  async getScreenerMergedData(templateIds: number[]): Promise<Record<string, any>> {
+    return this.get(`/api/screener/data?templateIds=${encodeURIComponent(templateIds.join(','))}`);
+  }
+
   // ---- HTTP helpers ----
 
   private async get<T>(path: string): Promise<T> {

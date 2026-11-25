@@ -2664,6 +2664,7 @@
         <code>{ id, name, settings }</code> where <code>settings</code> carries the whole configuration
         (<code>columnSettings[]</code>, <code>columnFilters[]</code>, <code>marketFilters[]</code>,
         <code>coinTags[]</code>, <code>numberOfRows</code>, <code>activeFilter</code>, the new-coin flags,
+        <code>oneRowPerCoin</code> (MC-1130: &laquo;one row per coin&raquo; of a window with several checked templates, read from the first one; a PUT without it keeps the stored value),
         &hellip;). The synthetic <code>Default</code> template (id <code>-1</code>) is always first.</p>
       </div>
       <div class="actions-row">
@@ -2868,6 +2869,138 @@
           <span class="response-time" id="resp-screener-templates-data-time"></span>
         </div>
         <div class="response-body" id="resp-screener-templates-data-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MC-1130: Arbitrage / TWAP screener tables, merged multi-template table -->
+  <div class="section-label">Arbitrage, TWAP and multi-template screener data (MC-1130)</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>Read only: nothing here places, moves or cancels an order or changes a setting. With no parameter a read returns the rows the
+    window shows with its <strong>saved settings</strong>; a query parameter named like a setting of the window applies to this read only
+    (an absent one takes the saved value) &mdash; the saved settings and an open window never change. Every name is case-insensitive.
+    An unknown name or a wrong value is <code>400 { error, field, allowed[] }</code>, answered before any feed is opened. A feed that cannot
+    be reached is <code>503 { error, status: "notConnected", reason }</code> &mdash; never an empty table that looks like &laquo;no rows&raquo;.
+    Each read opens its own short-lived feed connection and closes it once the first table arrived.</p>
+  </div>
+
+  <!-- /api/arbitrage-screener/data (GET) -->
+  <div class="endpoint" id="ep-arbitrage-screener-data">
+    <div class="endpoint-header" onclick="toggle('ep-arbitrage-screener-data')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/arbitrage-screener/data</span>
+      <span class="endpoint-desc">The Arbitrage screener's pairs (as its window shows them)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The pairs of the Arbitrage screener window (&laquo;Арбитражный скринер&raquo;, MET-2276), in the window's order (favorites first,
+        then the saved sort). Response <code>{ status: "ok", count, searchHiddenByFilters, serverTimeOffsetMs, rows[] }</code>. Each row:
+        <code>pairId</code>, <code>base</code>, <code>assetClass</code>, <code>type</code>, <code>typeText</code> (&laquo;Spot + Futures&raquo;),
+        <code>longLeg</code> (index of the long leg in the feed's order), <code>entrySpreadPct</code>, <code>netSpreadPct</code>, <code>peakPct</code>
+        (percent), <code>minVolumeUsd</code> / <code>minTrades</code> (per timeframe), <code>pairStartTs</code>, <code>updatedTs</code> (Unix ms),
+        <code>isFavorite</code>, <code>volumeTimeframe</code> + <code>volume</code>, <code>tradesTimeframe</code> + <code>trades</code> (the window's
+        Volume / Trades columns), <code>funding</code> / <code>funding24h</code> (short leg rate &minus; long leg rate, the window's sort value),
+        <code>long</code> and <code>short</code> legs, and <code>comboLegs[]</code>.</p>
+        <p>Each leg: <code>exchange</code> / <code>market</code> (the terminal's names, as <code>GET /api/connections</code> and the legs of
+        <code>POST /api/combo</code> use them: <code>Binance</code>, <code>Gate</code>; <code>Spot</code> / <code>Futures</code>), <code>ticker</code>
+        (the ticker the window's own combo opens), <code>feedExchange</code> / <code>feedMarket</code> / <code>symbol</code> (the feed's own names),
+        <code>quote</code>, <code>bid</code>, <code>ask</code>, <code>price</code> (the ask of the long leg, the bid of the short leg, as the window shows),
+        <code>multiplier</code>, <code>priceIncrement</code>, <code>priceTs</code>, <code>fundingRate</code>, <code>fundingIntervalH</code>,
+        <code>nextFundingTs</code>, <code>fund24hPct</code>, <code>fund24hEstimated</code>. <code>{"legs": row.comboLegs}</code> is a
+        <code>POST /api/combo</code> body as it is (long leg first) and opens both books.</p>
+        <p><strong>Filters</strong> (the window's settings, see <code>GET /api/arbitrage-screener/settings</code>): <code>search</code>;
+        <code>markets</code>, <code>excludedMarkets</code> (comma-separated market keys <code>exchange_s</code> / <code>exchange_f</code>, e.g.
+        <code>binance_s,okx_f</code>); <code>pairFuturesFutures</code>, <code>pairSpotSpot</code>, <code>pairSpotFutures</code>,
+        <code>hideSpotMoreExpensive</code>, <code>assetCrypto</code>, <code>assetStablecoins</code>, <code>assetCommodities</code>,
+        <code>assetStocks</code>, <code>assetIndices</code>, <code>onePairPerCoin</code>, <code>sameQuoteOnly</code>, <code>favoritesOnly</code>,
+        <code>sortDescending</code> (true / false); <code>rows</code> (1&ndash;100, the feed's limit); <code>volumeTimeframe</code>,
+        <code>tradesTimeframe</code> (5s, 15s, 30s, 1m, 5m, 15m, 1h, 4h, 1d); <code>sortColumn</code> (coin, funding, funding24h, entrySpread,
+        netSpread, volume, trades, peak, lifetime); <code>tradeSizeUsd</code>; <code>favorites</code>, <code>hiddenPairs</code>, <code>hiddenCoins</code>
+        (comma-separated); the column filters <code>&lt;column&gt;Min</code> / <code>&lt;column&gt;Max</code> for funding, funding24h, entrySpread,
+        netSpread (percent), volume (USD), trades (count), peak (percent), lifetime (seconds) &mdash; e.g. <code>netSpreadMin=1</code>.</p>
+        <p>Example: <code>GET /api/arbitrage-screener/data?netSpreadMin=1&amp;pairSpotSpot=false&amp;search=ETH</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/arbitrage-screener/settings (GET) -->
+  <div class="endpoint" id="ep-arbitrage-screener-settings">
+    <div class="endpoint-header" onclick="toggle('ep-arbitrage-screener-settings')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/arbitrage-screener/settings</span>
+      <span class="endpoint-desc">The Arbitrage screener window's saved settings + the filter names</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Response <code>{ settings, filters }</code>: <code>settings</code> = the window's saved settings (the defaults of every read; the
+        defaults when the window never saved any), <code>filters</code> = every name a read takes, each with its allowed values. Read only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/twap-screener/data (GET) -->
+  <div class="endpoint" id="ep-twap-screener-data">
+    <div class="endpoint-header" onclick="toggle('ep-twap-screener-data')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/twap-screener/data</span>
+      <span class="endpoint-desc">The TWAP screener's table (as its window shows it)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The lines of the TWAP screener window (MET-2308: Hyperliquid TWAP orders being executed): the feed's rows after the window's own
+        filter, coin grouping and sort, no group expanded. Response <code>{ status: "ok", count, sourceLive, groupByCoin, serverTimeOffsetMs, rows[] }</code>
+        (<code>sourceLive</code> false = the window's &laquo;stale data&raquo; note). Each line: <code>kind</code> (<code>Single</code> or
+        <code>Group</code>), <code>key</code> (<code>coin|market</code>), <code>coin</code>, <code>ticker</code>, <code>symbol</code>,
+        <code>market</code> (perp / spot), <code>dex</code>, <code>isFavorite</code>, <code>sizeUsd</code>, <code>orderSize30sUsd</code>,
+        <code>remainingUsd</code>, <code>startTime</code>, <code>endTime</code> (Unix ms), <code>wallets</code>, <code>side</code> (buy / sell; a group
+        whose TWAPs differ: <code>mixed</code>); a single TWAP also <code>id</code>, <code>twapId</code>, <code>user</code>, <code>sz</code>,
+        <code>executedSz</code>, <code>filledPct</code>, <code>minutes</code>, <code>reduceOnly</code>, <code>randomize</code>, <code>price</code>;
+        a group its TWAPs in <code>twaps[]</code>, largest first.</p>
+        <p><strong>Filters</strong>: <code>search</code> (coin, part of the ticker); <code>market</code> (all, perp, spot); <code>side</code>
+        (all, buy, sell); <code>groupByCoin</code>, <code>favoritesOnly</code>, <code>sortDescending</code> (true / false); <code>sortColumn</code>
+        (coin, side, size, order30s, filled, remaining, timeLeft, wallet); <code>favorites</code>, <code>hiddenCoins</code> (comma-separated
+        <code>coin|market</code>); <code>&lt;column&gt;Min</code> / <code>&lt;column&gt;Max</code> for size, order30s, remaining (USD), filled (%),
+        timeLeft (minutes). Example: <code>GET /api/twap-screener/data?search=ETH&amp;side=buy</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/twap-screener/settings (GET) -->
+  <div class="endpoint" id="ep-twap-screener-settings">
+    <div class="endpoint-header" onclick="toggle('ep-twap-screener-settings')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/twap-screener/settings</span>
+      <span class="endpoint-desc">The TWAP screener window's saved settings + the filter names</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Response <code>{ settings, filters }</code>, as <code>GET /api/arbitrage-screener/settings</code>. Read only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/screener/data (GET) -->
+  <div class="endpoint" id="ep-screener-merged-data">
+    <div class="endpoint-header" onclick="toggle('ep-screener-merged-data')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/screener/data</span>
+      <span class="endpoint-desc">The joined rows of several screener templates (one window, several checked templates)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p><code>GET /api/screener/data?templateIds=A,B</code> &mdash; the one table a screener window with these templates checked shows
+        (MC-1093): the union built by the window's own merge, in the first template's sort, one row per coin when the first template's
+        <code>oneRowPerCoin</code> is on (with 2+ templates, as in the window). Response <code>{ status: "ok", templateIds[], templateNames[],
+        oneRowPerCoin, count, rows[] }</code>; each row is a <code>/api/screener/templates/{templateId}/data</code> row plus
+        <code>templateNames[]</code> (the &laquo;Шаблон&raquo; column). With one template the rows equal that route's rows plus the template name.
+        <strong>Errors:</strong> no / non-numeric / repeated ids or another parameter &rarr; <code>400 { error, field, allowed[] }</code>; an
+        unknown id &rarr; <code>404</code>; no rows from the screener server within the deadline &rarr; <code>503 { status: "notConnected", reason }</code>.</p>
       </div>
     </div>
   </div>
@@ -3504,7 +3637,7 @@
         <table>
           <tr><th>Field</th><th>Type</th><th>Nullable</th><th>Description</th></tr>
           <tr><td><code>watchlists</code></td><td>array</td><td>no</td><td>Open watchlist windows, each <code>{ id, externalId, geometry }</code>. A watchlist row has no visibility flag &mdash; every listed row is an open window.</td></tr>
-          <tr><td><code>screeners</code></td><td>array</td><td>no</td><td>Open screener windows, each <code>{ id, externalId, name, templateId, geometry }</code>. A screener row exists only while its window is open (created on open, removed on close), so every listed row is open.</td></tr>
+          <tr><td><code>screeners</code></td><td>array</td><td>no</td><td>Open screener windows, each <code>{ id, externalId, name, templateId, checkedTemplateIds, geometry }</code>; <code>checkedTemplateIds</code> (MC-1130) = the templates checked in the window, in order, the first is <code>templateId</code> (a window with one template reports that one). A screener row exists only while its window is open (created on open, removed on close), so every listed row is open.</td></tr>
           <tr><td><code>lineNotifications</code></td><td>object</td><td>yes</td><td>The line-notifications singleton: <code>{ id, isOpen, geometry }</code>. The row is always persisted; <code>isOpen</code> is <code>true</code> only when the window is actually shown &mdash; a persisted-but-hidden singleton reads <code>isOpen: false</code>. <code>null</code> if the family could not be read.</td></tr>
           <tr><td><code>finres</code></td><td>object</td><td>yes</td><td>The finres singleton, same shape/semantics as <code>lineNotifications</code>.</td></tr>
           <tr><td><code>userTrades</code></td><td>object</td><td>yes</td><td>Same <code>{ id, isOpen, geometry }</code> shape (MC-704): it describes the open &laquo;Trades&raquo; window &mdash; <code>id</code> is that window's id (the one <code>POST /api/ui/windows</code> returned), <code>isOpen</code> is <code>true</code> while it is open; with none open, <code>id</code> is <code>0</code> and <code>isOpen</code> <code>false</code>. Since MET-2229 there is one &laquo;Trades&raquo; window (a terminal upgraded from a multi-window build may still restore several; then this is the newest). For a docked window <code>geometry</code> is the window's stored rect, not where it floats on screen (the dock layout keeps that) &mdash; the open response carries where it landed. Every open one is in <code>userTradesWindows</code>.</td></tr>
@@ -3652,6 +3785,7 @@
           <tr><td><code>width</code></td><td>number</td><td>no</td><td>Window width. Omit for the type's default.</td></tr>
           <tr><td><code>monitor</code></td><td>integer</td><td>no</td><td>0-based target screen. Omit to place by virtual-desktop coordinate.</td></tr>
           <tr><td><code>templateId</code></td><td>integer</td><td>no</td><td><strong>Screener only.</strong> Open the screener already showing this saved template's filters and rows &mdash; the same state the window's own template picker produces. Omit for today's Default view. The synthetic Default (id <code>-1</code>) is accepted and resolves to Default. Ignored for any non-screener <code>windowType</code>.</td></tr>
+          <tr><td><code>templateIds</code></td><td>integer[]</td><td>no</td><td><strong>Screener only</strong> (MC-1130). Several templates checked in the window, in order &mdash; the first is the window's main template; the window shows their joined rows with the &laquo;Шаблон&raquo; column. Not together with <code>templateId</code> (400); a repeated id &rarr; 400; an unknown id &rarr; 404; with another <code>windowType</code> &rarr; 400. Read the window's rows with <code>GET /api/screener/data?templateIds=&hellip;</code>.</td></tr>
           <tr><td><code>connectionId</code></td><td>integer</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>ticker</code>.</strong> The connection (<code>GET /api/connections</code>) the chart opens on. Omit both for today's empty chart. (MC-1086)</td></tr>
           <tr><td><code>ticker</code></td><td>string</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>connectionId</code>.</strong> The instrument the chart opens on, found by search on that connection (<code>ETH</code> finds <code>ETHUSDT</code>): one call gives a chart with candles, no empty chart to switch afterwards. <code>connectionId</code> or <code>ticker</code> alone &rarr; <code>400 Give 'connectionId' and 'ticker' together.</code>; either on another type &rarr; <code>400</code> (an order book on a connection opens with <code>POST /api/combo</code> and <code>connections</code>); a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>. Validated before anything opens. (MC-1086)</td></tr>
         </table>
@@ -4336,6 +4470,21 @@
           <tr><td><code>screener_frame</code></td><td>server &rarr; client</td><td>A full screener row set &mdash; the current snapshot on subscribe, then one per backend update</td><td><code>templateId</code>, <code>rows[]</code> &mdash; each with <code>ticker</code>, <code>wireTicker</code>, <code>isNewCoin</code>, <code>exchange</code>, <code>listedExchanges[]</code>, <code>columns[]</code> (<code>type</code> &mdash; the column number, see the list under <em>GET /api/screener/templates/{id}/data</em> (MET-1833); <code>timeFrame</code>, <code>time</code>, <code>metric</code>, <code>value</code>; <code>fundingRate</code> is scaled &times;100 as in the window)</td></tr>
         </table>
 
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Arbitrage and TWAP screener streams</strong> (MC-1130) &mdash; the tables of <code>GET /api/arbitrage-screener/data</code> and <code>GET /api/twap-screener/data</code>, live. The subscribe <code>data</code> carries the same filters the GET takes, as JSON (<code>{}</code> = the window's saved settings; a list may be an array), e.g. <code>{ "netSpreadMin": 1, "pairSpotSpot": false }</code> or <code>{ "search": "ETH", "side": "buy" }</code>. An unknown name or a wrong value is the standard <code>error</code> frame naming it and the allowed values, and opens nothing. On subscribe the server acks, then sends the whole table after the first batch and again after every batch (the TWAP stream: after every change); a frame has the GET's shape &mdash; <code>status</code> <code>notConnected</code> with a <code>reason</code> while the feed cannot be reached. One stream per socket and feed: a repeat subscribe replaces it. Unsubscribe or a disconnect closes the stream's own upstream connection:</p>
+        <table>
+          <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
+          <tr><td><code>arbitrage_screener_subscribe</code></td><td>client &rarr; server</td><td>Start (or replace) the arbitrage table stream</td><td>the filters of <code>GET /api/arbitrage-screener/data</code> (all optional)</td></tr>
+          <tr><td><code>arbitrage_screener_unsubscribe</code></td><td>client &rarr; server</td><td>Stop it (closes its upstream connection)</td><td><code>{}</code></td></tr>
+          <tr><td><code>arbitrage_screener_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>arbitrage_screener_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>arbitrage_screener_frame</code></td><td>server &rarr; client</td><td>The whole table after each batch</td><td><code>status</code>, <code>reason</code>, <code>count</code>, <code>searchHiddenByFilters</code>, <code>serverTimeOffsetMs</code>, <code>rows[]</code> (as the GET)</td></tr>
+          <tr><td><code>twap_screener_subscribe</code></td><td>client &rarr; server</td><td>Start (or replace) the TWAP table stream</td><td>the filters of <code>GET /api/twap-screener/data</code> (all optional)</td></tr>
+          <tr><td><code>twap_screener_unsubscribe</code></td><td>client &rarr; server</td><td>Stop it (closes its upstream connection)</td><td><code>{}</code></td></tr>
+          <tr><td><code>twap_screener_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>twap_screener_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>twap_screener_frame</code></td><td>server &rarr; client</td><td>The table after subscribe and after each change</td><td><code>status</code>, <code>reason</code>, <code>count</code>, <code>sourceLive</code>, <code>groupByCoin</code>, <code>serverTimeOffsetMs</code>, <code>rows[]</code> (as the GET)</td></tr>
+        </table>
+
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Density map stream</strong> (MET-1403) &mdash; the MetaBroker screener.v2 <strong>density map</strong> (orderbook walls) as a notifications feed: each wall becomes exactly ONE notification, on first sight of its id &mdash; the same semantics the terminal's Density Map window shows (a wall the feed removes and later re-broadcasts under the same id is shown again in the window, as on the MetaBroker page; on this API an id is delivered at most once per subscription, in the snapshot or in an update). The subscribe <code>data</code> carries the feed config; only <code>exchangeMarkets</code> is required (an empty list is rejected &mdash; upstream it means "nothing"), everything else defaults to the window's defaults: coefficients <code>3/2/1</code>, lifetimes <code>5</code> min, <code>includedQuoteAssets ["USDT"]</code> (valid assets: <code>USDT</code>, <code>USDC</code>, <code>OTHER</code>). Each <code>exchangeMarkets[]</code> entry is <code>{ "exchange", "market" }</code> &mdash; enums accept names or numbers (<code>exchange</code>: binance, gate, bybit, kucoin, bitget, mexc, okx, bingx, htx, bitmart, lbank, hyperliquid, upbit, asterdex, lighter, xt, edgex, bitunix, ourbit, whitebit, blofin, weex, polymarket; <code>market</code>: spot | futures). The base density size of the density map is always auto (MetaBroker MB-702 removed the manual mode): <code>bdsMode: "manual"</code> or a <code>bdsValue</code> in an entry is refused with an error frame naming the field (MET-1828); <code>bdsMode: "auto"</code> is accepted as a no-op. These two fields belong to <code>large_trades_subscribe</code>, where they apply. On subscribe the server acks with <code>density_map_subscribed</code>, then delivers a <code>density_map_snapshot</code> (may be empty &mdash; it resolves the loading state), then <code>density_map_update</code> batches. A repeat <code>density_map_subscribe</code> on the same socket <strong>replaces</strong> the config (upstream holds one density subscription per connection) and is answered with <code>density_map_subscribed</code> plus a fresh <code>density_map_snapshot</code> of the walls that match the new filters, without replaying already-notified walls as updates (MET-1803); each socket gets its own upstream feed, so API clients and the Density Map window never affect each other. Unsubscribe (or an abrupt disconnect) tears the upstream socket down:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
@@ -4853,6 +5002,10 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>open_interest_unsubscribe</code></td><td><code>{ "connectionId": 123, "ticker": "BTCUSDT" }</code></td><td>Stop receiving open interest for that ticker.</td></tr>
         <tr><td><code>density_map_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "includedQuoteAssets": ["USDT"] }</code></td><td>Start the MetaBroker density-wall notifications stream. <code>exchangeMarkets</code> is required; optional coefficients (3/2/1), lifetimes (5&nbsp;min), quote assets and <code>assetClasses</code> (crypto, stablecoins, commodities, stocks, indices; default all). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>density_map_unsubscribe</code></td><td><code>{}</code></td><td>Stop the density map stream.</td></tr>
+        <tr><td><code>arbitrage_screener_subscribe</code></td><td><code>{ "netSpreadMin": 1 }</code></td><td>Start (or replace) the Arbitrage screener table stream (MC-1130); the filters of <code>GET /api/arbitrage-screener/data</code>, <code>{}</code> = the window's settings.</td></tr>
+        <tr><td><code>arbitrage_screener_unsubscribe</code></td><td><code>{}</code></td><td>Stop it.</td></tr>
+        <tr><td><code>twap_screener_subscribe</code></td><td><code>{ "search": "ETH", "side": "buy" }</code></td><td>Start (or replace) the TWAP screener table stream (MC-1130); the filters of <code>GET /api/twap-screener/data</code>.</td></tr>
+        <tr><td><code>twap_screener_unsubscribe</code></td><td><code>{}</code></td><td>Stop it.</td></tr>
         <tr><td><code>large_trades_subscribe</code></td><td><code>{ "exchangeMarkets": [{ "exchange": "binance", "market": "futures" }], "aggregationMs": 500, "minAmountUsd": 100000 }</code></td><td>Start the MetaBroker aggregated large-trades stream (no snapshot &mdash; rows are final and append-only). Optional <code>assetClasses</code> (crypto, stablecoins, commodities, stocks, indices; default all). Re-subscribing replaces the config.</td></tr>
         <tr><td><code>large_trades_unsubscribe</code></td><td><code>{}</code></td><td>Stop the large trades stream.</td></tr>
         <tr><td><code>liquidations_subscribe</code></td><td><code>{ "exchanges": ["binance", "bybit", "okx"], "minNotionalUsd": 1000, "window": "h1", "backfill": 200 }</code></td><td>Start the MetaBroker cross-exchange liquidations stream (futures only). No MetaBroker login is needed. Re-subscribing replaces the filters and replays a snapshot.</td></tr>
@@ -4896,6 +5049,10 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
         <tr><td><code>annotations_snapshot</code></td><td><code>connectionId</code>, <code>ticker</code>, <code>lineAnnotations[]</code>: <code>index</code>, <code>x1</code>, <code>x2</code>, <code>y1</code>, <code>y2</code>; <code>horizontalLineAnnotations[]</code>: <code>index</code>, <code>y</code>; <code>horizontalRayAnnotations[]</code>: <code>index</code>, <code>y</code>, <code>x1</code> &mdash; <code>y</code>/<code>y1</code>/<code>y2</code> are <strong>venue prices</strong> (same as GET; unresolvable ticker &rarr; <code>error</code> frame) (no <code>annotations_updated</code> &mdash; snapshot is one-shot)</td></tr>
         <tr><td><code>density_map_subscribed</code></td><td>&mdash; (a <code>density_map_snapshot</code> follows immediately)</td></tr>
         <tr><td><code>density_map_unsubscribed</code></td><td>&mdash;</td></tr>
+        <tr><td><code>arbitrage_screener_subscribed</code> / <code>arbitrage_screener_unsubscribed</code></td><td>&mdash;</td></tr>
+        <tr><td><code>arbitrage_screener_frame</code></td><td>the table of <code>GET /api/arbitrage-screener/data</code>: <code>status</code>, <code>reason</code>, <code>count</code>, <code>rows[]</code></td></tr>
+        <tr><td><code>twap_screener_subscribed</code> / <code>twap_screener_unsubscribed</code></td><td>&mdash;</td></tr>
+        <tr><td><code>twap_screener_frame</code></td><td>the table of <code>GET /api/twap-screener/data</code>: <code>status</code>, <code>reason</code>, <code>count</code>, <code>sourceLive</code>, <code>rows[]</code></td></tr>
         <tr><td><code>density_map_snapshot</code></td><td><code>notifications[]</code>: <code>id</code>, <code>exchange</code>, <code>exchangeLogo</code>, <code>market</code> (spot | futures), <code>ticker</code>, <code>side</code> (ask | bid), <code>price</code>, <code>distancePercent</code>, <code>sizeUsd</code>, <code>time</code> &mdash; may be empty (it resolves the loading state)</td></tr>
         <tr><td><code>density_map_update</code></td><td>Same shape as <code>density_map_snapshot</code> (newly seen walls &mdash; one notification per wall id, ever)</td></tr>
         <tr><td><code>large_trades_subscribed</code></td><td>&mdash; (no snapshot &mdash; updates follow as trades happen)</td></tr>

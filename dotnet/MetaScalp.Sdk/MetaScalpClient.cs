@@ -285,6 +285,39 @@ public class MetaScalpClient : IDisposable
     public Task<ChartSettings> UpdateChartSettingsAsync(ChartSettingsUpdate update, CancellationToken ct = default)
         => PutAsync<ChartSettings>("/api/chart-settings", update, ct);
 
+    // ---- Arbitrage / TWAP screener tables, merged screener table (MC-1130, read only) ----
+
+    /// <summary>
+    /// The Arbitrage screener window's pairs, in its order. No filter = the window's saved settings; a filter is a setting
+    /// of the window by its name and applies to this read only, e.g. <c>{ ["netSpreadMin"] = "1", ["search"] = "ETH" }</c>.
+    /// Each row carries both legs in the terminal's names and <c>comboLegs</c> (a POST /api/combo <c>legs</c> value as it
+    /// is). 400 names a wrong filter; 503 = the feed is not reachable (with the reason).
+    /// </summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetArbitrageScreenerAsync(IDictionary<string, string>? filters = null, CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>("/api/arbitrage-screener/data" + FiltersQuery(filters), ct);
+
+    /// <summary>The Arbitrage screener window's saved settings and every filter name a read takes.</summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetArbitrageScreenerSettingsAsync(CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>("/api/arbitrage-screener/settings", ct);
+
+    /// <summary>The TWAP screener window's lines (filtered, grouped by coin, sorted as the window), e.g. search / side filters.</summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetTwapScreenerAsync(IDictionary<string, string>? filters = null, CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>("/api/twap-screener/data" + FiltersQuery(filters), ct);
+
+    /// <summary>The TWAP screener window's saved settings and every filter name a read takes.</summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetTwapScreenerSettingsAsync(CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>("/api/twap-screener/settings", ct);
+
+    /// <summary>The joined rows a screener window with these templates checked shows, each with <c>templateNames</c>.</summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetScreenerMergedDataAsync(IEnumerable<long> templateIds, CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>("/api/screener/data?templateIds=" + Uri.EscapeDataString(string.Join(",", templateIds)), ct);
+
+    private static string FiltersQuery(IDictionary<string, string>? filters)
+    {
+        if (filters == null || filters.Count == 0) return "";
+        return "?" + string.Join("&", filters.Select(f => Uri.EscapeDataString(f.Key) + "=" + Uri.EscapeDataString(f.Value)));
+    }
+
     // ---- HTTP Helpers ----
 
     private async Task<T> GetAsync<T>(string path, CancellationToken ct)
