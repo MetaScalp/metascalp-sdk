@@ -116,6 +116,79 @@ public class MetaScalpClient : IDisposable
         => await PutAsync<object>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/ticker",
             new SetDocumentTickerRequest { Ticker = ticker, ConnectionId = connectionId }, ct);
 
+    // ---- Quick layout, combo chart, order book replay ----
+
+    /// <summary>
+    /// Opens a quick layout, as the «+» menu does: a tab with a grid of empty order books (rows 1-4, columns 1-20),
+    /// each with a linked chart when <see cref="QuickLayoutRequest.WithCharts"/> is on. Returns the window, the tab and
+    /// its documents by cell; fill a book with <see cref="SetDocumentTickerAsync"/>. 400 on a field out of range, 404
+    /// for a <see cref="QuickLayoutRequest.WindowId"/> that is not open. Unset fields are not sent.
+    /// </summary>
+    public Task<QuickLayoutResponse> OpenQuickLayoutAsync(QuickLayoutRequest request, CancellationToken ct = default)
+        => PostAsync<QuickLayoutResponse>("/api/ui/quick-layouts", request, ct);
+
+    /// <summary>
+    /// Opens a combo chart, as the order book's «Open combo chart» does: one window, one tab named after the ticker,
+    /// 4 charts. GET /api/ui/state marks the window «isComboChart: true».
+    /// </summary>
+    public Task<ComboChartResponse> OpenComboChartAsync(long connectionId, string ticker, CancellationToken ct = default)
+        => PostAsync<ComboChartResponse>("/api/ui/combo-charts", new ComboChartRequest { ConnectionId = connectionId, Ticker = ticker }, ct);
+
+    /// <summary>
+    /// Is the market recorded by the order book replay, and which hours / periods: what the replay picker shows.
+    /// Without <paramref name="from"/> / <paramref name="to"/> the last 31 days up to now; at most 93 days. The replay
+    /// service unreachable answers 502.
+    /// </summary>
+    /// <param name="from">Start of the range (sent as Unix milliseconds). <c>null</c> = not sent.</param>
+    /// <param name="to">End of the range (sent as Unix milliseconds). <c>null</c> = now.</param>
+    public Task<ReplayAvailabilityResponse> GetReplayAvailabilityAsync(long connectionId, string ticker,
+        DateTimeOffset? from = null, DateTimeOffset? to = null, CancellationToken ct = default)
+    {
+        var qs = new List<string> { $"Ticker={Uri.EscapeDataString(ticker)}" };
+        if (from is not null) qs.Add($"From={from.Value.ToUnixTimeMilliseconds()}");
+        if (to is not null) qs.Add($"To={to.Value.ToUnixTimeMilliseconds()}");
+        return GetAsync<ReplayAvailabilityResponse>($"/api/connections/{connectionId}/replay/availability?{string.Join("&", qs)}", ct);
+    }
+
+    /// <summary>
+    /// Plays a recorded period over ONE open order book (its externalId), as the replay picker's Play does; a replay
+    /// already shown there is replaced. The period is 1 minute to 24 hours, not in the future. 400 for a chart, a book
+    /// without the History button or a period with nothing recorded; 404 for an unknown document or a book whose tab
+    /// is not shown.
+    /// </summary>
+    /// <param name="speed">0.25, 0.5, 1, 2, 4 or 10; <c>null</c> = 1.</param>
+    /// <param name="autoPlay"><c>null</c> = true (plays once downloaded); false = paused at the start.</param>
+    public Task<ReplayState> StartReplayAsync(string externalId, DateTimeOffset from, DateTimeOffset to,
+        double? speed = null, bool? autoPlay = null, CancellationToken ct = default)
+        => PostAsync<ReplayState>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/replay",
+            new StartReplayRequest
+            {
+                From = from.ToUnixTimeMilliseconds(),
+                To = to.ToUnixTimeMilliseconds(),
+                Speed = speed,
+                AutoPlay = autoPlay
+            }, ct);
+
+    /// <summary>The replay of an order book as its player bar shows it. 409 when no replay is running there.</summary>
+    public Task<ReplayState> GetReplayStatusAsync(string externalId, CancellationToken ct = default)
+        => GetAsync<ReplayState>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/replay", ct);
+
+    /// <summary>
+    /// The player bar's play / pause, speed menu and strip click; give at least one. Returns the state after the
+    /// change. 409 while the period still downloads (the error body carries the state in «replay») or with no replay.
+    /// </summary>
+    /// <param name="playing">true = play, false = pause; <c>null</c> = not sent.</param>
+    /// <param name="speed">0.25, 0.5, 1, 2, 4 or 10; <c>null</c> = not sent.</param>
+    /// <param name="seek">A moment inside the period (sent as Unix milliseconds); <c>null</c> = not sent.</param>
+    public Task<ReplayState> ControlReplayAsync(string externalId, bool? playing = null, double? speed = null,
+        DateTimeOffset? seek = null, CancellationToken ct = default)
+        => PostAsync<ReplayState>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/replay/control",
+            new ControlReplayRequest { Playing = playing, Speed = speed, Seek = seek?.ToUnixTimeMilliseconds() }, ct);
+
+    /// <summary>The player bar's close button: the book is live again. 409 when no replay is running there.</summary>
+    public Task<StopReplayResponse> StopReplayAsync(string externalId, CancellationToken ct = default)
+        => PostAsync<StopReplayResponse>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/replay/stop", new { }, ct);
+
     // ---- Order Book Settings ----
 
     public Task<OrderBookSettingsResponse> GetOrderBookSettingsAsync(long connectionId, string ticker, CancellationToken ct = default)

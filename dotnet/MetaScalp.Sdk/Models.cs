@@ -238,6 +238,166 @@ public class SetDocumentTickerRequest
     public long? ConnectionId { get; set; }
 }
 
+/// <summary>MC-1129: POST /api/ui/quick-layouts, the «+» menu's quick layout. Unset fields are not sent.</summary>
+public class QuickLayoutRequest
+{
+    /// <summary>1-4, the picker's rows.</summary>
+    public int Rows { get; set; }
+
+    /// <summary>1-20, the picker's columns.</summary>
+    public int Columns { get; set; }
+
+    /// <summary>Each book with its own linked chart. Null: the picker's saved «With charts» choice (never changed by the route).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? WithCharts { get; set; }
+
+    /// <summary>An open workspace window (GET /api/ui/state): the grid becomes a new tab there. Null: a new workspace window.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? WindowId { get; set; }
+
+    /// <summary>Null: the menu's name (Tab N).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? TabName { get; set; }
+}
+
+/// <summary>One cell of a quick layout, in grid order (row by row, 0-based).</summary>
+public class QuickLayoutCell
+{
+    public int Row { get; set; }
+    public int Column { get; set; }
+
+    /// <summary>The order book's externalId.</summary>
+    public string OrderBook { get; set; } = "";
+
+    /// <summary>The book's linked chart's externalId; null without charts.</summary>
+    public string? Chart { get; set; }
+}
+
+/// <summary>Response of <c>OpenQuickLayoutAsync</c>: the window, the tab and its documents by cell.</summary>
+public class QuickLayoutResponse
+{
+    public long WindowId { get; set; }
+    public long TabId { get; set; }
+    public string? TabName { get; set; }
+    public bool NewWindow { get; set; }
+    public int Rows { get; set; }
+    public int Columns { get; set; }
+    public bool WithCharts { get; set; }
+    public List<QuickLayoutCell> Cells { get; set; } = new();
+}
+
+/// <summary>MC-1129: POST /api/ui/combo-charts, the order book's «Open combo chart».</summary>
+public class ComboChartRequest
+{
+    public long ConnectionId { get; set; }
+
+    /// <summary>Found by search on the connection, e.g. BTCUSDT.</summary>
+    public string Ticker { get; set; } = "";
+}
+
+/// <summary>Response of <c>OpenComboChartAsync</c>: one window, one tab named after the ticker, 4 charts.</summary>
+public class ComboChartResponse
+{
+    public long WindowId { get; set; }
+    public long? TabId { get; set; }
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+
+    /// <summary>The 4 charts' externalIds in slot order.</summary>
+    public List<string> Charts { get; set; } = new();
+}
+
+/// <summary>A run of consecutive recorded hours, Unix milliseconds.</summary>
+public class ReplayPeriod
+{
+    public long From { get; set; }
+    public long To { get; set; }
+}
+
+/// <summary>Response of <c>GetReplayAvailabilityAsync</c>. A market the replay does not record: Supported = false with
+/// a Reason, the other fields unset.</summary>
+public class ReplayAvailabilityResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public bool Supported { get; set; }
+    public string? Reason { get; set; }
+
+    /// <summary>The range read, Unix milliseconds.</summary>
+    public long? From { get; set; }
+    public long? To { get; set; }
+
+    /// <summary>The shortest and the longest replay.</summary>
+    public long? MinLengthMs { get; set; }
+    public long? MaxLengthMs { get; set; }
+
+    /// <summary>The player bar's speeds.</summary>
+    public List<double> Speeds { get; set; } = new();
+
+    /// <summary>Starts of the recorded hours (Unix milliseconds), oldest first.</summary>
+    public List<long> Hours { get; set; } = new();
+
+    /// <summary>Runs of consecutive recorded hours, never past now.</summary>
+    public List<ReplayPeriod> Periods { get; set; } = new();
+}
+
+/// <summary>MC-1129: POST /api/ui/documents/{externalId}/replay, the replay picker's Play. Times in Unix milliseconds.</summary>
+public class StartReplayRequest
+{
+    public long From { get; set; }
+    public long To { get; set; }
+
+    /// <summary>0.25, 0.5, 1, 2, 4 or 10. Null: 1.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Speed { get; set; }
+
+    /// <summary>Null: true (plays once downloaded); false = paused at the start.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? AutoPlay { get; set; }
+}
+
+/// <summary>MC-1129: POST /api/ui/documents/{externalId}/replay/control. Give at least one; unset fields are not sent.</summary>
+public class ControlReplayRequest
+{
+    /// <summary>true = play, false = pause.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Playing { get; set; }
+
+    /// <summary>0.25, 0.5, 1, 2, 4 or 10.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Speed { get; set; }
+
+    /// <summary>A moment inside the period, Unix milliseconds.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? Seek { get; set; }
+}
+
+/// <summary>The replay of an order book as its player bar shows it. Times in Unix milliseconds.</summary>
+public class ReplayState
+{
+    /// <summary>loading, playing, paused, ended (paused at the end) or failed.</summary>
+    public string State { get; set; } = "";
+
+    /// <summary>On failed: the bar's line («Nothing recorded in this range», «Replay failed: …»); otherwise null.</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>The replay clock.</summary>
+    public long Time { get; set; }
+    public double Speed { get; set; }
+    public long From { get; set; }
+    public long To { get; set; }
+
+    /// <summary>Download progress, 0-1.</summary>
+    public double Progress { get; set; }
+}
+
+/// <summary>Response of <c>StopReplayAsync</c>.</summary>
+public class StopReplayResponse
+{
+    public bool Stopped { get; set; }
+    public string ExternalId { get; set; } = "";
+}
+
 /// <summary>The <see cref="ComboRequest.Exchanges"/> list. Converts from a list or array of plain names, so code
 /// written for the earlier <c>List&lt;string&gt;</c> property still compiles.</summary>
 public class ComboExchangeList : List<ComboExchange>

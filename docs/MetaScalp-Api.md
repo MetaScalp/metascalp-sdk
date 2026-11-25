@@ -57,6 +57,13 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/ui/windows/{windowId}/activate` | Bring one terminal window to the front |
 | `PUT /api/ui/documents/{externalId}/link-number` | Set one panel's link (binding-group) number |
 | `PUT /api/ui/documents/{externalId}/ticker` | Re-point one addressed panel (any book or chart, linked, unlinked or empty) to a different market, as a manual pick does |
+| `POST /api/ui/quick-layouts` | Open a quick layout: a tab with a grid of empty order books (rows 1–4, columns 1–20), optionally a linked chart per book, as the «+» menu does |
+| `POST /api/ui/combo-charts` | Open a combo chart: one window with 4 charts of one coin, as the order book's «Open combo chart» does |
+| `GET /api/connections/{id}/replay/availability?Ticker=` | Is the market recorded by the order book replay, and which hours / periods |
+| `POST /api/ui/documents/{externalId}/replay` | Start a replay of a recorded period on an open order book |
+| `GET /api/ui/documents/{externalId}/replay` | The replay's state, time, speed and period, as its player bar shows them |
+| `POST /api/ui/documents/{externalId}/replay/control` | Play / pause, speed, seek |
+| `POST /api/ui/documents/{externalId}/replay/stop` | Close the replay: the book is live again |
 | `GET /api/connections/{id}/orderbook-settings?Ticker=` | Get order book settings for a ticker |
 | `PUT /api/connections/{id}/orderbook-settings?Ticker=` | Update order book settings (partial) |
 | `GET /api/screener/templates` | List saved screener templates (the synthetic Default, id `-1`, is always first) |
@@ -1767,6 +1774,7 @@ GET http://127.0.0.1:{port}/api/ui/state
 | `geometry` | object | no | `{ top, left, width, height, isFullScreen, pinOnTop, isTopBarHidden }`. `pinOnTop` is nullable (tri-state in the model). |
 | `monitor` | integer | always null | Would be computed from geometry vs the screen list, but screen enumeration lives in a UI assembly the API does not reference — reported as `null`. |
 | `tabs` | array | no | The window's tabs (see below). |
+| `isComboChart` | boolean | absent | `true` on a combo chart window («Open combo chart», `POST /api/ui/combo-charts`); absent on every other window. |
 
 **Tab fields:**
 
@@ -2099,6 +2107,200 @@ the on-screen layout from the saved model. These routes do **not** exist:
 | `POST /api/ui/windows/{windowId}/order-books` | Open an order book in a window's active tab |
 | `POST /api/ui/windows/{windowId}/charts` | Open a chart in a window's active tab |
 | `DELETE /api/ui/documents/{externalId}` | Close one addressed panel |
+
+---
+
+### Quick Layout, Combo Chart, Replay
+
+Three terminal actions over the API, each doing what its button does: the «+» menu's **quick layout** (a tab of N×M empty order books, optionally a linked chart per book), the order book's **«Open combo chart»** (one window with 4 charts of one coin) and the order book's **History replay** (a recorded period played over an open book with its player bar). Nothing here places, moves or cancels an order; a replay's paper trading is not reachable through the API. Every field is checked before anything opens; an unknown body field is `400`. Times are Unix milliseconds or ISO 8601 (UTC unless a zone is named). Field names are camelCase, as on the other UI routes.
+
+#### Open a Quick Layout
+
+Opens what the «+» menu's quick layout opens: a tab with a grid of empty order books, each with its own linked chart when `withCharts` is on.
+
+```
+POST http://127.0.0.1:{port}/api/ui/quick-layouts
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "rows": 2, "columns": 3, "withCharts": true, "windowId": 12, "tabName": "Scalp" }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `rows` | integer | yes | 1–4, the picker's rows. |
+| `columns` | integer | yes | 1–20, the picker's columns. |
+| `withCharts` | boolean | no | Each book with its own linked chart. Omitted → the saved «With charts» choice of the picker; the route never changes that saved value. |
+| `windowId` | integer | no | An open workspace window (`GET /api/ui/state`): the grid becomes a new tab there. Omitted → a new workspace window, placed and sized as the menu's «new window» item does. |
+| `tabName` | string | no | Omitted → the menu's name (`Tab N`). |
+
+**Response `200 OK`:**
+```json
+{
+  "windowId": 12, "tabId": 345, "tabName": "Scalp", "newWindow": false,
+  "rows": 2, "columns": 3, "withCharts": true,
+  "cells": [
+    { "row": 0, "column": 0, "orderBook": "5b0c6f0e-…", "chart": "a1d2e3f4-…" }
+  ]
+}
+```
+
+`cells` are in grid order (row by row, 0-based); `orderBook` and `chart` are document `externalId`s (`chart` is `null` without charts). Fill a book with [`PUT /api/ui/documents/{externalId}/ticker`](#re-ticker-a-panel); its linked chart follows.
+
+**Errors:**
+
+| Condition | HTTP Status | Error message |
+|-----------|-------------|---------------|
+| `rows` missing or out of 1–4 | `400` | `'rows' is required: 1 to 4, the quick-layout picker's rows.` (with `field` and `limits`) |
+| `columns` missing or out of 1–20 | `400` | `'columns' is required: 1 to 20, the quick-layout picker's columns.` (with `field` and `limits`) |
+| Empty `tabName` | `400` | `'tabName' must not be empty; omit it for the menu's name.` |
+| `windowId` is not an open workspace window | `404` | `Workspace window {windowId} is not open. Omit 'windowId' for a new window; GET /api/ui/state lists the windows.` |
+
+#### Open a Combo Chart
+
+Opens what the order book's «Open combo chart» button opens: one window, one tab named after the ticker, 4 charts on their remembered timeframes, at the remembered size. `GET /api/ui/state` marks the window with `isComboChart: true`.
+
+```
+POST http://127.0.0.1:{port}/api/ui/combo-charts
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "connectionId": 1, "ticker": "BTCUSDT" }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `connectionId` | integer | yes | An open connection (`GET /api/connections`). |
+| `ticker` | string | yes | The instrument, found by search on the connection. |
+
+**Response `200 OK`:** `{ windowId, tabId, connectionId, ticker, charts[] }` — `charts` are the 4 charts' `externalId`s in slot order.
+
+**Errors:**
+
+| Condition | HTTP Status | Error message |
+|-----------|-------------|---------------|
+| Missing `connectionId` | `400` | `'connectionId' is required (GET /api/connections lists them).` |
+| Missing `ticker` | `400` | `'ticker' is required, e.g. BTCUSDT.` |
+| Ticker not found on the connection | `400` | `Ticker '{ticker}' not found on connection {connectionId}` |
+| Connection not open | `404` | `Connection {connectionId} not found` |
+
+#### Replay Availability
+
+Is the market recorded by the order book replay, and which periods are recorded — what the replay picker shows.
+
+```
+GET http://127.0.0.1:{port}/api/connections/{connectionId}/replay/availability?Ticker=BTCUSDT&From=…&To=…
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `Ticker` | string | yes | The instrument, found by search on the connection. |
+| `From` | string | no | Range start: Unix milliseconds or ISO 8601. |
+| `To` | string | no | Range end, same format. Omitted `From` / `To`: the last 31 days up to now; at most 93 days. |
+
+**Response `200 OK` (a recorded market):**
+```json
+{
+  "connectionId": 1, "ticker": "BTCUSDT", "supported": true,
+  "from": 1764000000000, "to": 1766678400000,
+  "minLengthMs": 60000, "maxLengthMs": 86400000,
+  "speeds": [0.25, 0.5, 1, 2, 4, 10],
+  "hours": [1766570400000, 1766574000000],
+  "periods": [ { "from": 1766570400000, "to": 1766577600000 } ]
+}
+```
+
+`hours` are the starts of the recorded hours the replay picker offers, `periods` the runs of consecutive recorded hours `{ from, to }`, never past now. `minLengthMs` / `maxLengthMs` are the shortest and the longest replay, `speeds` the player bar's speeds. A market the replay does not record: `{ connectionId, ticker, supported: false, reason }`.
+
+**Errors:** no `Ticker`, a bad time or range, an unknown ticker → `400`; a connection that is not open → `404`; the replay service unreachable → `502` with the picker's line `Recorded days unavailable: …`.
+
+#### Start a Replay
+
+Does what the replay picker's Play does on one open order book: the book shows the replay with its player bar (a replay already shown there is replaced). `{externalId}` is the order book's GUID (from `GET /api/ui/state` or a quick layout's `cells`).
+
+```
+POST http://127.0.0.1:{port}/api/ui/documents/{externalId}/replay
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "from": 1766570400000, "to": 1766574000000, "speed": 1, "autoPlay": true }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `from` | string / integer | yes | Period start: Unix milliseconds or ISO 8601. |
+| `to` | string / integer | yes | Period end: 1 minute to 24 hours after `from`, not in the future. |
+| `speed` | number | no | One of `0.25, 0.5, 1, 2, 4, 10` (default 1). |
+| `autoPlay` | boolean | no | Default `true` = it plays once downloaded; `false` = paused at the start. |
+
+**Response `200 OK`:** the replay state (see [Replay Status](#replay-status)).
+
+**Errors:** a bad field → `400` with `field` (and `allowed` for `speed`); a chart, or a book without the History button (no ticker, a market the replay does not record) → `400`; a period with no recorded hour → `400` `Nothing recorded in this range`; an unknown document → `404`; a book on a tab not shown yet → `404` (activate its tab with [`POST /api/ui/tabs/{tabId}/activate`](#activate-a-tab)).
+
+#### Replay Status
+
+The replay state, as its player bar shows it (it follows clicks on the bar too).
+
+```
+GET http://127.0.0.1:{port}/api/ui/documents/{externalId}/replay
+```
+
+**Response `200 OK`:**
+```json
+{ "state": "playing", "reason": null, "time": 1766571234000, "speed": 1, "from": 1766570400000, "to": 1766574000000, "progress": 1 }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `state` | string | `loading` (downloading; `progress` 0–1), `playing`, `paused`, `ended` (paused at the end), `failed`. |
+| `reason` | string? | On `failed`: the bar's line, e.g. `Nothing recorded in this range` or `Replay failed: …`; otherwise `null`. |
+| `time` | integer | The replay clock, Unix milliseconds. |
+| `speed` | number | The current speed. |
+| `from` / `to` | integer | The period, Unix milliseconds. |
+| `progress` | number | Download progress, 0–1. |
+
+**Errors (the same on status, control and stop):** no replay on that book → `409`; an unknown document or a book not shown → `404`; a chart → `400`.
+
+#### Control a Replay
+
+The player bar's play / pause button, its speed menu and a click on its strip.
+
+```
+POST http://127.0.0.1:{port}/api/ui/documents/{externalId}/replay/control
+Content-Type: application/json
+```
+
+**Request body** (any of them, at least one):
+```json
+{ "playing": true, "speed": 2, "seek": 1766572000000 }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `playing` | boolean | no | `true` = play, `false` = pause. |
+| `speed` | number | no | One of `0.25, 0.5, 1, 2, 4, 10`. |
+| `seek` | string / integer | no | A moment inside the period: Unix milliseconds or ISO 8601. |
+
+**Response `200 OK`:** the replay state after the change. While the period still downloads the bar takes no command: `409` with the state in `replay`.
+
+#### Stop a Replay
+
+The bar's close button: the bar is gone, the replay is freed and the book shows the live market again. No request body.
+
+```
+POST http://127.0.0.1:{port}/api/ui/documents/{externalId}/replay/stop
+```
+
+**Response `200 OK`:**
+```json
+{ "stopped": true, "externalId": "5b0c6f0e-…" }
+```
 
 ---
 

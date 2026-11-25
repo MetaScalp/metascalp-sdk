@@ -305,6 +305,111 @@ class MetaScalpClient:
             body["connectionId"] = connection_id
         return await self._put(f"/api/ui/documents/{external_id}/ticker", body)
 
+    # ---- Quick layout, combo chart, order book replay ----
+
+    async def open_quick_layout(
+        self,
+        rows: int,
+        columns: int,
+        with_charts: bool | None = None,
+        window_id: int | None = None,
+        tab_name: str | None = None,
+    ) -> dict:
+        """Open a quick layout, as the «+» menu does: a tab with a grid of empty order books (MC-1129).
+
+        rows 1-4, columns 1-20. with_charts: each book with its own linked chart (None = the picker's saved
+        «With charts» choice, never changed here). window_id: an open workspace window (GET /api/ui/state), the grid
+        becomes a new tab there (None = a new window). tab_name: None = the menu's name (Tab N).
+
+        Returns a dict with keys: windowId, tabId, tabName, newWindow, rows, columns, withCharts, cells (each: row,
+        column, orderBook, chart - document externalIds, chart None without charts; grid order, row by row).
+        Fill a book with set_document_ticker; its linked chart follows. 400 on a field out of range, 404 for a
+        window_id that is not open.
+        """
+        body: dict = {"rows": rows, "columns": columns}
+        optional = {"withCharts": with_charts, "windowId": window_id, "tabName": tab_name}
+        body.update({k: v for k, v in optional.items() if v is not None})  # only set fields are sent
+        return await self._post("/api/ui/quick-layouts", body)
+
+    async def open_combo_chart(self, connection_id: int, ticker: str) -> dict:
+        """Open a combo chart, as the order book's «Open combo chart» does: one window with 4 charts of one coin.
+
+        Returns a dict with keys: windowId, tabId, connectionId, ticker, charts (the 4 charts' externalIds in slot
+        order). GET /api/ui/state marks the window ``isComboChart: true``.
+        """
+        return await self._post("/api/ui/combo-charts", {"connectionId": connection_id, "ticker": ticker})
+
+    async def get_replay_availability(
+        self,
+        connection_id: int,
+        ticker: str,
+        from_time: int | str | None = None,
+        to_time: int | str | None = None,
+    ) -> dict:
+        """Is the market recorded by the order book replay, and which periods (what the replay picker shows).
+
+        from_time / to_time: Unix milliseconds or ISO 8601; without them the last 31 days up to now, at most 93 days.
+        Returns a dict with keys: connectionId, ticker, supported, and for a recorded market from, to, minLengthMs,
+        maxLengthMs, speeds, hours (starts of the recorded hours), periods (each: from, to); for a market the replay
+        does not record, reason. The replay service unreachable answers 502.
+        """
+        qs = [f"Ticker={quote(ticker, safe='')}"]
+        if from_time is not None:
+            qs.append(f"From={quote(str(from_time), safe='')}")
+        if to_time is not None:
+            qs.append(f"To={quote(str(to_time), safe='')}")
+        return await self._get(f"/api/connections/{connection_id}/replay/availability?{'&'.join(qs)}")
+
+    async def start_replay(
+        self,
+        external_id: str,
+        from_time: int | str,
+        to_time: int | str,
+        speed: float | None = None,
+        auto_play: bool | None = None,
+    ) -> dict:
+        """Play a recorded period over ONE open order book, as the replay picker's Play does.
+
+        from_time / to_time: Unix milliseconds or ISO 8601, 1 minute to 24 hours, not in the future. speed: 0.25,
+        0.5, 1, 2, 4 or 10 (default 1). auto_play: default True; False = paused at the start. A replay already shown
+        there is replaced. Returns the replay state (see get_replay_status).
+        """
+        body: dict = {"from": from_time, "to": to_time}
+        if speed is not None:
+            body["speed"] = speed
+        if auto_play is not None:
+            body["autoPlay"] = auto_play
+        return await self._post(f"/api/ui/documents/{external_id}/replay", body)
+
+    async def get_replay_status(self, external_id: str) -> dict:
+        """The replay of an order book as its player bar shows it.
+
+        Returns a dict with keys: state (loading, playing, paused, ended, failed), reason, time, speed, from, to,
+        progress; times in Unix milliseconds. 409 when no replay is running there.
+        """
+        return await self._get(f"/api/ui/documents/{external_id}/replay")
+
+    async def control_replay(
+        self,
+        external_id: str,
+        playing: bool | None = None,
+        speed: float | None = None,
+        seek: int | str | None = None,
+    ) -> dict:
+        """The player bar's play / pause (playing), speed menu (speed) and strip click (seek); give at least one.
+
+        seek: a moment inside the period, Unix milliseconds or ISO 8601. Returns the replay state after the change;
+        409 while the period still downloads (the error body carries the state in ``replay``) or with no replay.
+        """
+        body: dict = {}
+        optional = {"playing": playing, "speed": speed, "seek": seek}
+        body.update({k: v for k, v in optional.items() if v is not None})  # only set fields are sent
+        return await self._post(f"/api/ui/documents/{external_id}/replay/control", body)
+
+    async def stop_replay(self, external_id: str) -> dict:
+        """The player bar's close button: the book is live again. Returns {"stopped": True, "externalId"}."""
+        return await self._post(f"/api/ui/documents/{external_id}/replay/stop", {})
+
     # ---- Signal Levels ----
 
     async def get_signal_levels(self, connection_id: int, ticker: str) -> dict:

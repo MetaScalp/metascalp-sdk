@@ -3314,6 +3314,131 @@
     </div>
   </div>
 
+  <!-- MC-1129: quick layout, combo chart, order book replay -->
+  <div class="section-label">Quick layout, combo chart, replay</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>Three terminal actions over the API, each doing what its button does: the &laquo;+&raquo; menu's <strong>quick layout</strong> (a tab of N&times;M empty order books, optionally a linked chart per book), the order book's <strong>&laquo;Open combo chart&raquo;</strong> (one window with 4 charts of one coin) and the order book's <strong>History replay</strong> (a recorded period played over an open book with its player bar). Nothing here places, moves or cancels an order; a replay's paper trading is not reachable through the API. Every field is checked before anything opens; an unknown body field is <code>400</code>. Times are Unix milliseconds or ISO 8601 (UTC unless a zone is named).</p>
+  </div>
+
+  <!-- /api/ui/quick-layouts (POST) -->
+  <div class="endpoint" id="ep-quick-layouts">
+    <div class="endpoint-header" onclick="toggle('ep-quick-layouts')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/quick-layouts</span>
+      <span class="endpoint-desc">Open a quick layout (grid of empty order books)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>rows</code></td><td>integer</td><td>yes</td><td>1&ndash;4, the picker's rows.</td></tr>
+          <tr><td><code>columns</code></td><td>integer</td><td>yes</td><td>1&ndash;20, the picker's columns.</td></tr>
+          <tr><td><code>withCharts</code></td><td>boolean</td><td>no</td><td>Each book with its own linked chart. Omitted &rarr; the saved &laquo;With charts&raquo; choice of the picker; the route never changes that saved value.</td></tr>
+          <tr><td><code>windowId</code></td><td>integer</td><td>no</td><td>An open workspace window (<code>GET /api/ui/state</code>): the grid becomes a new tab there. Omitted &rarr; a new workspace window, placed and sized as the menu's &laquo;new window&raquo; item does.</td></tr>
+          <tr><td><code>tabName</code></td><td>string</td><td>no</td><td>Omitted &rarr; the menu's name (<code>Tab N</code>).</td></tr>
+        </table>
+        <p>Answer: <code>{ windowId, tabId, tabName, newWindow, rows, columns, withCharts, cells[] }</code>, each cell <code>{ row, column, orderBook, chart }</code> in grid order (row by row, 0-based); <code>orderBook</code> and <code>chart</code> are document <code>externalId</code>s (<code>chart</code> is <code>null</code> without charts). Fill a book with <code>PUT /api/ui/documents/{externalId}/ticker</code>; its linked chart follows.</p>
+        <p><strong>Errors:</strong> <code>rows</code> / <code>columns</code> missing or out of range &rarr; <code>400</code> with <code>field</code> and <code>limits</code>; an empty <code>tabName</code> &rarr; <code>400</code>; a <code>windowId</code> that is not an open workspace window &rarr; <code>404</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/combo-charts (POST) -->
+  <div class="endpoint" id="ep-combo-charts">
+    <div class="endpoint-header" onclick="toggle('ep-combo-charts')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/combo-charts</span>
+      <span class="endpoint-desc">Open a combo chart (4 charts of one coin)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: <code>{ "connectionId": 1, "ticker": "BTCUSDT" }</code>, both required. Opens what the order book's &laquo;Open combo chart&raquo; button opens: one window, one tab named after the ticker, 4 charts on their remembered timeframes, at the remembered size. Answer: <code>{ windowId, tabId, connectionId, ticker, charts[] }</code> &mdash; the 4 charts' <code>externalId</code>s in slot order. <code>GET /api/ui/state</code> marks the window with <code>isComboChart: true</code>.</p>
+        <p><strong>Errors:</strong> a field missing or a ticker the connection does not have &rarr; <code>400</code>; a connection that is not open &rarr; <code>404</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/connections/{connectionId}/replay/availability (GET) -->
+  <div class="endpoint" id="ep-replay-availability">
+    <div class="endpoint-header" onclick="toggle('ep-replay-availability')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/connections/{connectionId}/replay/availability</span>
+      <span class="endpoint-desc">Is the market recorded, and which periods</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p><code>?Ticker=BTCUSDT&amp;From=&hellip;&amp;To=&hellip;</code>; <code>From</code> / <code>To</code> optional (omitted: the last 31 days up to now; at most 93 days). Answer for a recorded market: <code>{ connectionId, ticker, supported: true, from, to, minLengthMs, maxLengthMs, speeds[], hours[], periods[] }</code> &mdash; <code>hours</code> are the starts of the recorded hours the replay picker offers, <code>periods</code> the runs of consecutive recorded hours <code>{ from, to }</code>, never past now. A market the replay does not record: <code>{ connectionId, ticker, supported: false, reason }</code>.</p>
+        <p><strong>Errors:</strong> no <code>Ticker</code>, a bad time or range, an unknown ticker &rarr; <code>400</code>; a connection that is not open &rarr; <code>404</code>; the replay service unreachable &rarr; <code>502</code> with the picker's line &laquo;Recorded days unavailable: &hellip;&raquo;.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/documents/{externalId}/replay (POST) -->
+  <div class="endpoint" id="ep-replay-start">
+    <div class="endpoint-header" onclick="toggle('ep-replay-start')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/documents/{externalId}/replay</span>
+      <span class="endpoint-desc">Start a replay on an open order book</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: <code>{ "from": &hellip;, "to": &hellip;, "speed": 1, "autoPlay": true }</code>. Does what the replay picker's Play does on that book: the book shows the replay with its player bar (a replay already shown there is replaced). <code>from</code> / <code>to</code> required, 1 minute to 24 hours, not in the future; <code>speed</code> one of <code>0.25, 0.5, 1, 2, 4, 10</code> (default 1); <code>autoPlay</code> default <code>true</code> = it plays once downloaded, <code>false</code> = paused at the start. Answer: the replay state (below).</p>
+        <p><strong>Errors:</strong> a bad field &rarr; <code>400</code> with <code>field</code> (and <code>allowed</code> for <code>speed</code>); a chart, or a book without the History button (no ticker, a market the replay does not record) &rarr; <code>400</code>; a period with no recorded hour &rarr; <code>400</code> &laquo;Nothing recorded in this range&raquo;; an unknown document &rarr; <code>404</code>; a book on a tab not shown yet &rarr; <code>404</code> (activate its tab).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/documents/{externalId}/replay (GET) -->
+  <div class="endpoint" id="ep-replay-status">
+    <div class="endpoint-header" onclick="toggle('ep-replay-status')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/ui/documents/{externalId}/replay</span>
+      <span class="endpoint-desc">Replay state, time, speed, period</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The replay state, as its player bar shows it (it follows clicks on the bar too): <code>{ state, reason, time, speed, from, to, progress }</code>. <code>state</code>: <code>loading</code> (downloading; <code>progress</code> 0&ndash;1), <code>playing</code>, <code>paused</code>, <code>ended</code> (paused at the end), <code>failed</code> (<code>reason</code> is the bar's line, e.g. &laquo;Nothing recorded in this range&raquo; or &laquo;Replay failed: &hellip;&raquo;). <code>time</code> is the replay clock; times in Unix milliseconds.</p>
+        <p><strong>Errors (the same on status, control and stop):</strong> no replay on that book &rarr; <code>409</code>; an unknown document or a book not shown &rarr; <code>404</code>; a chart &rarr; <code>400</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/documents/{externalId}/replay/control (POST) -->
+  <div class="endpoint" id="ep-replay-control">
+    <div class="endpoint-header" onclick="toggle('ep-replay-control')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/documents/{externalId}/replay/control</span>
+      <span class="endpoint-desc">Play / pause, speed, seek</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: any of <code>{ "playing": true|false, "speed": 2, "seek": &hellip; }</code>, at least one. The same as the bar's play / pause button, its speed menu (<code>0.25, 0.5, 1, 2, 4, 10</code>) and a click on its strip; <code>seek</code> must be inside the period. Answer: the replay state after the change. While the period still downloads the bar takes no command: <code>409</code> with the state.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/documents/{externalId}/replay/stop (POST) -->
+  <div class="endpoint" id="ep-replay-stop">
+    <div class="endpoint-header" onclick="toggle('ep-replay-stop')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/documents/{externalId}/replay/stop</span>
+      <span class="endpoint-desc">Close the replay (the book is live again)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The bar's close button: the bar is gone, the replay is freed and the book shows the live market again. Answer: <code>{ stopped: true, externalId }</code>.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Notifications -->
   <div class="section-label">Notifications</div>
 
@@ -3439,6 +3564,7 @@
           <tr><td><code>geometry</code></td><td>object</td><td>no</td><td><code>{ top, left, width, height, isFullScreen, pinOnTop, isTopBarHidden }</code>. <code>pinOnTop</code> is nullable (tri-state in the model).</td></tr>
           <tr><td><code>monitor</code></td><td>integer</td><td><strong>always null</strong></td><td>Would be computed from geometry vs the screen list, but screen enumeration lives in a UI assembly the API does not reference; no dispatcher-safe helper is reachable, so this is reported as <code>null</code> (pre-authorized fallback).</td></tr>
           <tr><td><code>tabs</code></td><td>array</td><td>no</td><td>The window's tabs (see below).</td></tr>
+          <tr><td><code>isComboChart</code></td><td>boolean</td><td>absent</td><td>MC-1129: <code>true</code> on a combo chart window (&laquo;Open combo chart&raquo;, <code>POST /api/ui/combo-charts</code>); absent on every other window.</td></tr>
         </table>
 
         <h3>Tab</h3>
@@ -4778,6 +4904,8 @@
         <tr><td><code>POST /api/ui/windows</code></td><td>Open a terminal window at a requested place/size (and monitor); omitted geometry &rarr; today's default placement</td></tr>
         <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Set one panel's link (binding-group) number; unknown document &rarr; 404</td></tr>
         <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Re-point one addressed panel (any book or chart: linked, unlinked or empty) to a different market, as a manual pick does</td></tr>
+        <tr><td><code>POST /api/ui/quick-layouts</code>, <code>POST /api/ui/combo-charts</code></td><td>Open a quick layout (a grid of empty order books, optionally with linked charts) or a combo chart (4 charts of one coin), as their buttons do</td></tr>
+        <tr><td><code>GET /api/connections/{connectionId}/replay/availability</code>, <code>POST/GET /api/ui/documents/{externalId}/replay</code>, <code>POST &hellip;/replay/control</code>, <code>POST &hellip;/replay/stop</code></td><td>Order book replay: the recorded periods, then start, read, play / pause / speed / seek and close a replay on an open book</td></tr>
       </table>
 
       <h3>WebSocket streaming</h3>

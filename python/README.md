@@ -172,6 +172,9 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
+| `POST` | `/api/ui/quick-layouts`, `/api/ui/combo-charts` | Open a quick layout (a tab with a grid of empty order books, rows 1–4 × columns 1–20, optionally a linked chart per book) or a combo chart (one window with 4 charts of one coin), as their buttons do; `GET /api/ui/state` marks a combo chart window `isComboChart: true` |
+| `GET` | `/api/connections/{id}/replay/availability?Ticker=X` | Order book replay: is the market recorded, and which hours / periods (optional `From` / `To`) |
+| `POST/GET` | `/api/ui/documents/{externalId}/replay`, `.../replay/control`, `.../replay/stop` | Order book replay on an open book: start a recorded period, read the player bar's state, play / pause / speed / seek, close it |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market, an item `{exchange, market}` gives one exchange its own market; `legs: [{exchange, market, ticker}]` opens an arbitrage pair, one book per leg in this order, and a leg that cannot open answers its `reason`) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
