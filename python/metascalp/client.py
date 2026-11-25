@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import aiohttp
 from typing import Any, Dict, List, Optional, Union
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 HTTP_PORT_START = 17845
 HTTP_PORT_END = 17855
@@ -121,8 +121,12 @@ class MetaScalpClient:
 
     # ---- Trading Data ----
 
-    async def get_orders(self, connection_id: int, ticker: str) -> dict:
-        """Get open orders for a ticker."""
+    async def get_orders(self, connection_id: int, ticker: str | None = None) -> dict:
+        """Get open orders for a ticker; without a ticker (MC-1131) every open order of the account,
+        read the way the Orders window reads them after a restart ("accountWide" says whether the
+        exchange answered in one account-wide request)."""
+        if not ticker:
+            return await self._get(f"/api/connections/{connection_id}/orders")
         return await self._get(
             f"/api/connections/{connection_id}/orders?Ticker={ticker}"
         )
@@ -463,6 +467,49 @@ class MetaScalpClient:
         An unknown field, an unknown name or a number out of range -> 400 and nothing is saved.
         """
         return await self._put("/api/chart-settings", settings)
+
+    # ---- Trades history and PnL (MC-1131; reads of what the terminal holds, no exchange request) ----
+
+    async def get_trades(
+        self,
+        connection_ids: list[int] | None = None,
+        ticker: str | None = None,
+        direction: str | None = None,
+        close_date_from: str | int | None = None,
+        close_date_to: str | int | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> dict:
+        """The Trades window's rows with its filters and paging (open trades first, then closed ones
+        newest first) plus totalProfit / totalCommission of the whole filter, not only of the page.
+
+        direction: Long / Short. Dates: Unix milliseconds or ISO 8601 (UTC unless a zone is given).
+        page_size: 1-100, default 15. Connections whose trades the exchange's own ledger keeps are listed
+        in "notIncludedConnections" (named in connection_ids -> 501).
+        """
+        params = {
+            "connectionIds": ",".join(str(x) for x in connection_ids) if connection_ids else None,
+            "ticker": ticker,
+            "direction": direction,
+            "closeDateFrom": close_date_from,
+            "closeDateTo": close_date_to,
+            "page": page,
+            "pageSize": page_size,
+        }
+        qs = urlencode({k: v for k, v in params.items() if v is not None})
+        return await self._get(f"/api/trades?{qs}" if qs else "/api/trades")
+
+    async def get_trade_orders(self, trade_id: int) -> dict:
+        """The orders (fills) the Trades window shows under one trade."""
+        return await self._get(f"/api/trades/{trade_id}/orders")
+
+    async def get_finres(self, connection_id: int | None = None) -> dict:
+        """The Finres (PnL) window's values now: per connection and coin result, fee, funds, available,
+        blocked; every coin, the hidden ones too. A connection with nothing held yet has known=False and a
+        reason (never zeros)."""
+        if connection_id is None:
+            return await self._get("/api/finres")
+        return await self._get(f"/api/finres?connectionId={connection_id}")
 
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 

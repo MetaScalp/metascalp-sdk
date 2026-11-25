@@ -67,7 +67,10 @@ public class OrderDto
 public class OrdersResponse
 {
     public long ConnectionId { get; set; }
-    public string Ticker { get; set; } = "";
+    /// <summary>Null when the request named no ticker (every open order of the account, MC-1131).</summary>
+    public string? Ticker { get; set; }
+    /// <summary>Only without a ticker: true = one account-wide exchange read, false = the Orders window's per-ticker reads.</summary>
+    public bool? AccountWide { get; set; }
     public int Count { get; set; }
     public List<OrderDto> Orders { get; set; } = new();
 }

@@ -149,7 +149,10 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET` | `/api/connections` | List active exchange connections |
 | `GET` | `/api/connections/{id}` | Get single connection details |
 | `GET` | `/api/connections/{id}/tickers` | List available tickers (`?Refresh=true` re-fetches from the exchange) |
-| `GET` | `/api/connections/{id}/orders?Ticker=X` | Get open orders |
+| `GET` | `/api/connections/{id}/orders?Ticker=X` | Get open orders (without `Ticker`: every open order of the account, as the Orders window reads them) |
+| `GET` | `/api/trades` | Trades history of the Trades window (filters `connectionIds`, `ticker`, `direction`, `closeDateFrom`, `closeDateTo`, `page`, `pageSize` 1-100) with `totalProfit` / `totalCommission` of the whole filter; no exchange request |
+| `GET` | `/api/trades/{tradeId}/orders` | The orders (fills) the Trades window shows under one trade |
+| `GET` | `/api/finres` | PnL snapshot of the Finres window: result, fee, funds, available, blocked per connection and coin (`known: false` with a reason when nothing is held); no exchange request |
 | `GET` | `/api/connections/{id}/positions` | Get open positions |
 | `GET` | `/api/connections/{id}/balance` | Get account balances |
 | `GET` | `/api/connections/{id}/orderbook-snapshot?Ticker=X` | One-shot fresh order book snapshot from the exchange REST endpoint |

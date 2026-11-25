@@ -65,8 +65,14 @@ public class MetaScalpClient : IDisposable
 
     // ---- Trading Data ----
 
-    public async Task<OrdersResponse> GetOrdersAsync(long connectionId, string ticker, CancellationToken ct = default)
-        => await GetAsync<OrdersResponse>($"/api/connections/{connectionId}/orders?Ticker={Uri.EscapeDataString(ticker)}", ct);
+    /// <summary>
+    /// Open orders of a connection. With a ticker: that ticker. With a null / empty ticker (MC-1131): every open order of the
+    /// account, read the way the Orders window reads them after a restart (<see cref="OrdersResponse.AccountWide"/>).
+    /// </summary>
+    public async Task<OrdersResponse> GetOrdersAsync(long connectionId, string? ticker, CancellationToken ct = default)
+        => string.IsNullOrEmpty(ticker)
+            ? await GetAsync<OrdersResponse>($"/api/connections/{connectionId}/orders", ct)
+            : await GetAsync<OrdersResponse>($"/api/connections/{connectionId}/orders?Ticker={Uri.EscapeDataString(ticker)}", ct);
 
     public async Task<PositionsResponse> GetPositionsAsync(long connectionId, CancellationToken ct = default)
         => await GetAsync<PositionsResponse>($"/api/connections/{connectionId}/positions", ct);
@@ -284,6 +290,38 @@ public class MetaScalpClient : IDisposable
     /// </summary>
     public Task<ChartSettings> UpdateChartSettingsAsync(ChartSettingsUpdate update, CancellationToken ct = default)
         => PutAsync<ChartSettings>("/api/chart-settings", update, ct);
+
+    // ---- Trades history and PnL (MC-1131; reads of what the terminal holds, no exchange request) ----
+
+    /// <summary>
+    /// The Trades window's rows with its filters and paging, plus the totals of profit and commission of the whole filter.
+    /// Dates: Unix milliseconds or ISO 8601; direction: Long / Short; pageSize 1-100 (default 15).
+    /// </summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetTradesAsync(IEnumerable<long>? connectionIds = null, string? ticker = null,
+        string? direction = null, string? closeDateFrom = null, string? closeDateTo = null, int? page = null, int? pageSize = null,
+        CancellationToken ct = default)
+    {
+        var query = new List<string>();
+        if (connectionIds != null && connectionIds.Any()) query.Add("connectionIds=" + string.Join(",", connectionIds));
+        if (!string.IsNullOrEmpty(ticker)) query.Add("ticker=" + Uri.EscapeDataString(ticker));
+        if (!string.IsNullOrEmpty(direction)) query.Add("direction=" + Uri.EscapeDataString(direction));
+        if (!string.IsNullOrEmpty(closeDateFrom)) query.Add("closeDateFrom=" + Uri.EscapeDataString(closeDateFrom));
+        if (!string.IsNullOrEmpty(closeDateTo)) query.Add("closeDateTo=" + Uri.EscapeDataString(closeDateTo));
+        if (page != null) query.Add("page=" + page);
+        if (pageSize != null) query.Add("pageSize=" + pageSize);
+        return GetAsync<Newtonsoft.Json.Linq.JObject>(query.Count == 0 ? "/api/trades" : "/api/trades?" + string.Join("&", query), ct);
+    }
+
+    /// <summary>The orders (fills) the Trades window shows under one trade.</summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetTradeOrdersAsync(long tradeId, CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>($"/api/trades/{tradeId}/orders", ct);
+
+    /// <summary>
+    /// The Finres (PnL) window's values now, per connection and coin (every coin, the hidden ones too). A connection with
+    /// nothing held yet has <c>known: false</c> and a <c>reason</c>.
+    /// </summary>
+    public Task<Newtonsoft.Json.Linq.JObject> GetFinresAsync(long? connectionId = null, CancellationToken ct = default)
+        => GetAsync<Newtonsoft.Json.Linq.JObject>(connectionId == null ? "/api/finres" : $"/api/finres?connectionId={connectionId}", ct);
 
     // ---- HTTP Helpers ----
 
