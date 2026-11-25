@@ -1181,7 +1181,7 @@ a stable machine-readable `reason` token. One failing book never turns into a `5
 
 | `reason` token | Meaning |
 |---|---|
-| `resolve_failed` | The document could not be resolved from the layout |
+| `resolve_failed` | The document could not be resolved from the layout (an aggregated order book also reports this: the route snapshots ordinary order books only) |
 | `not_an_order_book` | The member is a chart (no order book to snapshot) |
 | `no_connection` | The panel has no connection set |
 | `no_ticker` | The panel has no ticker set |
