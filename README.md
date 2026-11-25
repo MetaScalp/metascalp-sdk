@@ -168,7 +168,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle; `AutoCenterThreshold` — auto-centering 0–10, `Autoscroll` kept as its legacy on/off view; `LargeAmount3` / `LargeAmount4` with their `Usd` and alert twins — large volume levels 3 and 4; `ShowSlTpPnl` — expected PnL under the SL / TP labels; `SignalLevelTriggerSource`: `TradePrice` / `BestBidAsk`) |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
-| `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front |
+| `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front (also «Positions», «Orders», «Automated trading», the trade tape, the Analytics windows and the Messenger, own or docked: MC-1127) |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `GET/POST/PUT/DELETE` | `/api/screener/templates[/{templateId}]` | Screener template CRUD (+ `GET .../{id}/data` for a headless full-row snapshot) |
 | `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the thirteen display options (`GET .../font-families` lists the fonts) |

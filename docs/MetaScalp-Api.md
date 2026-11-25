@@ -1829,6 +1829,20 @@ in, `null` for a standalone window. Since MET-2229 there is one «Trades» windo
 multi-window build may still restore several; `userTrades` is then the newest); a closed window keeps its row
 and id but is not listed until it is opened again.
 
+**The newer windows (MC-1127).** Added keys, existing ones unchanged:
+
+| Key | Type | Description |
+|---|---|---|
+| `positionsWindows`, `ordersWindows`, `densityTasksWindows` | array | The open «Positions» / «Orders» / «Automated trading» window(s), each a *panel window* `{ id, type, isOpen, geometry, docked, dockedWindowId, dockedTabId, connectionId, ticker }`. `id` is the one the open / close / activate / `GET ?windowType=` routes take; a closed window is not listed. |
+| `timeAndSalesWindows` | array | Every open trade tape (panel windows); `connectionId` / `ticker` are its instrument, `null` for an empty tape. |
+| `densityMap`, `liquidations`, `largeTrades`, `arbitrageScreener`, `twapScreener` | object | The one-per-app Analytics windows (panel windows): `id` is the window's row; `isOpen` is `true` while it is shown, on its own or docked in a workspace tab. `null` if the family could not be read. |
+| `messenger` | object | The Messenger (panel window): `id` is its own window's id, or its chat row's id when docked in a tab; with none open `id` is `0` and `isOpen` `false`. |
+
+Every window that can dock into a workspace tab carries `docked` and, when docked, `dockedWindowId` / `dockedTabId` (else
+`null`): the keys above and, added to their objects, `lineNotifications`, `finres`, `userTrades`, `userTradesWindows`,
+`listing`, `watchlists` and `screeners`. Each `userTradesWindows` row also carries `showFilterBar` — the window's «Show
+filters in the window» checkbox, read only.
+
 #### Get One Window
 
 Returns exactly the same single-window object as that window's entry in `/api/ui/state` — same geometry, tabs and documents.
@@ -1927,7 +1941,11 @@ Window ids are **per-surface, not global**: a workspace, a chart, a screener and
 id `1`, so the body's `windowType` is what routes the id to the correct window.
 
 `windowType` is one of: `workspace`, `lightWorkspace`, `chart`, `tradingViewChart`, `watchlist`,
-`screener`, `lineNotifications`, `finres`, `userTrades`, `listing`.
+`screener`, `lineNotifications`, `finres`, `userTrades`, `listing`, and since MC-1127 `positions`, `orders`, `densityTasks`, `timeAndSales`, `densityMap`, `liquidations`, `largeTrades`, `arbitrageScreener`, `twapScreener`, `messenger`.
+
+**Changed in MC-1127:** activate on a window docked in a workspace tab («Positions», «Orders», the tape, the Analytics
+windows, the Messenger, `finres`, `lineNotifications`, `listing`, `watchlist`, `screener`) selects its tab, raises its
+workspace and answers `200` (before, `404`). Close works on them, own window or docked, with the id `/api/ui/state` reports.
 
 The three **singleton** surfaces (`lineNotifications`, `finres`, `listing`) ignore the
 path id entirely — each has one fixed row. `userTrades` takes the path id (MC-704): its `windowId`
@@ -1949,15 +1967,15 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `windowType` | string | yes | One of the ten types above. |
+| `windowType` | string | yes | One of the types above. |
 | `top` | number | no | Virtual-desktop Y. Omit for today's default placement. |
 | `left` | number | no | Virtual-desktop X. Omit for today's default placement. |
 | `height` | number | no | Window height. Omit for the type's default. |
 | `width` | number | no | Window width. Omit for the type's default. |
 | `monitor` | integer | no | 0-based target screen. Omit to place by virtual-desktop coordinate. |
 | `templateId` | integer | no | **Screener only.** Open the screener already showing this saved template's filters and rows. Omit for today's Default view. The synthetic Default (`-1`) is accepted. Ignored for any non-screener `windowType`. |
-| `connectionId` | integer | no | **`chart` / `tradingViewChart` only, with `ticker`.** The connection (`GET /api/connections`) the chart opens on. Omit both for today's empty chart. |
-| `ticker` | string | no | **`chart` / `tradingViewChart` only, with `connectionId`.** The instrument the chart opens on, found by search on that connection (`ETH` finds `ETHUSDT`). One call gives a chart with candles; no empty chart to switch afterwards. |
+| `connectionId` | integer | no | **`chart` / `tradingViewChart` / `timeAndSales` (MC-1127) only, with `ticker`.** The connection (`GET /api/connections`) the chart opens on. Omit both for today's empty chart. |
+| `ticker` | string | no | **`chart` / `tradingViewChart` / `timeAndSales` (MC-1127) only, with `connectionId`.** The instrument the chart opens on, found by search on that connection (`ETH` finds `ETHUSDT`). One call gives a chart with candles; no empty chart to switch afterwards. |
 
 **Response `200 OK`:** `{ windowId, windowType, top, left, height, width }` — where the window
 *actually* landed (post-clamp). For the three singleton types `windowId` is `null`: each has a single
@@ -1971,6 +1989,13 @@ the id, so there is no addressable per-surface id to return.
 > (at the cursor when geometry is omitted). `windowId` is that window's id (it was `null` while «Your trades»
 > was a singleton); pass it to close / activate and to `GET /api/ui/windows/{windowId}?windowType=userTrades`.
 > The former standalone «Your trades» window no longer exists.
+
+> **The newer windows (MC-1127).** `positions` («Positions»), `orders` («Orders»), `densityTasks` («Automated
+> trading»), `densityMap`, `liquidations`, `largeTrades`, `arbitrageScreener`, `twapScreener` and `messenger` each open
+> exactly what their menu item opens, one window per kind: while it is shown (own window or docked) a call brings it to the
+> front and returns its `windowId`; a closed one comes back where the user left it (a supplied geometry places it).
+> `timeAndSales` opens an empty tape, or with `connectionId` + `ticker` the tape of that instrument (one tape per
+> instrument). A Messenger turned off in the terminal answers `400` with the reason. None of these trades.
 
 > **Opening the screener on a template.** For `windowType: "screener"` a supplied `templateId` is
 > threaded onto the window so it loads that template exactly as picking it by hand would; because the
@@ -2006,7 +2031,7 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `windowType` | string | yes | One of the ten types above. |
+| `windowType` | string | yes | One of the types above. |
 
 **Response `200 OK`:** `{ windowType, windowId, closed, outcome }`.
 
@@ -2028,7 +2053,7 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `windowType` | string | yes | One of the ten types above. |
+| `windowType` | string | yes | One of the types above. |
 
 **Response `200 OK`:** `{ windowType, windowId, activated, outcome }`.
 

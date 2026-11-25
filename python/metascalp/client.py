@@ -279,6 +279,9 @@ class MetaScalpClient:
         Geometry omitted: the window lands where it does today. ``template_id`` is screener-only. A ``chart`` or
         ``tradingViewChart`` given ``connection_id`` + ``ticker`` (together) opens already showing that instrument
         (the ticker is found by search on the connection, e.g. "ETH" finds ETHUSDT); without them it opens empty.
+        MC-1127: ``window_type`` also takes positions, orders, densityTasks, timeAndSales, densityMap, liquidations,
+        largeTrades, arbitrageScreener, twapScreener and messenger (one window each: a shown one is raised and its id
+        returned); ``timeAndSales`` takes ``connection_id`` + ``ticker`` as a chart does.
         """
         body: dict = {"windowType": window_type}
         optional = {

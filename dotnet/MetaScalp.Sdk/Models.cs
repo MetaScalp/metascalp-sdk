@@ -185,7 +185,7 @@ public class ComboResponse : StatusResponse
 /// <summary>POST /api/ui/windows. Geometry omitted: the window lands where it does today for its type.</summary>
 public class OpenWindowRequest
 {
-    /// <summary>workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades or listing.</summary>
+    /// <summary>workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades, listing, positions, orders, densityTasks, timeAndSales, densityMap, liquidations, largeTrades, arbitrageScreener, twapScreener or messenger (the last ten since MC-1127: one window each, a shown one is raised).</summary>
     public string WindowType { get; set; } = "";
 
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -208,11 +208,11 @@ public class OpenWindowRequest
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public long? TemplateId { get; set; }
 
-    /// <summary>chart / tradingViewChart only, with <see cref="Ticker"/>: the connection the chart opens on. Null: an empty chart, as before.</summary>
+    /// <summary>chart / tradingViewChart / timeAndSales only, with <see cref="Ticker"/>: the connection the chart or tape opens on. Null: an empty chart, as before.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public long? ConnectionId { get; set; }
 
-    /// <summary>chart / tradingViewChart only, with <see cref="ConnectionId"/>: the ticker, found by search on that connection (ETH finds ETHUSDT).</summary>
+    /// <summary>chart / tradingViewChart / timeAndSales only, with <see cref="ConnectionId"/>: the ticker, found by search on that connection (ETH finds ETHUSDT).</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Ticker { get; set; }
 }

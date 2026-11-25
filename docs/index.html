@@ -3510,7 +3510,20 @@
           <tr><td><code>userTrades</code></td><td>object</td><td>yes</td><td>Same <code>{ id, isOpen, geometry }</code> shape (MC-704): it describes the open &laquo;Trades&raquo; window &mdash; <code>id</code> is that window's id (the one <code>POST /api/ui/windows</code> returned), <code>isOpen</code> is <code>true</code> while it is open; with none open, <code>id</code> is <code>0</code> and <code>isOpen</code> <code>false</code>. Since MET-2229 there is one &laquo;Trades&raquo; window (a terminal upgraded from a multi-window build may still restore several; then this is the newest). For a docked window <code>geometry</code> is the window's stored rect, not where it floats on screen (the dock layout keeps that) &mdash; the open response carries where it landed. Every open one is in <code>userTradesWindows</code>.</td></tr>
           <tr><td><code>userTradesWindows</code></td><td>array</td><td>no</td><td>Every open &laquo;Trades&raquo; window (MC-704), oldest first, each <code>{ id, externalId, tabId }</code>: <code>id</code> addresses it on the close / activate / <code>?windowType=userTrades</code> routes; <code>tabId</code> is the workspace tab it is docked in, <code>null</code> for a standalone window. Only open windows are listed: since MET-2229 a closed window keeps its row (hidden, with the user's setup) and is not listed until it is opened again.</td></tr>
           <tr><td><code>listing</code></td><td>object</td><td>yes</td><td>The listing singleton, same shape/semantics.</td></tr>
+          <tr><td><code>positionsWindows</code></td><td>array</td><td>no</td><td><strong>MC-1127.</strong> The open &laquo;Positions&raquo; window(s), each a <em>panel window</em> <code>{ id, type, isOpen, geometry, docked, dockedWindowId, dockedTabId, connectionId, ticker }</code>. <code>id</code> is the one the open / close / activate / <code>GET ?windowType=</code> routes take. A closed window is not listed.</td></tr>
+          <tr><td><code>ordersWindows</code></td><td>array</td><td>no</td><td><strong>MC-1127.</strong> The open &laquo;Orders&raquo; window(s), panel windows.</td></tr>
+          <tr><td><code>densityTasksWindows</code></td><td>array</td><td>no</td><td><strong>MC-1127.</strong> The open &laquo;Automated trading&raquo; (density tasks) list window(s), panel windows.</td></tr>
+          <tr><td><code>timeAndSalesWindows</code></td><td>array</td><td>no</td><td><strong>MC-1127.</strong> Every open trade tape, panel windows; <code>connectionId</code> / <code>ticker</code> are its instrument, <code>null</code> for an empty tape.</td></tr>
+          <tr><td><code>densityMap</code>, <code>liquidations</code>, <code>largeTrades</code>, <code>arbitrageScreener</code>, <code>twapScreener</code></td><td>object</td><td>yes</td><td><strong>MC-1127.</strong> The one-per-app Analytics windows, each a panel window: <code>id</code> is its row; <code>isOpen</code> is <code>true</code> while it is shown, as a window of its own or docked in a workspace tab. <code>null</code> if the family could not be read.</td></tr>
+          <tr><td><code>messenger</code></td><td>object</td><td>yes</td><td><strong>MC-1127.</strong> The Messenger, a panel window: <code>id</code> is its own window's id, or (docked in a tab) its chat row's id; with none open <code>id</code> is <code>0</code> and <code>isOpen</code> <code>false</code>.</td></tr>
         </table>
+        <p><strong>Docked windows (MC-1127).</strong> Every window that can dock into a workspace tab carries
+        <code>docked</code> (boolean), and when docked <code>dockedWindowId</code> / <code>dockedTabId</code> &mdash; the
+        workspace window and the tab it sits in (else <code>null</code>): the new keys above and, added to their objects,
+        <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>userTradesWindows</code>,
+        <code>listing</code>, <code>watchlists</code> and <code>screeners</code>. Each <code>userTradesWindows</code> row also
+        carries <code>showFilterBar</code> &mdash; the window's &laquo;Show filters in the window&raquo; checkbox, read only.
+        Existing keys keep their names and values; these are added keys only.</p>
 
         <p>Success &rarr; <code>200</code> with the object above.</p>
       </div>
@@ -3543,7 +3556,10 @@
         <code>POST /api/ui/windows</code> are <em>per-surface</em>: a chart / watchlist / screener id is unique
         only within its own surface, not against the workspace <code>Windows</code> table this route reads by
         default. Supply <code>?windowType=</code> with one of <code>chart</code>, <code>tradingViewChart</code>,
-        <code>watchlist</code>, <code>screener</code> or <code>userTrades</code> (case-insensitive) to resolve the id <em>within that
+        <code>watchlist</code>, <code>screener</code>, <code>userTrades</code> or one of the MC-1127 types (<code>positions</code>,
+        <code>orders</code>, <code>densityTasks</code>, <code>timeAndSales</code>, <code>densityMap</code>, <code>liquidations</code>,
+        <code>largeTrades</code>, <code>arbitrageScreener</code>, <code>twapScreener</code>, <code>messenger</code> &mdash; answered with a
+        <code>window</code> block, the panel window of <code>/api/ui/state</code>, while that window is open) (case-insensitive) to resolve the id <em>within that
         surface</em> instead &mdash; letting a client read a window back at the very address the create route
         returned. The response is then <code>{ id, type, document | watchlist | screener | userTrades }</code> (exactly one
         of the four type blocks is populated; <code>userTrades</code> is <code>{ id, externalId, tabId }</code>, as in
@@ -3645,15 +3661,15 @@
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "watchlist", "top": 100, "left": 200, "height": 450, "width": 300, "monitor": 0 }</code></pre>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>.</td></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>, <code>positions</code>, <code>orders</code>, <code>densityTasks</code>, <code>timeAndSales</code>, <code>densityMap</code>, <code>liquidations</code>, <code>largeTrades</code>, <code>arbitrageScreener</code>, <code>twapScreener</code>, <code>messenger</code> (the last ten since MC-1127).</td></tr>
           <tr><td><code>top</code></td><td>number</td><td>no</td><td>Virtual-desktop Y. Omit for today's default placement.</td></tr>
           <tr><td><code>left</code></td><td>number</td><td>no</td><td>Virtual-desktop X. Omit for today's default placement.</td></tr>
           <tr><td><code>height</code></td><td>number</td><td>no</td><td>Window height. Omit for the type's default.</td></tr>
           <tr><td><code>width</code></td><td>number</td><td>no</td><td>Window width. Omit for the type's default.</td></tr>
           <tr><td><code>monitor</code></td><td>integer</td><td>no</td><td>0-based target screen. Omit to place by virtual-desktop coordinate.</td></tr>
           <tr><td><code>templateId</code></td><td>integer</td><td>no</td><td><strong>Screener only.</strong> Open the screener already showing this saved template's filters and rows &mdash; the same state the window's own template picker produces. Omit for today's Default view. The synthetic Default (id <code>-1</code>) is accepted and resolves to Default. Ignored for any non-screener <code>windowType</code>.</td></tr>
-          <tr><td><code>connectionId</code></td><td>integer</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>ticker</code>.</strong> The connection (<code>GET /api/connections</code>) the chart opens on. Omit both for today's empty chart. (MC-1086)</td></tr>
-          <tr><td><code>ticker</code></td><td>string</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>connectionId</code>.</strong> The instrument the chart opens on, found by search on that connection (<code>ETH</code> finds <code>ETHUSDT</code>): one call gives a chart with candles, no empty chart to switch afterwards. <code>connectionId</code> or <code>ticker</code> alone &rarr; <code>400 Give 'connectionId' and 'ticker' together.</code>; either on another type &rarr; <code>400</code> (an order book on a connection opens with <code>POST /api/combo</code> and <code>connections</code>); a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>. Validated before anything opens. (MC-1086)</td></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> / <code>timeAndSales</code> (MC-1127) only, with <code>ticker</code>.</strong> The connection (<code>GET /api/connections</code>) the chart opens on. Omit both for today's empty chart. (MC-1086)</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> / <code>timeAndSales</code> (MC-1127) only, with <code>connectionId</code>.</strong> The instrument the chart opens on, found by search on that connection (<code>ETH</code> finds <code>ETHUSDT</code>): one call gives a chart with candles, no empty chart to switch afterwards. <code>connectionId</code> or <code>ticker</code> alone &rarr; <code>400 Give 'connectionId' and 'ticker' together.</code>; either on another type &rarr; <code>400</code> (an order book on a connection opens with <code>POST /api/combo</code> and <code>connections</code>); a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>. Validated before anything opens. (MC-1086)</td></tr>
         </table>
         <p>Response <code>{ windowId, windowType, top, left, height, width }</code> &mdash; where the window
         actually landed (post-clamp). For the three <strong>singleton</strong> types (<code>lineNotifications</code>,
@@ -3669,6 +3685,15 @@
         window's id (it was <code>null</code> while &laquo;Your trades&raquo; was a singleton); pass it to the close /
         activate routes and to <code>GET /api/ui/windows/{windowId}?windowType=userTrades</code>. The former standalone
         &laquo;Your trades&raquo; window no longer exists.</p>
+        <p><strong>The newer windows (MC-1127).</strong> <code>positions</code> (&laquo;Positions&raquo;), <code>orders</code>
+        (&laquo;Orders&raquo;), <code>densityTasks</code> (&laquo;Automated trading&raquo;), <code>densityMap</code>,
+        <code>liquidations</code>, <code>largeTrades</code>, <code>arbitrageScreener</code>, <code>twapScreener</code> and
+        <code>messenger</code> each open exactly what their menu item opens, one window per kind: while it is shown (as a window
+        of its own or docked in a workspace tab) a call brings it to the front and returns its <code>windowId</code>; a closed
+        one comes back where the user left it (a supplied geometry places it). <code>timeAndSales</code> opens an empty tape, or
+        with <code>connectionId</code> + <code>ticker</code> the tape of that instrument (one tape per instrument: an open one is
+        raised and its id returned). <code>windowId</code> is the id <code>/api/ui/state</code> reports. A Messenger turned off in
+        the terminal answers <code>400</code> with the reason. None of these places, moves or cancels an order.</p>
         <p><strong>Opening the screener on a template.</strong> For <code>windowType: "screener"</code> a
         supplied <code>templateId</code> is threaded onto the screener window so it loads that template exactly as
         picking it by hand would; because the choice is persisted with the window, it also becomes the window's
@@ -3723,7 +3748,7 @@
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "workspace" }</code></pre>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>.</td></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of: <code>workspace</code>, <code>lightWorkspace</code>, <code>chart</code>, <code>tradingViewChart</code>, <code>watchlist</code>, <code>screener</code>, <code>lineNotifications</code>, <code>finres</code>, <code>userTrades</code>, <code>listing</code>, <code>positions</code>, <code>orders</code>, <code>densityTasks</code>, <code>timeAndSales</code>, <code>densityMap</code>, <code>liquidations</code>, <code>largeTrades</code>, <code>arbitrageScreener</code>, <code>twapScreener</code>, <code>messenger</code> (the last ten since MC-1127).</td></tr>
         </table>
         <p>Response <code>{ windowType, windowId, closed, outcome }</code>.</p>
         <p><strong>The main workspace can never be closed through the API</strong> &mdash; it would quit the
@@ -3752,6 +3777,16 @@
             <option value="finres">finres</option>
             <option value="userTrades">userTrades</option>
             <option value="listing">listing</option>
+            <option value="positions">positions</option>
+            <option value="orders">orders</option>
+            <option value="densityTasks">densityTasks</option>
+            <option value="timeAndSales">timeAndSales</option>
+            <option value="densityMap">densityMap</option>
+            <option value="liquidations">liquidations</option>
+            <option value="largeTrades">largeTrades</option>
+            <option value="arbitrageScreener">arbitrageScreener</option>
+            <option value="twapScreener">twapScreener</option>
+            <option value="messenger">messenger</option>
           </select>
         </div>
       </div>
@@ -3781,11 +3816,15 @@
         <p>Brings ONE terminal window to the front on its own window thread. Same id-addressing as the close
         route: <code>{windowId}</code> is the id within the surface named by <code>windowType</code>; singletons
         ignore the id; <code>userTrades</code> uses it to pick one &laquo;Trades&raquo; window (MC-704).</p>
+        <p><strong>Changed in MC-1127:</strong> a window docked in a workspace tab (&laquo;Positions&raquo;, &laquo;Orders&raquo;,
+        the tape, the Analytics windows, the Messenger, <code>finres</code>, <code>lineNotifications</code>, <code>listing</code>,
+        <code>watchlist</code>, <code>screener</code>) is brought forward by selecting its tab and raising its workspace, and
+        the answer is <code>200</code> (before, <code>404</code>).</p>
         <p><strong>Request body:</strong></p>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "windowType": "chart" }</code></pre>
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of the ten window types (see close).</td></tr>
+          <tr><td><code>windowType</code></td><td>string</td><td>yes</td><td>One of the window types (see close).</td></tr>
         </table>
         <p>Response <code>{ windowType, windowId, activated, outcome }</code>.</p>
         <p><strong>Errors:</strong> a non-numeric <code>{windowId}</code> &rarr; <code>400 Invalid window ID</code>;
@@ -3811,6 +3850,16 @@
             <option value="finres">finres</option>
             <option value="userTrades">userTrades</option>
             <option value="listing">listing</option>
+            <option value="positions">positions</option>
+            <option value="orders">orders</option>
+            <option value="densityTasks">densityTasks</option>
+            <option value="timeAndSales">timeAndSales</option>
+            <option value="densityMap">densityMap</option>
+            <option value="liquidations">liquidations</option>
+            <option value="largeTrades">largeTrades</option>
+            <option value="arbitrageScreener">arbitrageScreener</option>
+            <option value="twapScreener">twapScreener</option>
+            <option value="messenger">messenger</option>
           </select>
         </div>
       </div>
