@@ -168,6 +168,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
 | `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `GET/PUT` | `/api/chart-settings` | Settings → Chart: read / partially update every row — the open-interest pane (`openInterestDisplayMode`: `None` / `Histogram` / `Chart`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
+| `GET` | `/api/arbitrage-screener/data`, `/api/twap-screener/data`, `.../settings` | `get_arbitrage_screener(**filters)`, `get_twap_screener(**filters)`: the Arbitrage / TWAP screener tables as their windows show them; `get_screener_merged_data(template_ids)`: `/api/screener/data` |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |

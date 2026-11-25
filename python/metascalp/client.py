@@ -273,12 +273,15 @@ class MetaScalpClient:
         template_id: int | None = None,
         connection_id: int | None = None,
         ticker: str | None = None,
+        template_ids: list[int] | None = None,
     ) -> dict:
         """Open ONE terminal window (POST /api/ui/windows); returns where it landed.
 
         Geometry omitted: the window lands where it does today. ``template_id`` is screener-only. A ``chart`` or
         ``tradingViewChart`` given ``connection_id`` + ``ticker`` (together) opens already showing that instrument
         (the ticker is found by search on the connection, e.g. "ETH" finds ETHUSDT); without them it opens empty.
+        ``template_ids`` (screener only, not with ``template_id``): several templates checked in one window, the first is
+        the main one; the window shows their joined rows with the template-name column.
         """
         body: dict = {"windowType": window_type}
         optional = {
@@ -290,6 +293,7 @@ class MetaScalpClient:
             "templateId": template_id,
             "connectionId": connection_id,
             "ticker": ticker,
+            "templateIds": template_ids,
         }
         body.update({k: v for k, v in optional.items() if v is not None})  # only set fields are sent
         return await self._post("/api/ui/windows", body)
@@ -463,6 +467,52 @@ class MetaScalpClient:
         An unknown field, an unknown name or a number out of range -> 400 and nothing is saved.
         """
         return await self._put("/api/chart-settings", settings)
+
+    # ---- Arbitrage / TWAP screener tables, merged screener table (MC-1130, read only) ----
+
+    @staticmethod
+    def _filters_query(filters: dict) -> str:
+        parts = []
+        for name, value in filters.items():
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                value = "true" if value else "false"
+            elif isinstance(value, (list, tuple)):
+                value = ",".join(str(v) for v in value)
+            parts.append(f"{quote(str(name))}={quote(str(value))}")
+        return ("?" + "&".join(parts)) if parts else ""
+
+    async def get_arbitrage_screener(self, **filters) -> dict:
+        """The Arbitrage screener window's pairs, in its order (GET /api/arbitrage-screener/data).
+
+        No filter = the window's saved settings. A filter is a setting of the window by its name and applies to this
+        read only, e.g. ``get_arbitrage_screener(netSpreadMin=1, pairSpotSpot=False, search="ETH")``; lists may be
+        Python lists (``markets=["binance_f", "okx_f"]``). Each row carries both legs in the terminal's names and
+        ``comboLegs`` - a POST /api/combo ``legs`` value as it is. A wrong name or value -> 400 naming it; the feed not
+        reachable -> 503 with the reason.
+        """
+        return await self._get("/api/arbitrage-screener/data" + self._filters_query(filters))
+
+    async def get_arbitrage_screener_settings(self) -> dict:
+        """The Arbitrage screener window's saved settings and every filter name a read takes."""
+        return await self._get("/api/arbitrage-screener/settings")
+
+    async def get_twap_screener(self, **filters) -> dict:
+        """The TWAP screener window's lines (GET /api/twap-screener/data): filtered, grouped by coin, sorted as the
+        window. Filters by the window's setting names, this read only, e.g. ``get_twap_screener(search="ETH",
+        side="buy", sizeMin=100000)``."""
+        return await self._get("/api/twap-screener/data" + self._filters_query(filters))
+
+    async def get_twap_screener_settings(self) -> dict:
+        """The TWAP screener window's saved settings and every filter name a read takes."""
+        return await self._get("/api/twap-screener/settings")
+
+    async def get_screener_merged_data(self, template_ids: list[int]) -> dict:
+        """The joined rows a screener window with these templates checked shows (GET /api/screener/data), each row with
+        ``templateNames``; one row per coin when the first template's ``oneRowPerCoin`` is on."""
+        ids = ",".join(str(i) for i in template_ids)
+        return await self._get(f"/api/screener/data?templateIds={quote(ids)}")
 
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 

@@ -172,6 +172,8 @@ export interface OpenWindowRequest {
   monitor?: number;
   /** Screener only: open it on this saved template. */
   templateId?: number;
+  /** Screener only, not with `templateId` (MC-1130): several templates checked in one window, the first is the main one. */
+  templateIds?: number[];
   /** chart / tradingViewChart only, with `ticker`: the connection (GET /api/connections) the chart opens on. Omitted: an empty chart, as before. */
   connectionId?: number;
   /** chart / tradingViewChart only, with `connectionId`: the ticker the chart opens on, found by search on that connection (e.g. 'ETH' finds ETHUSDT). */

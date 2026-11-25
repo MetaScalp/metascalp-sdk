@@ -65,6 +65,11 @@ Use HTTP to discover connections, query data, and execute trades:
 | `PUT /api/screener/templates/{templateId}` | Update a template (partial) |
 | `DELETE /api/screener/templates/{templateId}` | Delete a template |
 | `GET /api/screener/templates/{templateId}/data` | One headless snapshot of a template's full row set — no screener window is opened |
+| `GET /api/screener/data?templateIds=` | The joined rows of several checked templates (one screener window), each with `templateNames` |
+| `GET /api/arbitrage-screener/data` | The Arbitrage screener's pairs as its window shows them (per-request filters) |
+| `GET /api/arbitrage-screener/settings` | The Arbitrage screener window's saved settings + filter names |
+| `GET /api/twap-screener/data` | The TWAP screener's lines as its window shows them (per-request filters) |
+| `GET /api/twap-screener/settings` | The TWAP screener window's saved settings + filter names |
 | `GET /api/appearance` | Settings → Display: the active theme, every theme (`isBuiltIn`, `isActive`) and the nine display options |
 | `GET /api/appearance/font-families` | Font families the `font` display option accepts |
 | `PUT /api/appearance/general` | Change display options (partial; applied at once) |
@@ -2435,6 +2440,84 @@ produces no rows within the deadline, `rows` is an empty array (`count = 0`).
 ```bash
 curl "http://127.0.0.1:17845/api/screener/templates/-1/data"
 ```
+
+---
+
+### Arbitrage, TWAP and multi-template screener data (MC-1130)
+
+Read only: nothing here places, moves or cancels an order or changes a setting. With no parameter a read returns the
+rows the window shows with its **saved settings**; a query parameter named like a setting of the window applies to this
+read only (an absent one takes the saved value) — the saved settings and an open window never change. Names are
+case-insensitive. An unknown name or a wrong value is `400 { error, field, allowed[] }`, answered before any feed is
+opened. A feed that cannot be reached is `503 { error, status: "notConnected", reason }` — never an empty table that
+looks like «no rows». Each read opens its own short-lived feed connection and closes it once the first table arrived.
+
+#### `GET /api/arbitrage-screener/data`
+
+The pairs of the Arbitrage screener window (MET-2276), in the window's order (favorites first, then the saved sort).
+Response `{ status: "ok", count, searchHiddenByFilters, serverTimeOffsetMs, rows[] }`. Each row: `pairId`, `base`,
+`assetClass`, `type`, `typeText`, `longLeg`, `entrySpreadPct`, `netSpreadPct`, `peakPct` (percent), `minVolumeUsd` /
+`minTrades` (per timeframe), `pairStartTs`, `updatedTs` (Unix ms), `isFavorite`, `volumeTimeframe` + `volume`,
+`tradesTimeframe` + `trades`, `funding` / `funding24h` (short leg rate − long leg rate), `long` / `short` legs and
+`comboLegs[]`.
+
+Each leg: `exchange` / `market` (the terminal's names, as `GET /api/connections` and the legs of `POST /api/combo` use
+them), `ticker` (what the window's own combo opens), `feedExchange` / `feedMarket` / `symbol` (the feed's names),
+`quote`, `bid`, `ask`, `price` (ask of the long leg, bid of the short leg), `multiplier`, `priceIncrement`, `priceTs`,
+`fundingRate`, `fundingIntervalH`, `nextFundingTs`, `fund24hPct`, `fund24hEstimated`. `{"legs": row.comboLegs}` is a
+`POST /api/combo` body as it is and opens both books.
+
+**Filters** (see `GET /api/arbitrage-screener/settings`): `search`; `markets`, `excludedMarkets` (comma-separated
+market keys `exchange_s` / `exchange_f`); `pairFuturesFutures`, `pairSpotSpot`, `pairSpotFutures`,
+`hideSpotMoreExpensive`, `assetCrypto`, `assetStablecoins`, `assetCommodities`, `assetStocks`, `assetIndices`,
+`onePairPerCoin`, `sameQuoteOnly`, `favoritesOnly`, `sortDescending` (true / false); `rows` (1–100); `volumeTimeframe`,
+`tradesTimeframe` (5s … 1d); `sortColumn` (coin, funding, funding24h, entrySpread, netSpread, volume, trades, peak,
+lifetime); `tradeSizeUsd`; `favorites`, `hiddenPairs`, `hiddenCoins`; `<column>Min` / `<column>Max` for funding,
+funding24h, entrySpread, netSpread, volume, trades, peak, lifetime.
+
+```bash
+curl "http://127.0.0.1:17845/api/arbitrage-screener/data?netSpreadMin=1&pairSpotSpot=false&search=ETH"
+```
+
+#### `GET /api/arbitrage-screener/settings`, `GET /api/twap-screener/settings`
+
+`{ settings, filters }`: the window's saved settings (the defaults of every read) and every filter name a read takes
+with its allowed values.
+
+#### `GET /api/twap-screener/data`
+
+The lines of the TWAP screener window (MET-2308): the feed's rows after the window's own filter, coin grouping and sort,
+no group expanded. Response `{ status: "ok", count, sourceLive, groupByCoin, serverTimeOffsetMs, rows[] }`. Each line:
+`kind` (`Single` / `Group`), `key` (`coin|market`), `coin`, `ticker`, `symbol`, `market`, `dex`, `isFavorite`, `sizeUsd`,
+`orderSize30sUsd`, `remainingUsd`, `startTime`, `endTime`, `wallets`, `side` (a group whose TWAPs differ: `mixed`); a
+single TWAP also `id`, `twapId`, `user`, `sz`, `executedSz`, `filledPct`, `minutes`, `reduceOnly`, `randomize`, `price`;
+a group its TWAPs in `twaps[]`. **Filters:** `search`, `market` (all / perp / spot), `side` (all / buy / sell),
+`groupByCoin`, `favoritesOnly`, `sortDescending`, `sortColumn`, `favorites`, `hiddenCoins`, `<column>Min` / `<column>Max`
+for size, order30s, remaining (USD), filled (%), timeLeft (minutes).
+
+#### `GET /api/screener/data?templateIds=A,B`
+
+The one table a screener window with these templates checked shows (MC-1093): the union built by the window's merge,
+in the first template's sort, one row per coin when the first template's `oneRowPerCoin` is on (2+ templates).
+Response `{ status: "ok", templateIds[], templateNames[], oneRowPerCoin, count, rows[] }`; each row is a
+`/api/screener/templates/{templateId}/data` row plus `templateNames[]`. Errors: no / non-numeric / repeated ids → 400;
+unknown id → 404; no rows within the deadline → 503.
+
+#### Changes to existing routes
+
+- `POST /api/ui/windows` takes `templateIds` (screener only, not with `templateId`): the templates checked in the window,
+  the first is its main template.
+- `GET /api/ui/state` screener rows carry `checkedTemplateIds` (one template → that one).
+- Template settings (`GET` / `POST` / `PUT /api/screener/templates`) carry `oneRowPerCoin`; a `PUT` without it keeps the
+  stored value.
+
+#### WebSocket: `arbitrage_screener_subscribe` / `twap_screener_subscribe`
+
+The subscribe `data` carries the same filters as JSON (`{}` = the window's settings). Ack `arbitrage_screener_subscribed`
+/ `twap_screener_subscribed`, then `arbitrage_screener_frame` / `twap_screener_frame` with the whole table (the GET's
+shape) after every batch / change. `*_unsubscribe` (`{}`) → `*_unsubscribed`; unsubscribe or a disconnect closes the
+stream's own upstream connection. One stream per socket and feed (a repeat subscribe replaces it). A wrong filter → the
+`error` frame naming it.
 
 ---
 

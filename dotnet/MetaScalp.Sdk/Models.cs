@@ -208,6 +208,10 @@ public class OpenWindowRequest
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public long? TemplateId { get; set; }
 
+    /// <summary>Screener only, not with <see cref="TemplateId"/> (MC-1130): several templates checked in one window, the first is the main one.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<long>? TemplateIds { get; set; }
+
     /// <summary>chart / tradingViewChart only, with <see cref="Ticker"/>: the connection the chart opens on. Null: an empty chart, as before.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public long? ConnectionId { get; set; }
