@@ -1268,3 +1268,50 @@ public class LiquidationsMetadataData
     public LiquidationsTotalsDto? Totals { get; set; }
     public List<TopTokenDto> TopTokens { get; set; } = new();
 }
+
+// ---- Aggregated order book (MC-1128) ----
+
+public class OpenAggregatedOrderBookRequest
+{
+    /// <summary>A workspace or light-workspace tab id from GET /api/ui/state.</summary>
+    [JsonProperty("tabId")]
+    public long TabId { get; set; }
+
+    /// <summary>With Ticker: the connection the book trades on (the main exchange).</summary>
+    [JsonProperty("connectionId", NullValueHandling = NullValueHandling.Ignore)]
+    public long? ConnectionId { get; set; }
+
+    /// <summary>With ConnectionId: the coin on that connection.</summary>
+    [JsonProperty("ticker", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Ticker { get; set; }
+
+    /// <summary>The merged connections in the order the book shows them; needs the coin. null = the default set.</summary>
+    [JsonProperty("sourceConnectionIds", NullValueHandling = NullValueHandling.Ignore)]
+    public List<long>? SourceConnectionIds { get; set; }
+}
+
+public class AggregatedOrderBookSourcesRequest
+{
+    /// <summary>The merged connections in the order to show them; the main connection is always merged. null = keep.</summary>
+    [JsonProperty("sourceConnectionIds", NullValueHandling = NullValueHandling.Ignore)]
+    public List<long>? SourceConnectionIds { get; set; }
+
+    /// <summary>The connection to trade on; one of SourceConnectionIds when both are given. null = keep.</summary>
+    [JsonProperty("mainConnectionId", NullValueHandling = NullValueHandling.Ignore)]
+    public long? MainConnectionId { get; set; }
+}
+
+public class AggregatedOrderBookResponse
+{
+    [JsonProperty("status")] public string Status { get; set; } = "";
+    [JsonProperty("externalId")] public Guid ExternalId { get; set; }
+    [JsonProperty("id")] public long? Id { get; set; }
+    [JsonProperty("kind")] public string Kind { get; set; } = "";
+    [JsonProperty("tabId")] public long? TabId { get; set; }
+    [JsonProperty("connectionId")] public long? ConnectionId { get; set; }
+    [JsonProperty("ticker")] public string? Ticker { get; set; }
+    [JsonProperty("sourceConnectionIds")] public List<long> SourceConnectionIds { get; set; } = new();
+
+    /// <summary>Set when the book was added but a later step did not land in time.</summary>
+    [JsonProperty("warning")] public string? Warning { get; set; }
+}

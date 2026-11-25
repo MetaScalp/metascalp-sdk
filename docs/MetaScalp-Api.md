@@ -57,6 +57,8 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/ui/windows/{windowId}/activate` | Bring one terminal window to the front |
 | `PUT /api/ui/documents/{externalId}/link-number` | Set one panel's link (binding-group) number |
 | `PUT /api/ui/documents/{externalId}/ticker` | Re-point one addressed panel (any book or chart, linked, unlinked or empty) to a different market, as a manual pick does |
+| `POST /api/ui/aggregated-order-books` | Open an aggregated order book in a workspace tab (optionally on a coin, with its merged connections in order) |
+| `PUT /api/ui/aggregated-order-books/{externalId}/sources` | Set an open aggregated order book's merged connections (set and order) and its main connection |
 | `GET /api/connections/{id}/orderbook-settings?Ticker=` | Get order book settings for a ticker |
 | `PUT /api/connections/{id}/orderbook-settings?Ticker=` | Update order book settings (partial) |
 | `GET /api/screener/templates` | List saved screener templates (the synthetic Default, id `-1`, is always first) |
@@ -1785,13 +1787,14 @@ GET http://127.0.0.1:{port}/api/ui/state
 |-------|------|----------|-------------|
 | `id` | integer | no | Persisted document id. |
 | `externalId` | string (GUID) | no | The stable id the docking layout XML joins on (its `ContentId`) — use it for the `PUT /api/ui/documents/{externalId}/...` routes. |
-| `kind` | string | no | `orderBook` or `chart`. |
-| `connectionId` | integer | yes | Owning connection; `null` when the document is not bound to a connection. |
+| `kind` | string | no | `orderBook` or `chart`; `aggregatedOrderBook` for an aggregated order book (MC-1128, listed after the tab's other documents). |
+| `connectionId` | integer | yes | Owning connection; `null` when the document is not bound to a connection. For an aggregated order book: the connection it trades on («Основная»). |
 | `ticker` | string | yes | Instrument label; `null` when unset. |
 | `linkNumber` | integer | yes | The link/binding group id read from the runtime binding bus. `null` when the document is not a binding source. |
 | `layoutPosition` | object | yes | `{ paneGroupIndex, documentIndex, orientation }` parsed from the tab's AvalonDock layout XML (matched by `externalId` == `ContentId`). `null` for standalone charts and for documents absent from the layout XML. |
 | `orderBook` | object | yes | Order-book details (below); `null` when `kind != orderBook`. |
 | `chart` | object | yes | Chart details (below); `null` when `kind != chart`. |
+| `aggregatedOrderBook` | object | — | **Only on a `kind: "aggregatedOrderBook"` row** (absent from every other row; MC-1128): `{ sourceConnectionIds }` — the merged connections («Биржи») in the order the book shows them; empty = no set chosen yet (the book merges its default set). Such a row also carries `orderBook` (the main connection's instrument); its `id` is the aggregated book's own row id and `ticker` is `null` while the book is empty. |
 
 **Order-book details (`document.orderBook`):**
 
@@ -1848,6 +1851,67 @@ within that surface — the address `POST /api/ui/windows` returned. The respons
 |-----------|-------------|---------------|
 | Non-numeric `windowId` | `400` | `Invalid window ID` |
 | Unknown window | `404` | `Window {id} not found` |
+
+#### Open an Aggregated Order Book
+
+Adds an aggregated order book («Агрегированный стакан»: one ladder that merges the books of one coin from several connections) to a workspace tab — what the «+» menu item does in that tab, in a docking or a light workspace window (the tab is selected first). With `connectionId` + `ticker` the book takes that coin through its own instrument picker, and with `sourceConnectionIds` the set and order its «Биржи» list would apply. Without a coin the book stays empty until a ticker is set. No order is placed. (MC-1128)
+
+```
+POST http://127.0.0.1:{port}/api/ui/aggregated-order-books
+Content-Type: application/json
+
+{ "tabId": 1, "connectionId": 1, "ticker": "ETHUSDT", "sourceConnectionIds": [3, 1, 2] }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `tabId` | integer | yes | A workspace or light-workspace tab id from `GET /api/ui/state`. |
+| `connectionId` | integer | with `ticker` | The connection the book trades on («Основная»). |
+| `ticker` | string | with `connectionId` | The coin on that connection, found by search. |
+| `sourceConnectionIds` | integer[] | no (needs the coin) | The merged connections in the order the book shows them; only connections the book's list offers for the coin. The main connection is always merged (put in front when missing; an empty list = the main alone). Omitted = the default set. |
+
+**Response `200 OK`:** `{ "status": "ok", "externalId", "id", "kind": "aggregatedOrderBook", "tabId", "connectionId", "ticker", "sourceConnectionIds" }`; `warning` is added when the book was added but a later step did not land in time.
+
+| Condition | HTTP Status | Error message |
+|-----------|-------------|---------------|
+| Missing `tabId` | `400` | `tabId is required: ...` |
+| `connectionId` without `ticker` / the reverse | `400` | `ticker is required with connectionId: ...` / `connectionId is required with ticker: ...` |
+| `sourceConnectionIds` without the coin | `400` | `sourceConnectionIds needs connectionId and ticker: ...` |
+| Unknown field | `400` | `Unknown field '...' in request body.` |
+| Ticker not on the connection | `400` | `ticker: '{ticker}' not found on connection {id}` |
+| A source the book does not offer for the coin | `400` | `sourceConnectionIds: connection {id} ... Allowed for {ticker}: ...` |
+| No window holds the tab | `404` | `Tab {tabId} not found` |
+
+Everything is checked before the book is added: nothing changes on an error.
+
+#### Set an Aggregated Order Book's Exchanges
+
+```
+PUT http://127.0.0.1:{port}/api/ui/aggregated-order-books/{externalId}/sources
+Content-Type: application/json
+
+{ "sourceConnectionIds": [5, 2, 1, 4], "mainConnectionId": 2 }
+```
+
+Changes the merged connections («Биржи»: set and order) and/or the connection the open book trades on («Основная»). The open book applies it at once, as closing its own exchange list does, and keeps it after a restart. A new main connection is what the list's «Основная» radio does: the book switches to that connection's instrument of the same coin. No order is placed.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sourceConnectionIds` | integer[] | no | The merged connections in the order to show them; becomes the book's own order. The main connection is always merged. Omitted = keep. |
+| `mainConnectionId` | integer | no | The connection to trade on: an open connection that lists the coin; one of `sourceConnectionIds` when both are given. Omitted = keep. |
+
+**Response `200 OK`:** the book after the change, same shape as the open route.
+
+| Condition | HTTP Status | Error message |
+|-----------|-------------|---------------|
+| Non-GUID id | `400` | `Invalid document ID` |
+| Empty body | `400` | `Request body must set 'sourceConnectionIds' and/or 'mainConnectionId'.` |
+| Book without a ticker | `400` | `The aggregated order book has no ticker yet: ...` |
+| A connection the book does not offer | `400` | `sourceConnectionIds: connection {id} ...` / `mainConnectionId: connection {id} ...` |
+| Main not in the given list | `400` | `mainConnectionId: connection {id} must be one of sourceConnectionIds ...` |
+| Not an open aggregated book | `404` | `Aggregated order book {externalId} not found` |
+
+The book's ticker and link group change through `PUT /api/ui/documents/{externalId}/ticker` and `.../link-number`: since MC-1128 both work on an open aggregated book (they answered `404` for it before), through its own instrument picker and its own link menu (it follows its group at once).
 
 #### Set Link Number
 

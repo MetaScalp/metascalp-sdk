@@ -176,6 +176,8 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
 | `GET/PUT` | `/api/chart-settings` | Settings → Chart: read / partially update every row — the open-interest pane (`openInterestDisplayMode`: `None` / `Histogram` / `Chart`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
+| `POST` | `/api/ui/aggregated-order-books` | Open an aggregated order book in a tab (optionally on a coin, with its merged connections in order) |
+| `PUT` | `/api/ui/aggregated-order-books/{externalId}/sources` | Set an aggregated order book's merged connections (set and order) and its main connection |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
 | `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market, an item `{exchange, market}` gives one exchange its own market; `legs: [{exchange, market, ticker}]` opens an arbitrage pair, one book per leg in this order, and a leg that cannot open answers its `reason`) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |

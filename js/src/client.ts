@@ -39,6 +39,9 @@ import type {
   AppearanceTextStyleUpdate,
   ChartSettings,
   ChartSettingsResponse,
+  OpenAggregatedOrderBookRequest,
+  AggregatedOrderBookSourcesRequest,
+  AggregatedOrderBookResponse,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -365,6 +368,29 @@ export class MetaScalpClient {
    */
   async updateChartSettings(update: Partial<ChartSettings>): Promise<ChartSettingsResponse> {
     return this.put('/api/chart-settings', update);
+  }
+
+  // ---- Aggregated order book ----
+
+  /**
+   * Adds an aggregated order book (one ladder that merges the books of one coin from several connections) to a workspace
+   * tab, as the "+" menu item does. With `connectionId` + `ticker` it opens on that coin and trades on that connection;
+   * `sourceConnectionIds` are the merged connections in the order the book shows them. No order is placed.
+   * 404 on an unknown tab; 400 (nothing added) on a source the book does not offer for the coin.
+   */
+  async openAggregatedOrderBook(request: OpenAggregatedOrderBookRequest): Promise<AggregatedOrderBookResponse> {
+    return this.post('/api/ui/aggregated-order-books', request);
+  }
+
+  /**
+   * Sets the merged connections (set and order) and/or the main connection of an open aggregated order book; the book
+   * applies it at once and keeps it after a restart. 400 (nothing changed) on a connection it does not offer for its coin.
+   */
+  async setAggregatedOrderBookSources(
+    externalId: string,
+    request: AggregatedOrderBookSourcesRequest,
+  ): Promise<AggregatedOrderBookResponse> {
+    return this.put(`/api/ui/aggregated-order-books/${encodeURIComponent(externalId)}/sources`, request);
   }
 
   // ---- HTTP helpers ----

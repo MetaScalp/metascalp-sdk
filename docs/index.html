@@ -3457,13 +3457,14 @@
           <tr><th>Field</th><th>Type</th><th>Nullable</th><th>Description</th></tr>
           <tr><td><code>id</code></td><td>integer</td><td>no</td><td>Persisted document id.</td></tr>
           <tr><td><code>externalId</code></td><td>string (GUID)</td><td>no</td><td>The stable id the docking layout XML joins on (its <code>ContentId</code>).</td></tr>
-          <tr><td><code>kind</code></td><td>string</td><td>no</td><td><code>orderBook</code> or <code>chart</code>.</td></tr>
-          <tr><td><code>connectionId</code></td><td>integer</td><td>yes</td><td>Owning connection; <code>null</code> when the document is not bound to a connection.</td></tr>
+          <tr><td><code>kind</code></td><td>string</td><td>no</td><td><code>orderBook</code> or <code>chart</code>; <code>aggregatedOrderBook</code> for an aggregated order book (MC-1128, listed after the tab's other documents).</td></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>yes</td><td>Owning connection; <code>null</code> when the document is not bound to a connection. For an aggregated order book: the connection it trades on (&laquo;Основная&raquo;).</td></tr>
           <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>Instrument label; <code>null</code> when unset.</td></tr>
           <tr><td><code>linkNumber</code></td><td>integer</td><td>yes</td><td>The link/binding group id read from the runtime binding bus (<code>bindingTypeId</code>, not a column). <code>null</code> when the document is not a binding source. DB-backed &mdash; no UI thread is used.</td></tr>
           <tr><td><code>layoutPosition</code></td><td>object</td><td>yes</td><td><code>{ paneGroupIndex, documentIndex, orientation }</code> parsed from the tab's AvalonDock layout XML (matched by <code>externalId</code> == <code>ContentId</code>). <code>null</code> for standalone charts (no tab layout) and for documents absent from the layout XML.</td></tr>
           <tr><td><code>orderBook</code></td><td>object</td><td>yes</td><td>Order-book details (below); <code>null</code> when <code>kind != orderBook</code>.</td></tr>
           <tr><td><code>chart</code></td><td>object</td><td>yes</td><td>Chart details (below); <code>null</code> when <code>kind != chart</code>.</td></tr>
+          <tr><td><code>aggregatedOrderBook</code></td><td>object</td><td>&mdash;</td><td><strong>Only on a <code>kind: "aggregatedOrderBook"</code> row</strong> (absent from every other row, so they read as before; MC-1128): <code>{ sourceConnectionIds }</code> &mdash; the merged connections (&laquo;Биржи&raquo;) in the order the book shows them; an empty list = no set chosen yet (the book merges its default set: the combo window's venues that list the coin). Such a row also carries <code>orderBook</code> (the main connection's instrument); its <code>id</code> is the aggregated book's own row id and <code>ticker</code> is <code>null</code> while the book is empty.</td></tr>
         </table>
 
         <h3>Order-book details (<code>document.orderBook</code>)</h3>
@@ -3595,6 +3596,10 @@
         <p>Persisted immediately via the binding bus (a DB-backed write &mdash; <strong>no UI thread</strong> is
         used). The stored link changes at once; a panel already on screen may not fully re-wire its live
         link until it is reloaded. Affects <strong>only</strong> the addressed document.</p>
+        <p><strong>Aggregated order book (MC-1128).</strong> An open aggregated book (<code>kind: "aggregatedOrderBook"</code>)
+        takes the number through its own link menu, so it follows its group at once (a ticker change of another member moves
+        it). It used to answer <code>404</code>. <code>PUT /api/ui/documents/{externalId}/ticker</code> works on it the same
+        way, through its own instrument picker.</p>
         <p><strong>Asynchronous w.r.t. the UI thread.</strong> Success &rarr; <code>200 { "status": "ok" }</code>.</p>
         <p><strong>Errors:</strong> a non-GUID <code>externalId</code> &rarr; <code>400 Invalid document ID</code>;
         a missing/omitted <code>linkNumber</code> &rarr; <code>400</code>; a non-positive value &rarr;
@@ -3620,6 +3625,79 @@
           <span class="response-time" id="resp-ui-linknumber-time"></span>
         </div>
         <div class="response-body" id="resp-ui-linknumber-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/aggregated-order-books (POST) -->
+  <div class="endpoint" id="ep-ui-agg-open">
+    <div class="endpoint-header" onclick="toggle('ep-ui-agg-open')">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/ui/aggregated-order-books</span>
+      <span class="endpoint-desc">Open an aggregated order book in a tab</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Adds an aggregated order book (&laquo;Агрегированный стакан&raquo;: one ladder that merges the books of one coin
+        from several connections) to a workspace tab &mdash; what the &laquo;+&raquo; menu item &laquo;Агрегированный стакан&raquo;
+        does in that tab, in a docking or a light workspace window. The tab is selected first, as a user selects it before the
+        menu acts. With <code>connectionId</code> and <code>ticker</code> the book then takes that coin through its own
+        instrument picker, and with <code>sourceConnectionIds</code> the set and order its &laquo;Биржи&raquo; list would
+        apply. Without a coin the book stays empty until a ticker is set (<code>PUT /api/ui/documents/{externalId}/ticker</code>),
+        as from the menu. No order is placed. (MC-1128)</p>
+        <p><strong>Request body:</strong></p>
+        <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "tabId": 1, "connectionId": 1, "ticker": "ETHUSDT", "sourceConnectionIds": [3, 1, 2] }</code></pre>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>tabId</code></td><td>integer</td><td>yes</td><td>A workspace or light-workspace tab id from <code>GET /api/ui/state</code>.</td></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>with <code>ticker</code></td><td>The connection the book trades on (&laquo;Основная&raquo;).</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>with <code>connectionId</code></td><td>The coin on that connection, found by search (as the ticker route does).</td></tr>
+          <tr><td><code>sourceConnectionIds</code></td><td>integer[]</td><td>no (needs the coin)</td><td>The merged connections (&laquo;Биржи&raquo;) in the order the book shows them. Only connections the book's list offers for the coin are taken. The main connection is always merged: a list without it gets it in front, an empty list = the main alone. Omitted = the book's default set (the combo window's venues that list the coin).</td></tr>
+        </table>
+        <p>Response <code>200 { status: "ok", externalId, id, kind: "aggregatedOrderBook", tabId, connectionId, ticker, sourceConnectionIds }</code>
+        &mdash; the book as it is after the request (<code>id</code> = its row id). <code>warning</code> is added when the
+        book was added but a later step (the ticker, the sources) did not land in time; the book stays as reported.</p>
+        <p><strong>Errors</strong> (everything is checked before the book is added; nothing changes on an error):
+        missing <code>tabId</code> &rarr; <code>400</code>; <code>connectionId</code> without <code>ticker</code> or the reverse
+        &rarr; <code>400</code>; <code>sourceConnectionIds</code> without the coin &rarr; <code>400</code>; an unknown field
+        &rarr; <code>400 Unknown field '...'</code>; a connection that does not exist or a ticker not on it &rarr; <code>400</code>;
+        a source the book's list would not offer for the coin &rarr; <code>400 sourceConnectionIds: connection {id} ...</code>
+        naming it and listing the allowed ones; a tab no window holds &rarr; <code>404 Tab {tabId} not found</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/ui/aggregated-order-books/{externalId}/sources (PUT) -->
+  <div class="endpoint" id="ep-ui-agg-sources">
+    <div class="endpoint-header" onclick="toggle('ep-ui-agg-sources')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/ui/aggregated-order-books/{externalId}/sources</span>
+      <span class="endpoint-desc">Set an aggregated book's exchanges and main exchange</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Changes the merged connections (&laquo;Биржи&raquo;: set and order) and/or the connection the open aggregated
+        book trades on (&laquo;Основная&raquo;). The open book applies it at once, as closing its own exchange list does,
+        and the choice is saved (it comes back after a restart). A new main connection is what the list's
+        &laquo;Основная&raquo; radio does: the book switches to that connection's instrument of the same coin, and its
+        orders would go there. No order is placed. (MC-1128)</p>
+        <p><strong>Request body</strong> (at least one field):</p>
+        <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "sourceConnectionIds": [5, 2, 1, 4], "mainConnectionId": 2 }</code></pre>
+        <table>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>sourceConnectionIds</code></td><td>integer[]</td><td>no</td><td>The merged connections in the order to show them; it becomes the book's own order. The main connection is always merged (put in front when missing; an empty list = the main alone). Omitted = keep the set.</td></tr>
+          <tr><td><code>mainConnectionId</code></td><td>integer</td><td>no</td><td>The connection to trade on: an open connection that lists the coin, and one of <code>sourceConnectionIds</code> when both are given (without a list it joins the current set). Omitted = keep it.</td></tr>
+        </table>
+        <p>Response <code>200 { status: "ok", externalId, id, kind, connectionId, ticker, sourceConnectionIds }</code> &mdash; the book after the change.</p>
+        <p><strong>Errors</strong> (nothing changes on an error): a non-GUID id &rarr; <code>400 Invalid document ID</code>;
+        an empty body &rarr; <code>400</code>; an unknown field &rarr; <code>400</code>; a book with no ticker yet &rarr;
+        <code>400</code>; a connection the book's list would not offer for its coin &rarr; <code>400</code> naming it with
+        the allowed ones; a main connection that is not in the given list &rarr; <code>400</code>; an id that is not an open
+        aggregated book &rarr; <code>404 Aggregated order book {externalId} not found</code>.</p>
+        <p>The book's ticker and link group change through <code>PUT /api/ui/documents/{externalId}/ticker</code> and
+        <code>PUT /api/ui/documents/{externalId}/link-number</code>, as for any book.</p>
       </div>
     </div>
   </div>

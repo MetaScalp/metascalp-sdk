@@ -464,6 +464,49 @@ class MetaScalpClient:
         """
         return await self._put("/api/chart-settings", settings)
 
+    # ---- Aggregated order book ----
+
+    async def open_aggregated_order_book(
+        self,
+        tab_id: int,
+        connection_id: Optional[int] = None,
+        ticker: Optional[str] = None,
+        source_connection_ids: Optional[List[int]] = None,
+    ) -> dict:
+        """Add an aggregated order book (one ladder that merges the books of one coin from several
+        connections) to a workspace tab, as the "+" menu item does.
+
+        With connection_id + ticker it opens on that coin and trades on that connection;
+        source_connection_ids are the merged connections in the order the book shows them (needs the coin).
+        Returns externalId, id, connectionId, ticker, sourceConnectionIds. No order is placed.
+        404 on an unknown tab; 400 (nothing added) on a source the book does not offer for the coin.
+        """
+        body: dict = {"tabId": tab_id}
+        if connection_id is not None:
+            body["connectionId"] = connection_id
+        if ticker is not None:
+            body["ticker"] = ticker
+        if source_connection_ids is not None:
+            body["sourceConnectionIds"] = list(source_connection_ids)
+        return await self._post("/api/ui/aggregated-order-books", body)
+
+    async def set_aggregated_order_book_sources(
+        self,
+        external_id: str,
+        source_connection_ids: Optional[List[int]] = None,
+        main_connection_id: Optional[int] = None,
+    ) -> dict:
+        """Set the merged connections (set and order) and/or the main connection of an open aggregated
+        order book. The book applies it at once and keeps it after a restart. The main connection is always
+        merged. 400 (nothing changed) on a connection the book does not offer for its coin.
+        """
+        body: dict = {}
+        if source_connection_ids is not None:
+            body["sourceConnectionIds"] = list(source_connection_ids)
+        if main_connection_id is not None:
+            body["mainConnectionId"] = main_connection_id
+        return await self._put(f"/api/ui/aggregated-order-books/{external_id}/sources", body)
+
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 
     async def get_order_book_snapshot(
