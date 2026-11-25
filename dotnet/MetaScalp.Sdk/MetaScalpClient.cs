@@ -102,7 +102,7 @@ public class MetaScalpClient : IDisposable
     /// <summary>
     /// Opens ONE terminal window (POST /api/ui/windows) and returns where it landed. A «chart» or «tradingViewChart»
     /// given <see cref="OpenWindowRequest.ConnectionId"/> + <see cref="OpenWindowRequest.Ticker"/> opens already showing
-    /// that instrument; without them it opens empty, as before. Unset fields are not sent.
+    /// that instrument; without them it opens empty, as before; so does a «timeAndSales» tape (MC-1127). Unset fields are not sent.
     /// </summary>
     public async Task<OpenWindowResponse> OpenWindowAsync(OpenWindowRequest request, CancellationToken ct = default)
         => await PostAsync<OpenWindowResponse>("/api/ui/windows", request, ct);

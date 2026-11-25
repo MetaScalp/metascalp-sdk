@@ -156,7 +156,9 @@ export class MetaScalpClient {
 
   /**
    * Opens ONE terminal window (POST /api/ui/windows). A `chart` or `tradingViewChart` given `connectionId` + `ticker`
-   * opens already showing that instrument; without them it opens empty, as before.
+   * opens already showing that instrument; without them it opens empty, as before; so does a `timeAndSales` tape.
+   * MC-1127: also positions, orders, densityTasks, densityMap, liquidations, largeTrades, arbitrageScreener,
+   * twapScreener and messenger (one window each: a shown one is raised and its id returned).
    */
   async openWindow(request: OpenWindowRequest): Promise<OpenWindowResponse> {
     return this.post('/api/ui/windows', request);

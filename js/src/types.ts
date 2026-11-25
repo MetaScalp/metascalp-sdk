@@ -162,7 +162,7 @@ export interface ComboResponse {
 
 /** POST /api/ui/windows. Geometry omitted: the window lands where it does today for its type. */
 export interface OpenWindowRequest {
-  /** workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades or listing. */
+  /** workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades, listing, positions, orders, densityTasks, timeAndSales, densityMap, liquidations, largeTrades, arbitrageScreener, twapScreener or messenger (the last ten since MC-1127: one window each, a shown one is raised). */
   windowType: string;
   top?: number;
   left?: number;
@@ -172,9 +172,9 @@ export interface OpenWindowRequest {
   monitor?: number;
   /** Screener only: open it on this saved template. */
   templateId?: number;
-  /** chart / tradingViewChart only, with `ticker`: the connection (GET /api/connections) the chart opens on. Omitted: an empty chart, as before. */
+  /** chart / tradingViewChart / timeAndSales only, with `ticker`: the connection (GET /api/connections) the chart or tape opens on. Omitted: an empty chart, as before. */
   connectionId?: number;
-  /** chart / tradingViewChart only, with `connectionId`: the ticker the chart opens on, found by search on that connection (e.g. 'ETH' finds ETHUSDT). */
+  /** chart / tradingViewChart / timeAndSales only, with `connectionId`: the ticker the chart or tape opens on, found by search on that connection (e.g. 'ETH' finds ETHUSDT). */
   ticker?: string;
 }
 

@@ -170,6 +170,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/PUT` | `/api/chart-settings` | Settings → Chart: read / partially update every row — the open-interest pane (`openInterestDisplayMode`: `None` / `Histogram` / `Chart`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
 | `POST` | `/api/notifications` | Inject a custom row into the notification feed |
 | `GET` | `/api/ui/state`, `/api/ui/windows/{windowId}` | Read-only inventory of the open UI (windows, tabs, documents) |
+| `POST` | `/api/ui/windows`, `.../{windowId}/close`, `.../{windowId}/activate` | Open a window at a place/size, close one, bring one to the front (also «Positions», «Orders», «Automated trading», the trade tape, the Analytics windows and the Messenger, own or docked: MC-1127) |
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
