@@ -56,7 +56,7 @@ Use HTTP to discover connections, query data, and execute trades:
 | `POST /api/ui/windows/{windowId}/close` | Close one terminal window through the app's own close path |
 | `POST /api/ui/windows/{windowId}/activate` | Bring one terminal window to the front |
 | `PUT /api/ui/documents/{externalId}/link-number` | Set one panel's link (binding-group) number |
-| `PUT /api/ui/documents/{externalId}/ticker` | Re-point one addressed panel to a different market |
+| `PUT /api/ui/documents/{externalId}/ticker` | Re-point one addressed panel (any book or chart, linked, unlinked or empty) to a different market, as a manual pick does |
 | `GET /api/connections/{id}/orderbook-settings?Ticker=` | Get order book settings for a ticker |
 | `PUT /api/connections/{id}/orderbook-settings?Ticker=` | Update order book settings (partial) |
 | `GET /api/screener/templates` | List saved screener templates (the synthetic Default, id `-1`, is always first) |
@@ -1885,7 +1885,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 
 #### Re-ticker a Panel
 
-Re-points one addressed panel (order book or chart) to a different market. This targets **only that panel** — unlike `POST /api/change-ticker`, which drives a whole named link group. `{externalId}` is the document's GUID.
+Re-points one addressed panel (order book or chart) to a different market, exactly as the user's own pick in the panel's header does. It works for **any open panel**: one in no link group, an empty one (no instrument yet — give `connectionId`), and a linked one. A panel in a link group moves its **whole group** with it (every book and chart of that link number), as a manual pick does, and the tab holding it takes the new ticker when the tab is named after the old one (a combo tab, `SOLUSDT` or `SOLUSDT / BTCUSDT`; a tab the user named keeps its name). The link number itself never changes. Unlike `POST /api/change-ticker` you address the panel, not the group. `{externalId}` is the document's GUID (from `GET /api/ui/state`).
 
 ```
 PUT http://127.0.0.1:{port}/api/ui/documents/{externalId}/ticker
@@ -1900,9 +1900,9 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `ticker` | string | yes | The instrument to switch the panel to. |
-| `connectionId` | integer | no | Target connection. Omit to keep the panel's current connection (a plain re-ticker on the same venue). |
+| `connectionId` | integer | no | Target connection. Omit to keep the panel's current connection (a plain re-ticker on the same venue). Required for an empty panel, which has none yet. |
 
-Asynchronous with respect to the UI thread: the API resolves the document and dispatches a change-ticker action to that panel's own live listener, which re-resolves the ticker and re-tickers itself on its own window dispatcher; the visible change and its persistence happen inside the panel.
+Asynchronous with respect to the UI thread: the API resolves the document and the ticker (by search on the connection), then hands the pick to that panel's own instrument picker on its own window dispatcher; the visible change, the link-group follow and the persistence happen inside the terminal. Read `GET /api/ui/state` to see the panel's new ticker. Since MC-1086 (before it, only a panel in a link group took the change, and its group's charts stayed on the old ticker).
 
 **Response `200 OK`:**
 ```json
@@ -1916,6 +1916,8 @@ Asynchronous with respect to the UI thread: the API resolves the document and di
 | Non-GUID `externalId` | `400` | `Invalid document ID` |
 | Missing `ticker` | `400` | `Request body must set 'ticker'.` |
 | No connection to inherit | `400` | `connectionId is required: the document has no current connection to inherit.` |
+| Ticker not found on the connection | `400` | `Ticker '{ticker}' not found on connection {connectionId}` |
+| The open panel did not take the ticker (its picker found no such instrument; it keeps the one it shows) | `400` | `Document {externalId} did not take ticker '{ticker}' on connection {connectionId}` |
 | Unknown document | `404` | `Document {externalId} not found` |
 
 #### Window addressing
@@ -1954,6 +1956,8 @@ Content-Type: application/json
 | `width` | number | no | Window width. Omit for the type's default. |
 | `monitor` | integer | no | 0-based target screen. Omit to place by virtual-desktop coordinate. |
 | `templateId` | integer | no | **Screener only.** Open the screener already showing this saved template's filters and rows. Omit for today's Default view. The synthetic Default (`-1`) is accepted. Ignored for any non-screener `windowType`. |
+| `connectionId` | integer | no | **`chart` / `tradingViewChart` only, with `ticker`.** The connection (`GET /api/connections`) the chart opens on. Omit both for today's empty chart. |
+| `ticker` | string | no | **`chart` / `tradingViewChart` only, with `connectionId`.** The instrument the chart opens on, found by search on that connection (`ETH` finds `ETHUSDT`). One call gives a chart with candles; no empty chart to switch afterwards. |
 
 **Response `200 OK`:** `{ windowId, windowType, top, left, height, width }` — where the window
 *actually* landed (post-clamp). For the three singleton types `windowId` is `null`: each has a single
@@ -1973,10 +1977,15 @@ the id, so there is no addressable per-surface id to return.
 > choice is persisted with the window, it also becomes the window's template on the next launch.
 > Omitting `templateId` is bit-for-bit today's behaviour.
 
+> **Opening a chart on an instrument (MC-1086).** `{"windowType": "chart", "connectionId": 2, "ticker": "ETHUSDT"}`
+> opens one chart window already showing ETHUSDT of connection 2, with candles - the same chart the screener's
+> «open chart» adds. Without `connectionId` + `ticker` the chart opens empty, bit-for-bit as before; to switch a chart or
+> book that is already open use `PUT /api/ui/documents/{externalId}/ticker`.
+
 **Errors:** malformed body → `400 Malformed request body.`; missing `windowType` → `400` with the
 supported list; an unknown or unsupported-standalone type (e.g. `settings`, which is modal, or the
 full-screen chart, which needs an existing chart) → `400` naming the supported list; an unknown screener
-`templateId` → `404 Screener template {templateId} not found`. All validated **before** any window opens.
+`templateId` → `404 Screener template {templateId} not found`. `connectionId` or `ticker` alone → `400 Give 'connectionId' and 'ticker' together.`; either on a type other than `chart` / `tradingViewChart` → `400` (an order book on a connection opens with `POST /api/combo` and `connections`); a ticker not found on the connection → `400 Ticker '{ticker}' not found on connection {connectionId}`. All validated **before** any window opens.
 
 ```bash
 curl -X POST http://127.0.0.1:17845/api/ui/windows \

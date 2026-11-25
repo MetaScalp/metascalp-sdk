@@ -3652,6 +3652,8 @@
           <tr><td><code>width</code></td><td>number</td><td>no</td><td>Window width. Omit for the type's default.</td></tr>
           <tr><td><code>monitor</code></td><td>integer</td><td>no</td><td>0-based target screen. Omit to place by virtual-desktop coordinate.</td></tr>
           <tr><td><code>templateId</code></td><td>integer</td><td>no</td><td><strong>Screener only.</strong> Open the screener already showing this saved template's filters and rows &mdash; the same state the window's own template picker produces. Omit for today's Default view. The synthetic Default (id <code>-1</code>) is accepted and resolves to Default. Ignored for any non-screener <code>windowType</code>.</td></tr>
+          <tr><td><code>connectionId</code></td><td>integer</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>ticker</code>.</strong> The connection (<code>GET /api/connections</code>) the chart opens on. Omit both for today's empty chart. (MC-1086)</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>no</td><td><strong><code>chart</code> / <code>tradingViewChart</code> only, with <code>connectionId</code>.</strong> The instrument the chart opens on, found by search on that connection (<code>ETH</code> finds <code>ETHUSDT</code>): one call gives a chart with candles, no empty chart to switch afterwards. <code>connectionId</code> or <code>ticker</code> alone &rarr; <code>400 Give 'connectionId' and 'ticker' together.</code>; either on another type &rarr; <code>400</code> (an order book on a connection opens with <code>POST /api/combo</code> and <code>connections</code>); a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>. Validated before anything opens. (MC-1086)</td></tr>
         </table>
         <p>Response <code>{ windowId, windowType, top, left, height, width }</code> &mdash; where the window
         actually landed (post-clamp). For the three <strong>singleton</strong> types (<code>lineNotifications</code>,
@@ -3948,9 +3950,11 @@
     <div class="endpoint-body">
       <div class="docs">
         <p>Re-points <strong>one</strong> addressed panel (order book or chart) to a different market.
-        This targets <strong>only</strong> that panel &mdash; unlike <code>POST /api/change-ticker</code>,
-        which drives a whole named link group. <code>{externalId}</code> is the
-        document's GUID.</p>
+        It works as the user's own pick in the panel's header, for <strong>any</strong> open panel: one in no link group, an
+        empty one (no instrument yet &mdash; give <code>connectionId</code>) and a linked one. A linked panel moves its <strong>whole
+        link group</strong> (every book and chart of that link number), as a manual pick does, and the tab holding it takes the new ticker when the tab is named after the old one (a combo tab; a tab the user named keeps its name); the link number never changes. You address
+        the panel, not the group as <code>POST /api/change-ticker</code> does. <code>{externalId}</code> is the document's GUID. (MC-1086; before it only a
+        panel in a link group took the change, and its group's charts stayed behind.)</p>
         <p><strong>Request body:</strong></p>
         <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;margin:8px 0;overflow-x:auto;"><code>{ "ticker": "ETHUSDT", "connectionId": 77 }</code></pre>
         <table>
@@ -3958,14 +3962,15 @@
           <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>The instrument to switch the panel to.</td></tr>
           <tr><td><code>connectionId</code></td><td>integer</td><td>no</td><td>Target connection. Omit to keep the panel's <strong>current</strong> connection (a plain re-ticker on the same venue).</td></tr>
         </table>
-        <p><strong>Asynchronous w.r.t. the UI thread.</strong> The API resolves the document and dispatches
-        a change-ticker action to that panel's own live listener, which re-resolves the ticker and
-        re-tickers itself on its own window dispatcher; the visible change and its persistence happen
-        inside the panel. Success &rarr; <code>200 { "status": "ok" }</code>.</p>
+        <p><strong>Asynchronous w.r.t. the UI thread.</strong> The API resolves the document and the ticker (by search on the
+        connection), then hands the pick to the panel's own instrument picker on its own window dispatcher; the visible
+        change, the link-group follow and the persistence happen inside the terminal &mdash; read <code>GET /api/ui/state</code>
+        to see the new ticker. Success &rarr; <code>200 { "status": "ok" }</code>.</p>
         <p><strong>Errors:</strong> a non-GUID <code>externalId</code> &rarr; <code>400 Invalid document ID</code>;
         a missing <code>ticker</code> &rarr; <code>400</code>; an unknown document &rarr;
         <code>404 Document {externalId} not found</code>; a document with no current connection and no
-        supplied <code>connectionId</code> &rarr; <code>400</code>.</p>
+        supplied <code>connectionId</code> &rarr; <code>400</code>; a ticker not on the connection &rarr; <code>400 Ticker '{ticker}' not found on connection {connectionId}</code>;
+        an open panel that did not take the ticker (its picker found no such instrument, so it keeps the one it shows) &rarr; <code>400 Document {externalId} did not take ticker '{ticker}' on connection {connectionId}</code>.</p>
       </div>
       <div class="form-grid triple">
         <div class="form-group">
@@ -4705,6 +4710,8 @@
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Missing ticker</td><td>400</td><td><code>Request body must set 'ticker'.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>No connection to inherit</td><td>400</td><td><code>connectionId is required: the document has no current connection to inherit.</code></td></tr>
+      <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Ticker not on the connection</td><td>400</td><td><code>Ticker '{ticker}' not found on connection {connectionId}</code></td></tr>
+      <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>The open panel did not take the ticker</td><td>400</td><td><code>Document {externalId} did not take ticker '{ticker}' on connection {connectionId}</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Unknown document</td><td>404</td><td><code>Document {externalId} not found</code></td></tr>
       <tr><td>any</td><td>Unknown path</td><td>400</td><td><code>Not found</code></td></tr>
       <tr><td>any</td><td>Wrong HTTP method</td><td>400</td><td><code>Method not allowed</code></td></tr>
@@ -4770,7 +4777,7 @@
         <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>The same inventory object for one window; unknown id &rarr; 404</td></tr>
         <tr><td><code>POST /api/ui/windows</code></td><td>Open a terminal window at a requested place/size (and monitor); omitted geometry &rarr; today's default placement</td></tr>
         <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Set one panel's link (binding-group) number; unknown document &rarr; 404</td></tr>
-        <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Re-point one addressed panel to a different market (that panel only)</td></tr>
+        <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Re-point one addressed panel (any book or chart: linked, unlinked or empty) to a different market, as a manual pick does</td></tr>
       </table>
 
       <h3>WebSocket streaming</h3>

@@ -14,6 +14,9 @@ import type {
   ComboResponse,
   CloseTabResponse,
   ActivateTabResponse,
+  OpenWindowRequest,
+  OpenWindowResponse,
+  SetDocumentTickerRequest,
   SignalLevelsResponse,
   PlaceSignalLevelRequest,
   OrderBookSettingsResponse,
@@ -149,6 +152,23 @@ export class MetaScalpClient {
   /** Makes ONE tab (by id) the selected tab of its window. Idempotent when already selected; 404 for an unknown id. */
   async activateTab(tabId: number): Promise<ActivateTabResponse> {
     return this.post(`/api/ui/tabs/${tabId}/activate`, {});
+  }
+
+  /**
+   * Opens ONE terminal window (POST /api/ui/windows). A `chart` or `tradingViewChart` given `connectionId` + `ticker`
+   * opens already showing that instrument; without them it opens empty, as before.
+   */
+  async openWindow(request: OpenWindowRequest): Promise<OpenWindowResponse> {
+    return this.post('/api/ui/windows', request);
+  }
+
+  /**
+   * Switches ONE open order book or chart (by its `externalId` from GET /api/ui/state) to a ticker, as the user's own
+   * pick in its header does: an unlinked or empty document takes it, a linked one moves its whole link group. The
+   * link number never changes.
+   */
+  async setDocumentTicker(externalId: string, request: SetDocumentTickerRequest): Promise<{ status: string }> {
+    return this.put(`/api/ui/documents/${encodeURIComponent(externalId)}/ticker`, request);
   }
 
   // ---- Order Book Settings ----

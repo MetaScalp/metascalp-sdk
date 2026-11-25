@@ -182,6 +182,62 @@ public class ComboResponse : StatusResponse
     public bool? Existing { get; set; }
 }
 
+/// <summary>POST /api/ui/windows. Geometry omitted: the window lands where it does today for its type.</summary>
+public class OpenWindowRequest
+{
+    /// <summary>workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades or listing.</summary>
+    public string WindowType { get; set; } = "";
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Top { get; set; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Left { get; set; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Height { get; set; }
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public double? Width { get; set; }
+
+    /// <summary>0-based target screen.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? Monitor { get; set; }
+
+    /// <summary>Screener only: open it on this saved template.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? TemplateId { get; set; }
+
+    /// <summary>chart / tradingViewChart only, with <see cref="Ticker"/>: the connection the chart opens on. Null: an empty chart, as before.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? ConnectionId { get; set; }
+
+    /// <summary>chart / tradingViewChart only, with <see cref="ConnectionId"/>: the ticker, found by search on that connection (ETH finds ETHUSDT).</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string? Ticker { get; set; }
+}
+
+/// <summary>Where the window landed (post-clamp); <see cref="WindowId"/> is null for the singleton types.</summary>
+public class OpenWindowResponse
+{
+    public long? WindowId { get; set; }
+    public int WindowType { get; set; }
+    public double Top { get; set; }
+    public double Left { get; set; }
+    public double Height { get; set; }
+    public double Width { get; set; }
+}
+
+/// <summary>PUT /api/ui/documents/{externalId}/ticker.</summary>
+public class SetDocumentTickerRequest
+{
+    public string Ticker { get; set; } = "";
+
+    /// <summary>Null: the document's own connection. Required for an empty document.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public long? ConnectionId { get; set; }
+}
+
 /// <summary>The <see cref="ComboRequest.Exchanges"/> list. Converts from a list or array of plain names, so code
 /// written for the earlier <c>List&lt;string&gt;</c> property still compiles.</summary>
 public class ComboExchangeList : List<ComboExchange>

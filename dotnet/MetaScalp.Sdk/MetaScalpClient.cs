@@ -97,6 +97,25 @@ public class MetaScalpClient : IDisposable
     public async Task<ComboResponse> OpenComboAsync(ComboRequest request, CancellationToken ct = default)
         => await PostAsync<ComboResponse>("/api/combo", request, ct);
 
+    // ---- Windows and documents ----
+
+    /// <summary>
+    /// Opens ONE terminal window (POST /api/ui/windows) and returns where it landed. A «chart» or «tradingViewChart»
+    /// given <see cref="OpenWindowRequest.ConnectionId"/> + <see cref="OpenWindowRequest.Ticker"/> opens already showing
+    /// that instrument; without them it opens empty, as before. Unset fields are not sent.
+    /// </summary>
+    public async Task<OpenWindowResponse> OpenWindowAsync(OpenWindowRequest request, CancellationToken ct = default)
+        => await PostAsync<OpenWindowResponse>("/api/ui/windows", request, ct);
+
+    /// <summary>
+    /// Switches ONE open order book or chart (its externalId from GET /api/ui/state) to a ticker, as the user's own pick
+    /// in its header does: an unlinked or empty document takes it, a linked one moves its whole link group. The link
+    /// number never changes. <paramref name="connectionId"/> omitted: the document's own connection.
+    /// </summary>
+    public async Task SetDocumentTickerAsync(string externalId, string ticker, long? connectionId = null, CancellationToken ct = default)
+        => await PutAsync<object>($"/api/ui/documents/{Uri.EscapeDataString(externalId)}/ticker",
+            new SetDocumentTickerRequest { Ticker = ticker, ConnectionId = connectionId }, ct);
+
     // ---- Order Book Settings ----
 
     public Task<OrderBookSettingsResponse> GetOrderBookSettingsAsync(long connectionId, string ticker, CancellationToken ct = default)

@@ -160,6 +160,42 @@ export interface ComboResponse {
   existing?: boolean;
 }
 
+/** POST /api/ui/windows. Geometry omitted: the window lands where it does today for its type. */
+export interface OpenWindowRequest {
+  /** workspace, lightWorkspace, chart, tradingViewChart, watchlist, screener, lineNotifications, finres, userTrades or listing. */
+  windowType: string;
+  top?: number;
+  left?: number;
+  height?: number;
+  width?: number;
+  /** 0-based target screen. */
+  monitor?: number;
+  /** Screener only: open it on this saved template. */
+  templateId?: number;
+  /** chart / tradingViewChart only, with `ticker`: the connection (GET /api/connections) the chart opens on. Omitted: an empty chart, as before. */
+  connectionId?: number;
+  /** chart / tradingViewChart only, with `connectionId`: the ticker the chart opens on, found by search on that connection (e.g. 'ETH' finds ETHUSDT). */
+  ticker?: string;
+}
+
+/** Where the window landed (post-clamp). `windowId` is null for the singleton types. */
+export interface OpenWindowResponse {
+  windowId: number | null;
+  windowType: number;
+  top: number;
+  left: number;
+  height: number;
+  width: number;
+}
+
+/** PUT /api/ui/documents/{externalId}/ticker. */
+export interface SetDocumentTickerRequest {
+  /** The instrument, found by search on the connection. */
+  ticker: string;
+  /** Omitted: the document's own connection. Required for an empty document (it has none yet). */
+  connectionId?: number;
+}
+
 /** A `legs` leg that could not open (in `MetaScalpApiError.body.legs`). */
 export interface ComboLegFailure {
   exchange: string;
