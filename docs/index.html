@@ -1044,7 +1044,7 @@
     </div>
     <div class="endpoint-body">
       <div class="docs">
-        <p>Returns open orders for a specific ticker on a connection. The <code>Ticker</code> query parameter is required.</p>
+        <p>Returns open orders for a specific ticker on a connection. <strong>Without <code>Ticker</code></strong> (MC-1131) it returns every open order of the account, read the way the &laquo;Orders&raquo; window reads them after a restart: one account-wide exchange request on exchanges that have one (<code>accountWide: true</code>), otherwise the window's own per-ticker reads over the pairs with an open position, an order known this session or (spot) a non-zero balance. The answer is then <code>{ connectionId, ticker: null, accountWide, count, orders[] }</code>. App-side stops and SL / TP held by the terminal are not listed (as with a ticker). With <code>Ticker</code> the answer is unchanged: <code>{ connectionId, ticker, count, orders[] }</code>.</p>
         <table>
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
           <tr><td><code>id</code></td><td>integer</td><td>Exchange order ID</td></tr>
@@ -1081,6 +1081,54 @@
           <span class="response-time" id="resp-ex-orders-time"></span>
         </div>
         <div class="response-body" id="resp-ex-orders-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/trades (GET) - MC-1131 -->
+  <div class="endpoint" id="ep-trades">
+    <div class="endpoint-header" onclick="toggle('ep-trades')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/trades</span>
+      <span class="endpoint-desc">Trades history with totals</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The trades of the &laquo;Trades&raquo; window, with its filters and paging: open trades first, then closed ones by close time, newest first. Read from the terminal's own records: no exchange request. Query (all optional): <code>connectionIds</code> (ids separated by commas; empty = every open connection), <code>ticker</code>, <code>direction</code> (<code>Long</code> / <code>Short</code>, case-insensitive), <code>closeDateFrom</code>, <code>closeDateTo</code> (Unix milliseconds or ISO 8601, UTC unless a zone is given), <code>page</code> (from 1, default 1), <code>pageSize</code> (1&ndash;100, default 15).</p>
+        <p>&rarr; <code>{ page, pageSize, totalCount, totalProfit, totalCommission, notIncludedConnections[], trades[] }</code>. <code>totalProfit</code> (profit plus funding of the closed trades) and <code>totalCommission</code> cover the <strong>whole filter</strong>, not only the page. Each trade: <code>{ id, connectionId, connectionName, exchange, market, marketType, ticker, direction, isOpen, size, sizeUsd, openPrice, closePrice, priceDiff, profit, commission, funding, closeTime }</code> (enum values as names, <code>closeTime</code> ISO 8601 UTC, <code>null</code> while open).</p>
+        <p>Connections whose trades are kept by the exchange's own ledger (prop / server-side accounts) are out of this read: named in <code>connectionIds</code> they answer <code>501</code> with a <code>reason</code>; with no <code>connectionIds</code> they are listed in <code>notIncludedConnections[]</code> (<code>{ connectionId, reason }</code>). Errors: <code>closeDateFrom</code> later than <code>closeDateTo</code>, a bad <code>direction</code> (with <code>allowed</code>), <code>page</code> below 1 or <code>pageSize</code> above 100 (with <code>maxPageSize</code>) answer <code>400</code>; an unknown connection <code>404</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/trades/{tradeId}/orders (GET) - MC-1131 -->
+  <div class="endpoint" id="ep-trade-orders">
+    <div class="endpoint-header" onclick="toggle('ep-trade-orders')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/trades/{tradeId}/orders</span>
+      <span class="endpoint-desc">Orders of one trade</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The orders (fills) the &laquo;Trades&raquo; window shows under a trade, oldest first. No exchange request. &rarr; <code>{ tradeId, count, orders[] }</code>, each <code>{ id, exchangeOrderId, kind (Open / Close), side (Buy / Sell), price, filledPrice, size, sizeUsd, commission, time }</code>; <code>size</code> is the part of the order this trade used. An unknown trade answers <code>404</code>; a row of an exchange's own ledger (negative id) <code>501</code> with a <code>reason</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/finres (GET) - MC-1131 -->
+  <div class="endpoint" id="ep-finres">
+    <div class="endpoint-header" onclick="toggle('ep-finres')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/finres</span>
+      <span class="endpoint-desc">PnL snapshot (Finres)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>The values of the &laquo;Finres&raquo; (PnL) window now, the same numbers <code>finres_update</code> pushes, read on demand. It returns what the terminal already holds and sends <strong>no</strong> exchange request. Query: optional <code>connectionId</code> (empty = every open connection; unknown = <code>404</code>).</p>
+        <p>&rarr; <code>{ count, connections[] }</code>, each <code>{ connectionId, connectionName, known, reason, coins[] }</code>, each coin <code>{ currency, result, fee, funds, available, blocked }</code>. Every coin is returned, including the ones hidden in the window. <code>available</code> and <code>blocked</code> are <code>null</code> where the exchange does not report them (the push's rule). A connection with nothing held yet (balances not arrived, or a view-only connection) has <code>known: false</code>, an empty <code>coins</code> and a <code>reason</code> &mdash; never zeros.</p>
       </div>
     </div>
   </div>
@@ -4772,6 +4820,8 @@
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/user-levels</code></td><td>Read, create, modify (in place) and delete user (plain) levels for a ticker</td></tr>
         <tr><td><code>GET/PUT/POST/DELETE /api/connections/{id}/annotations</code></td><td>Read all three chart-annotation lists, replace a list (PUT), append one (POST) or delete by index / clear all &mdash; addressed by zero-based list index</td></tr>
         <tr><td><code>GET/PUT /api/chart-settings</code></td><td>Read, and partially update, the rows of Settings &rarr; Chart &mdash; the open-interest pane (<code>openInterestDisplayMode</code>), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels</td></tr>
+        <tr><td><code>GET /api/trades</code>, <code>GET /api/trades/{tradeId}/orders</code></td><td>Trades history of the &laquo;Trades&raquo; window with its filters, paging and the totals of profit and commission for the whole filter; the orders of one trade (no exchange request)</td></tr>
+        <tr><td><code>GET /api/finres</code></td><td>PnL snapshot of the &laquo;Finres&raquo; window: result, fee, funds, available, blocked per connection and coin (no exchange request; <code>known: false</code> with a reason when nothing is held)</td></tr>
         <tr><td><code>POST /api/notifications</code></td><td>Inject a custom row into the notification feed (all fields optional, arbitrary event type)</td></tr>
         <tr><td><code>GET /api/ui/state</code></td><td>Full read-only inventory of the open UI: windows, tabs, order-book/chart documents and standalone charts (rebuilt from the saved layout)</td></tr>
         <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>The same inventory object for one window; unknown id &rarr; 404</td></tr>

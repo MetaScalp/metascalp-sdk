@@ -56,7 +56,10 @@ export interface Order {
 
 export interface OrdersResponse {
   connectionId: number;
-  ticker: string;
+  /** null when the request named no ticker (every open order of the account, MC-1131). */
+  ticker: string | null;
+  /** Only without a ticker: true = one account-wide exchange read, false = the Orders window's per-ticker reads. */
+  accountWide?: boolean;
   count: number;
   orders: Order[];
 }
@@ -698,6 +701,81 @@ export interface ChartSettingsAllowed {
 }
 
 /** Response from `MetaScalpClient.getChartSettings` / `updateChartSettings`. */
+/** One row of the Trades window (GET /api/trades). Enum values are names; closeTime is ISO 8601 UTC, null while open. */
+export interface UserTrade {
+  id: number;
+  connectionId: number;
+  connectionName: string;
+  exchange: string;
+  market: string;
+  marketType: string;
+  ticker: string;
+  direction: 'Long' | 'Short';
+  isOpen: boolean;
+  size: number;
+  sizeUsd: number;
+  openPrice: number;
+  closePrice: number | null;
+  priceDiff: number | null;
+  profit: number | null;
+  commission: number | null;
+  funding: number;
+  closeTime: string | null;
+}
+
+export interface TradesQuery {
+  connectionIds?: number[];
+  ticker?: string;
+  direction?: 'Long' | 'Short';
+  /** Unix milliseconds or ISO 8601 (UTC unless it names a zone). */
+  closeDateFrom?: string | number;
+  closeDateTo?: string | number;
+  page?: number;
+  /** 1-100, default 15 (the window's paging). */
+  pageSize?: number;
+}
+
+export interface TradesResponse {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  /** Profit plus funding of the closed trades of the whole filter, not only of the page. */
+  totalProfit: number;
+  totalCommission: number;
+  /** Connections whose trades the exchange's own ledger keeps (prop accounts): not part of this read. */
+  notIncludedConnections: { connectionId: number; reason: string }[];
+  trades: UserTrade[];
+}
+
+export interface TradeOrdersResponse {
+  tradeId: number;
+  count: number;
+  orders: {
+    id: number;
+    exchangeOrderId: number;
+    kind: 'Open' | 'Close';
+    side: 'Buy' | 'Sell';
+    price: number;
+    filledPrice: number | null;
+    size: number;
+    sizeUsd: number;
+    commission: number | null;
+    time: string;
+  }[];
+}
+
+export interface FinresResponse {
+  count: number;
+  connections: {
+    connectionId: number;
+    connectionName: string;
+    /** false = nothing held yet for this connection (or a view-only one); reason says why. Never zeros. */
+    known: boolean;
+    reason: string | null;
+    coins: { currency: string; result: number; fee: number; funds: number; available: number | null; blocked: number | null }[];
+  }[];
+}
+
 export interface ChartSettingsResponse extends ChartSettings {
   /** updateChartSettings only: the fields this request changed (a field sent with its current value is not one of them). */
   changed?: string[];

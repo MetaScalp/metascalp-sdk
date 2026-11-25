@@ -39,6 +39,10 @@ import type {
   AppearanceTextStyleUpdate,
   ChartSettings,
   ChartSettingsResponse,
+  TradesQuery,
+  TradesResponse,
+  TradeOrdersResponse,
+  FinresResponse,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -103,8 +107,14 @@ export class MetaScalpClient {
 
   // ---- Trading Data ----
 
-  async getOrders(connectionId: number, ticker: string): Promise<OrdersResponse> {
-    return this.get(`/api/connections/${connectionId}/orders?Ticker=${encodeURIComponent(ticker)}`);
+  /**
+   * Open orders of a connection. With a ticker: that ticker. Without one (MC-1131): every open order of the account, read
+   * the way the Orders window reads them after a restart (one account-wide request where the exchange has one).
+   */
+  async getOrders(connectionId: number, ticker?: string): Promise<OrdersResponse> {
+    return ticker
+      ? this.get(`/api/connections/${connectionId}/orders?Ticker=${encodeURIComponent(ticker)}`)
+      : this.get(`/api/connections/${connectionId}/orders`);
   }
 
   async getPositions(connectionId: number): Promise<PositionsResponse> {
@@ -365,6 +375,32 @@ export class MetaScalpClient {
    */
   async updateChartSettings(update: Partial<ChartSettings>): Promise<ChartSettingsResponse> {
     return this.put('/api/chart-settings', update);
+  }
+
+  // ---- Trades history and PnL (MC-1131; reads of what the terminal holds, no exchange request) ----
+
+  /** The Trades window's rows with its filters and paging, plus the totals of profit and commission of the whole filter. */
+  async getTrades(query: TradesQuery = {}): Promise<TradesResponse> {
+    const params = new URLSearchParams();
+    if (query.connectionIds?.length) params.set('connectionIds', query.connectionIds.join(','));
+    if (query.ticker) params.set('ticker', query.ticker);
+    if (query.direction) params.set('direction', query.direction);
+    if (query.closeDateFrom !== undefined) params.set('closeDateFrom', String(query.closeDateFrom));
+    if (query.closeDateTo !== undefined) params.set('closeDateTo', String(query.closeDateTo));
+    if (query.page !== undefined) params.set('page', String(query.page));
+    if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize));
+    const qs = params.toString();
+    return this.get(`/api/trades${qs ? `?${qs}` : ''}`);
+  }
+
+  /** The orders (fills) the Trades window shows under one trade. */
+  async getTradeOrders(tradeId: number): Promise<TradeOrdersResponse> {
+    return this.get(`/api/trades/${tradeId}/orders`);
+  }
+
+  /** The Finres (PnL) window's values now, per connection and coin; every coin, the hidden ones too. */
+  async getFinres(connectionId?: number): Promise<FinresResponse> {
+    return this.get(connectionId === undefined ? '/api/finres' : `/api/finres?connectionId=${connectionId}`);
   }
 
   // ---- HTTP helpers ----

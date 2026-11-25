@@ -76,6 +76,9 @@ Use HTTP to discover connections, query data, and execute trades:
 | `GET/PUT /api/appearance/themes/{themeId}/text-styles` | Read / write every «Шрифты» row (size, bold, italic, colour) |
 | `GET /api/chart-settings` | Settings → Chart: every row of the page and its allowed values — the open-interest pane (`openInterestDisplayMode`), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels |
 | `PUT /api/chart-settings` | Change Settings → Chart rows (partial; returns the rows after the change plus `changed`) |
+| `GET /api/trades` | Trades history of the Trades window with its filters, paging and the totals of the whole filter (no exchange request) |
+| `GET /api/trades/{tradeId}/orders` | The orders (fills) of one trade, as the Trades window shows them |
+| `GET /api/finres` | PnL snapshot of the Finres window per connection and coin (no exchange request) |
 
 ### WebSocket streaming
 
@@ -686,15 +689,20 @@ Ticker fields:
 
 #### Get Open Orders
 
-Returns open orders for a specific ticker on a connection.
+Returns open orders for a specific ticker on a connection. **Without `Ticker`** (MC-1131) it returns every open order of
+the account, read the way the Orders window reads them after a restart: one account-wide exchange request on exchanges
+that have one (`accountWide: true`), otherwise the window's own per-ticker reads over the pairs with an open position, an
+order known this session or (spot) a non-zero balance. The answer is then `{ connectionId, ticker: null, accountWide,
+count, orders[] }`. App-side stops and SL / TP held by the terminal are not listed. With `Ticker` nothing changes.
 
 ```
 GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders?Ticker=BTCUSDT
+GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orders
 ```
 
 | Query Parameter | Type   | Required | Description |
 |-----------------|--------|----------|-------------|
-| `Ticker`        | string | yes      | Trading pair symbol |
+| `Ticker`        | string | no       | Trading pair symbol; empty = every open order of the account |
 
 **Response `200 OK`:**
 ```json
@@ -2600,6 +2608,60 @@ as on the page. A chip-background row takes `color` only (`size` / `bold` / `ita
 ```json
 { "textStyles": { "OrderBookPriceScale": { "size": 14, "bold": true } } }
 ```
+
+---
+
+### Trades history and PnL (MC-1131)
+
+Reads of what the terminal already holds: no exchange request, nothing is placed, moved or cancelled.
+
+#### Get Trades
+
+```
+GET http://127.0.0.1:{port}/api/trades?connectionIds=3&closeDateFrom=2026-11-25T00:00:00Z&closeDateTo=2026-11-26T00:00:00Z&page=1&pageSize=15
+```
+
+| Query Parameter | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| `connectionIds` | string | no | Connection ids separated by commas; empty = every open connection |
+| `ticker`        | string | no | Ticker |
+| `direction`     | string | no | `Long` / `Short`, case-insensitive |
+| `closeDateFrom`, `closeDateTo` | string | no | Unix milliseconds or ISO 8601 (UTC unless a zone is given) |
+| `page`          | int    | no | From 1, default 1 |
+| `pageSize`      | int    | no | 1-100, default 15 (the window's paging) |
+
+`200` -> `{ page, pageSize, totalCount, totalProfit, totalCommission, notIncludedConnections[], trades[] }`: open trades
+first, then closed ones newest first; `totalProfit` (profit plus funding of the closed trades) and `totalCommission`
+cover the whole filter, not only the page. Each trade: `{ id, connectionId, connectionName, exchange, market,
+marketType, ticker, direction, isOpen, size, sizeUsd, openPrice, closePrice, priceDiff, profit, commission, funding,
+closeTime }`. Connections whose trades the exchange's own ledger keeps (prop accounts) are out of this read: named in
+`connectionIds` -> `501` with a `reason`; otherwise listed in `notIncludedConnections`. Errors: `closeDateFrom` later than
+`closeDateTo`, a bad `direction` (with `allowed`), `page` < 1, `pageSize` > 100 (with `maxPageSize`) -> `400`; an
+unknown connection -> `404`.
+
+#### Get Trade Orders
+
+```
+GET http://127.0.0.1:{port}/api/trades/{tradeId}/orders
+```
+
+`200` -> `{ tradeId, count, orders[] }`, each `{ id, exchangeOrderId, kind (Open / Close), side (Buy / Sell), price,
+filledPrice, size, sizeUsd, commission, time }`, oldest first. Unknown trade -> `404`; a row of an exchange's own ledger
+(negative id) -> `501`.
+
+#### Get Finres
+
+```
+GET http://127.0.0.1:{port}/api/finres
+GET http://127.0.0.1:{port}/api/finres?connectionId=3
+```
+
+`200` -> `{ count, connections[] }`, each `{ connectionId, connectionName, known, reason, coins[] }`, each coin
+`{ currency, result, fee, funds, available, blocked }` - the numbers of the Finres window and of `finres_update`, every
+coin including the hidden ones. `available` / `blocked` are `null` where the exchange does not report them. A connection
+with nothing held yet (or a view-only one) has `known: false`, empty `coins` and a `reason`, never zeros. Unknown
+connection -> `404`.
+
 
 ---
 
