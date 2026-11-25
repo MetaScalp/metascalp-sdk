@@ -118,6 +118,14 @@ export interface ChangeTickerRequest {
   binding?: string;
 }
 
+/** One `exchanges` item with its own market. */
+export interface ComboExchange {
+  /** Exchange name as GET /api/connections returns it in `exchange` (case-insensitive). */
+  exchange: string;
+  /** "spot", "futures" or an exact MarketType name, case-insensitive. Omitted or null: the request's `market`, or every connected market. */
+  market?: string | null;
+}
+
 export interface ComboRequest {
   /** One combo for a single ticker (e.g. 'BTCUSDT'). Mutually exclusive with `tickers`. */
   ticker?: string;
@@ -127,10 +135,37 @@ export interface ComboRequest {
   activate?: boolean;
   /** Connection ids from GET /api/connections: exactly these books, in this order. Omitted: the terminal picks (today's behaviour). */
   connections?: number[];
-  /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive): every active connection of these exchanges where the ticker trades, exchanges in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
-  exchanges?: string[];
-  /** Only with `exchanges`: keep only this market on every listed exchange - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
+  /** Exchange names as GET /api/connections returns them in `exchange` (case-insensitive), or `{ exchange, market }` to give one exchange its own market: every active connection of these exchanges where the ticker trades, items in this order. Not together with `connections`. Omitted: the terminal picks (today's behaviour). */
+  exchanges?: (string | ComboExchange)[];
+  /** Only with `exchanges`: keep only this market on every listed exchange without a market of its own - "spot", "futures" (every futures/perpetual type) or an exact MarketType name, case-insensitive. Omitted: every connected market. */
   market?: string;
+  /** An arbitrage pair: one book per leg, in this order (the first leg on the left). Alone - not with any other field but `activate`. At least 2 legs. */
+  legs?: ComboLeg[];
+}
+
+/** One `legs` item. */
+export interface ComboLeg {
+  /** Exchange as GET /api/connections returns it in `exchange`; case, spaces and dots do not matter. */
+  exchange: string;
+  /** "spot", "futures" or an exact MarketType name, case-insensitive. */
+  market: string;
+  /** e.g. "ZKLUSDT"; the terminal finds the venue's own symbol and keeps the quote. */
+  ticker: string;
+}
+
+/** POST /api/combo answer. `opened`/`existing` come with `legs` (existing: the pair was already open and was brought to the front). */
+export interface ComboResponse {
+  status: string;
+  opened?: boolean;
+  existing?: boolean;
+}
+
+/** A `legs` leg that could not open (in `MetaScalpApiError.body.legs`). */
+export interface ComboLegFailure {
+  exchange: string;
+  market: string;
+  ticker: string;
+  reason: 'no_connection' | 'connection_inactive' | 'connections_loading' | 'exchange_not_supported' | 'instrument_not_found';
 }
 
 /** POST /api/ui/tabs/{tabId}/close. `outcome` is the seam's enum as a number; on a 200 it is 0 (Closed). */
@@ -299,6 +334,34 @@ export interface SignalLevelsSnapshotData {
   signalLevels: SignalLevel[];
 }
 
+/** A user (plain) level as sent on the user_level_* WebSocket family. */
+export interface UserLevel {
+  id: number;
+  connectionId: number;
+  ticker: string;
+  price: number;
+  name: string | null;
+  /** ISO-8601 timestamp, or null when unset. */
+  date: string | null;
+  note: string | null;
+  lineThickness: number | null;
+  lineStyle: string | null;
+  lineColor: string | null;
+  textSize: number | null;
+  textColor: string | null;
+  textAlignment: string | null;
+  textStyle: string | null;
+}
+
+/** Sent after every user_level_subscribe (empty list when nothing matches the optional filter). */
+export interface UserLevelsSnapshotData {
+  userLevels: UserLevel[];
+}
+
+export interface UserLevelRemovedData {
+  ids: number[];
+}
+
 export interface SignalLevelPlacedData {
   id: number;
   connectionId: number;
@@ -375,7 +438,10 @@ export interface OrderBookSettings {
     slimLevelsFactor?: number;
     basicLevelsFactor?: number;
     notificationSignalLevelTriggered?: boolean;
+    /** Legacy: true when autoCenterThreshold > 0; false sets it to 0, true while it is 0 sets the default. */
     autoscroll?: boolean;
+    /** Auto-centering threshold, whole 0..10 (0 = off; N = re-centre beyond (10 - N)/10 of the half window height). */
+    autoCenterThreshold?: number;
     fullDepth?: boolean;
 
     // Ticks
@@ -765,6 +831,13 @@ export interface SocketEventMap {
   signal_level_removed: SignalLevelRemovedData;
   signal_levels_removed_all: Record<string, never>;
   signal_levels_removed_triggered: Record<string, never>;
+  user_level_subscribed: Record<string, never>;
+  user_level_unsubscribed: Record<string, never>;
+  user_levels_snapshot: UserLevelsSnapshotData;
+  user_level_placed: UserLevel;
+  user_level_updated: UserLevel;
+  user_level_removed: UserLevelRemovedData;
+  user_levels_removed_all: Record<string, never>;
   density_map_subscribed: Record<string, never>;
   density_map_unsubscribed: Record<string, never>;
   density_map_snapshot: DensityMapSnapshotData;

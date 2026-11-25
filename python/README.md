@@ -162,7 +162,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/signal-levels[/{slId}]` | Full signal-level CRUD (+ `DELETE /api/signal-levels/triggered`) |
 | `GET/POST/PUT/DELETE` | `/api/connections/{id}/user-levels[/{ulId}]` | Full user (plain) level CRUD |
 | `GET/PUT/POST/DELETE` | `/api/connections/{id}/annotations[/{type}[/{index}]]` | Chart annotations: read all three lists, replace a list, append one, delete by index, clear all |
-| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle) |
+| `GET/PUT` | `/api/connections/{id}/orderbook-settings?Ticker=X` | Read / partially update order book settings (incl. `ZoomStepMode`: `Linear` / `Logarithmic`; `ShowExecutedOrders` — the tape's executed-order overlay toggle; `AutoCenterThreshold` — auto-centering 0–10, `Autoscroll` kept as its legacy on/off view) |
 | `GET/PUT` | `/api/appearance`, `/api/appearance/general`, `/api/appearance/active-theme` | Settings → Display: themes and the thirteen display options (`GET .../font-families` lists the fonts) |
 | `POST/PUT/DELETE` | `/api/appearance/themes[/{themeId}]` | Copy, rename, delete a theme (built-in themes are read-only: 409) |
 | `GET/PUT` | `/api/appearance/themes/{themeId}/colors`, `.../text-styles` | Every colour row and every «Шрифты» row of a theme |
@@ -171,7 +171,7 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | `POST` | `/api/ui/tabs/{tabId}/close`, `.../{tabId}/activate` | Close one tab by id (refuses a window's only tab), switch to one tab by id — ids from `GET /api/ui/state` |
 | `PUT` | `/api/ui/documents/{externalId}/link-number`, `.../ticker` | Set a panel's link group / re-point a panel to another market |
 | `POST` | `/api/change-ticker` | Switch ticker in MetaScalp UI |
-| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market) |
+| `POST` | `/api/combo` | Open combo layout (`activate: false` opens it in the background; `connections: [ids]` opens exactly these books, in this order; `exchanges: [names]` opens every active connection of those exchanges where the ticker trades, `market` narrows them to one market, an item `{exchange, market}` gives one exchange its own market; `legs: [{exchange, market, ticker}]` opens an arbitrage pair, one book per leg in this order, and a leg that cannot open answers its `reason`) |
 | `POST` | `/api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 
 ### WebSocket Messages
@@ -198,14 +198,14 @@ Full reference with request/response shapes: [MetaScalp API docs](https://metasc
 | Subscribe | Updates received |
 |-----------|-----------------|
 | `notification_subscribe` | `notification_update` (including custom rows injected via `POST /api/notifications`) |
-| `signal_level_subscribe` | `signal_level_placed/updated/triggered/removed/...` |
-| `user_level_subscribe` | `user_level_placed/updated/removed/...` |
+| `signal_level_subscribe` | `signal_levels_snapshot` (on every subscribe; optional `connectionId` / `ticker` filter), then `signal_level_placed/updated/triggered/removed/...` |
+| `user_level_subscribe` | `user_levels_snapshot` (on every subscribe; optional `connectionId` / `ticker` filter), then `user_level_placed/updated/removed/...` |
 | `ui_subscribe` | `ui_snapshot`, then `ui_update` on UI changes |
 | `density_map_subscribe` | `density_map_snapshot`, then `density_map_update` — MetaBroker order-book walls, one notification per wall |
 | `large_trades_subscribe` | `large_trades_update` — MetaBroker aggregated large trade prints (append-only, no snapshot) |
 | `liquidations_subscribe` | `liquidations_snapshot`, `liquidations_update`, `liquidations_metadata` — MetaBroker cross-exchange liquidations (no MetaBroker login needed) |
 
-> **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship.
+> **SDK coverage note.** The js / python / dotnet convenience wrappers currently cover the core surface (connections, orders, positions, balances, market data) plus the MetaBroker analytics streams (density map, large trades, liquidations). The newer families (levels, annotations, notifications, UI) are available through the same clients as plain REST calls / raw WS messages until dedicated wrappers ship. Level WS subscriptions already have wrappers: `subscribeSignalLevels` / `subscribeUserLevels` (js), `subscribe_signal_levels` / `subscribe_user_levels` (python), `SubscribeSignalLevels` / `SubscribeUserLevels` (dotnet), each with an optional `connectionId` / `ticker` snapshot filter.
 
 > **Mass-subscribe optimization.** `orderbook_subscribe` accepts an optional `fetchSnapshot` field (default `true`). Pass `false` to skip the exchange REST snapshot fetch when subscribing — useful when subscribing to 100+ tickers at once without hitting exchange REST rate limits. Seed state separately via `GET /api/connections/{id}/orderbook-snapshot` when you need it. A later subscriber that wants a snapshot triggers a lazy fetch that fans out to all listeners.
 

@@ -826,15 +826,17 @@
         <table>
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
           <tr><td><code>connections</code></td><td>integer array</td><td>no</td><td>Connection ids from <code>GET /api/connections</code>. Present: the combo opens with the books of exactly these connections, in this order (for <code>tickers</code>: in every combo); the venue checkboxes and the TOP mode of the Combo window settings are not applied, every other combo setting (open mode, charts, sizes, linking, the book cap and its split) is. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
-          <tr><td><code>exchanges</code></td><td>string array</td><td>no</td><td>Exchange names as <code>GET /api/connections</code> returns them in <code>exchange</code> (case-insensitive), e.g. <code>"Binance"</code>. Present: the terminal opens every active connection of these exchanges on which the ticker trades (every connected market of the exchange: spot, futures, &hellip;) &mdash; the exchanges in this order, inside one exchange the connection list order. For <code>tickers</code> every combo gets the set of its own ticker. As with <code>connections</code>, the venue checkboxes and the TOP mode are not applied and every other combo setting is. Not together with <code>connections</code>. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
-          <tr><td><code>market</code></td><td>string</td><td>no</td><td>Only with <code>exchanges</code>: keeps only the connections of this market on every listed exchange. A market name, case-insensitive: <code>spot</code> (spot and stock), <code>futures</code> (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or <code>null</code>: every connected market of the exchange.</td></tr>
+          <tr><td><code>exchanges</code></td><td>array of strings or objects</td><td>no</td><td>Each item is an exchange name as <code>GET /api/connections</code> returns it in <code>exchange</code> (case-insensitive), e.g. <code>"Binance"</code>, or an object <code>{ "exchange": "Binance", "market": "futures" }</code> that gives this exchange its own market. Present: the terminal opens every active connection of these exchanges on which the ticker trades (in the item&rsquo;s market when it has one, otherwise every connected market of the exchange: spot, futures, &hellip;) &mdash; the items in this order, inside one item the connection list order. One exchange may be listed more than once with different markets, e.g. Binance futures and Binance spot. For <code>tickers</code> every combo gets the set of its own ticker. As with <code>connections</code>, the venue checkboxes and the TOP mode are not applied and every other combo setting is. Not together with <code>connections</code>. Absent or <code>null</code>: behaviour unchanged. Validated all-or-nothing before anything opens.</td></tr>
+          <tr><td><code>market</code></td><td>string</td><td>no</td><td>Only with <code>exchanges</code>: keeps only the connections of this market on every listed exchange that has no market of its own (an item&rsquo;s own <code>market</code> wins). The value is a market type <em>name</em>, case-insensitive, the same names as an item&rsquo;s <code>market</code> &mdash; not the <code>market</code> display name (e.g. <code>"USDT Futures"</code>) and not the <code>marketType</code> number that <code>GET /api/connections</code> returns. <code>spot</code> / <code>Spot</code> = Spot and Stock; <code>futures</code> / <code>Futures</code> = every futures and perpetual type; or one exact type: UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or <code>null</code>: every connected market of the exchange.<br>Inside an item, no <code>market</code> or <code>"market": null</code> means &laquo;use the request&rsquo;s <code>market</code>&raquo;. So once the request&rsquo;s <code>market</code> is set, an item cannot ask for every market of its exchange &mdash; leave the request&rsquo;s <code>market</code> out and give each item its own.</td></tr>
         </table>
         <pre>{ "ticker": "BTCUSDT", "connections": [1, 4] }
 { "tickers": ["BTCUSDT", "ETHUSDT"], "connections": [1, 4] }
 { "ticker": "BTCUSDT", "connections": [1, 4], "activate": false }
 { "ticker": "BTCUSDT", "exchanges": ["Bybit", "Binance"] }
 { "tickers": ["BTCUSDT", "ETHUSDT"], "exchanges": ["MEXC"], "activate": false }
-{ "ticker": "BTCUSDT", "exchanges": ["Binance", "Gate"], "market": "futures" }</pre>
+{ "ticker": "BTCUSDT", "exchanges": ["Binance", "Gate"], "market": "futures" }
+{ "ticker": "BTCUSDT", "exchanges": [{ "exchange": "Binance", "market": "futures" }, { "exchange": "Bybit", "market": "spot" }, "MEXC"] }
+{ "ticker": "BTCUSDT", "exchanges": [{ "exchange": "Binance", "market": "futures" }, { "exchange": "Binance", "market": "spot" }] }</pre>
         <p>With <code>connections</code> the checks run in this order and the first failing one answers <code>400</code>; nothing opens:</p>
         <table>
           <tr><th>Condition</th><th>Error message</th></tr>
@@ -851,13 +853,41 @@
           <tr><td>Both <code>ticker</code> and a non-empty <code>tickers</code>; missing <code>ticker</code></td><td>unchanged (see above)</td></tr>
           <tr><td><code>market</code> without <code>exchanges</code></td><td><code>Invalid request body. 'market' is used only together with 'exchanges'.</code></td></tr>
           <tr><td>Both <code>connections</code> and <code>exchanges</code></td><td><code>Provide either 'connections' or 'exchanges', not both.</code></td></tr>
-          <tr><td><code>market</code> is not a market name (a number or an empty string included)</td><td><code>Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.</code></td></tr>
+          <tr><td><code>exchanges</code> is not an array, or an item is neither a name nor an object (e.g. a nested array)</td><td><code>Invalid request body. 'exchanges' must be an array of exchange names or { "exchange", "market" } objects.</code></td></tr>
+          <tr><td><code>market</code>, or an item&rsquo;s <code>market</code>, is not a market name (a number or an empty string included)</td><td><code>Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.</code></td></tr>
           <tr><td><code>exchanges</code> is an empty array</td><td><code>Invalid request body. 'exchanges' must not be empty.</code></td></tr>
-          <tr><td>The same exchange listed twice or more (in any letter case)</td><td><code>Invalid request body. Duplicate exchanges: MEXC.</code> (every duplicated name, in request order)</td></tr>
-          <tr><td>A name with no active connection (unknown, or the exchange is not connected)</td><td><code>Combo not opened. No active connection for exchanges: Foo.</code> (every such name, in request order); with <code>market</code>: <code>Combo not opened. No active Futures connection for exchanges: Gate.</code></td></tr>
+          <tr><td>An item has no exchange name (<code>null</code>, blank, or an object without <code>exchange</code>)</td><td><code>Invalid request body. Every 'exchanges' item needs an exchange name.</code></td></tr>
+          <tr><td>The same exchange with the same market listed twice or more (in any letter case)</td><td><code>Invalid request body. Duplicate exchanges: MEXC.</code> (every duplicated item, in request order; once any item has a market of its own, every item is named with its market: <code>Binance (Spot)</code>)</td></tr>
+          <tr><td>A name with no active connection (unknown, or the exchange is not connected)</td><td><code>Combo not opened. No active connection for exchanges: Foo.</code> (every such name, in request order); with <code>market</code>: <code>Combo not opened. No active Futures connection for exchanges: Gate.</code>; with markets per item: <code>Combo not opened. No active connection for exchanges: Gate (Futures).</code></td></tr>
+          <tr><td>Two items of one exchange pick the same connection (e.g. <code>"Binance"</code> and <code>{ "exchange": "Binance", "market": "spot" }</code>, or <code>futures</code> and <code>UsdtFutures</code>)</td><td><code>Combo not opened. These exchanges pick the same connections: Binance, Binance (Spot).</code> (every such item, in request order)</td></tr>
           <tr><td>A <code>tickers</code> element is null or blank</td><td>unchanged: <code>Combo not opened. Rejected tickers: &lt;names&gt;.</code></td></tr>
-          <tr><td>A ticker trades on none of the active connections of a listed exchange</td><td><code>Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.</code> (every failing pair)</td></tr>
+          <tr><td>A ticker trades on none of the active connections of a listed exchange (in the item&rsquo;s market, or the request&rsquo;s <code>market</code>, when given; with markets per item the exchange is named with its market: <code>Binance (Futures)</code>)</td><td><code>Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.</code> (every failing pair)</td></tr>
         </table>
+        <p><strong>An arbitrage pair &mdash; <code>legs</code>.</strong> The Metabroker web arbitrage screener sends each leg of a pair as <code>exchange</code> + <code>market</code> + <code>ticker</code>; the terminal finds its own connection and instrument for each leg and opens <strong>one combo with one book per leg</strong>, in the legs&rsquo; order: the first leg on the left (send the buy leg first, then the sell leg). <code>legs</code> is a form of its own: not together with <code>ticker</code>, <code>tickers</code>, <code>connections</code>, <code>exchanges</code> or <code>market</code>; <code>activate</code> works as above.</p>
+        <table>
+          <tr><th>Leg field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+          <tr><td><code>exchange</code></td><td>string</td><td>yes</td><td>The exchange as <code>GET /api/connections</code> names it in <code>exchange</code>; case, spaces and dots do not matter (<code>"gate"</code> = <code>"Gate"</code>, <code>"cryptocom"</code> = <code>"Crypto.com"</code>).</td></tr>
+          <tr><td><code>market</code></td><td>string</td><td>yes</td><td>A market type name, as for <code>exchanges</code>: <code>spot</code> (Spot and Stock), <code>futures</code> (every futures and perpetual type) or one exact type.</td></tr>
+          <tr><td><code>ticker</code></td><td>string</td><td>yes</td><td>The instrument, e.g. <code>"ZKLUSDT"</code>. The terminal finds the venue&rsquo;s own symbol (OKX <code>ZKL-USDT-SWAP</code>, KuCoin futures <code>&hellip;USDTM</code>, <code>1000PEPE</code>-style contracts). The quote is kept: a USDT leg opens only a USDT instrument, a USDC leg only a USDC one, and a coin-margined USD contract (Binance COIN-M, Bybit Inverse) never stands in for either.</td></tr>
+        </table>
+        <p>Each leg opens on the <strong>first active connection</strong> of its exchange and market (connection list order) where its ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs. Charts, open mode, sizes and linking follow the Combo window settings. The <strong>same pair again</strong> brings its open combo to the front (restored if minimized) instead of opening a second one; a double click opens exactly one.</p>
+        <pre>{ "legs": [
+    { "exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT" },
+    { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT" }
+] }</pre>
+        <p>Answers. <code>200</code>: <code>{ "status": "ok", "opened": true, "existing": false }</code> (<code>existing: true</code> = the pair was already open and was brought to the front). A leg that cannot open: <code>400</code>, nothing opens, <strong>every</strong> failing leg listed with its reason; connection ids never appear:</p>
+        <pre>{ "opened": false,
+  "error": "Combo not opened. Bybit Futures ZKLUSDT: no connection.",
+  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "reason": "no_connection" } ] }</pre>
+        <table>
+          <tr><th>reason</th><th>When</th></tr>
+          <tr><td><code>no_connection</code></td><td>No saved connection of this exchange and market.</td></tr>
+          <tr><td><code>connection_inactive</code></td><td>A connection is saved but none is connected (disconnected, wrong or expired key, no futures permission, &hellip;).</td></tr>
+          <tr><td><code>connections_loading</code></td><td>A connection of this exchange and market is still connecting, or MetaScalp has just started and has not finished connecting the auto-connect connections. Try again in a few seconds.</td></tr>
+          <tr><td><code>exchange_not_supported</code></td><td>MetaScalp has no such exchange, or the exchange has no such market.</td></tr>
+          <tr><td><code>instrument_not_found</code></td><td>The ticker is not an instrument of the active connections of this exchange and market (delisted, not listed, or only with another quote).</td></tr>
+        </table>
+        <p>A bad request answers <code>400</code> <code>{ "error": "...", "opened": false, "reason": "bad_request" }</code> (the first failing check, in this order): <code>Invalid request body. 'legs' cannot be combined with 'ticker', 'tickers', 'connections', 'exchanges' or 'market'.</code> &middot; <code>Invalid request body. 'legs' must have at least 2 legs.</code> &middot; <code>Invalid request body. Every leg needs 'exchange', 'market' and 'ticker'.</code> &middot; <code>Invalid request body. Unknown market '&lt;value&gt;'. Use one of: &hellip;</code> &middot; <code>Invalid request body. Duplicate legs: Binance Spot ZKLUSDT.</code> (the same exchange, market and ticker twice). A body that does not parse (an unknown field in a leg included) answers its usual text with <code>"reason": "bad_request"</code> too. If the window cannot be created: <code>400</code> <code>{ "error": "Failed to open combo layouts.", "opened": false, "reason": "open_failed" }</code>.</p>
       </div>
       <div class="form-grid single">
         <div class="form-group">
@@ -869,12 +899,16 @@
           <input type="text" id="f-combo-connections" value="" placeholder="e.g. 1, 4">
         </div>
         <div class="form-group">
-          <label>Exchanges (optional, comma-separated names, in order; not with Connections)</label>
-          <input type="text" id="f-combo-exchanges" value="" placeholder="e.g. Bybit, Binance">
+          <label>Exchanges (optional, comma-separated names, in order; Name:market gives one exchange its own market; not with Connections)</label>
+          <input type="text" id="f-combo-exchanges" value="" placeholder="e.g. Bybit:spot, Binance:futures, MEXC">
         </div>
         <div class="form-group">
           <label>Market (optional, only with Exchanges)</label>
           <input type="text" id="f-combo-market" value="" placeholder="e.g. futures">
+        </div>
+        <div class="form-group">
+          <label>Legs (optional, alone: Exchange:market:ticker, separated by ";", left to right)</label>
+          <input type="text" id="f-combo-legs" value="" placeholder="e.g. Binance:spot:ZKLUSDT; Bybit:futures:ZKLUSDT">
         </div>
       </div>
       <div class="actions-row">
@@ -1868,6 +1902,7 @@
         <p>Partial update &mdash; only send the fields you want to change. Omitted fields keep their current values. Changes are pushed live to the running panels. Returns the full updated settings object.</p>
         <p style="font-size:13px;color:var(--text-muted);">Enum fields: <code>ShowRuler</code> (<code>None</code>, <code>Points</code>, <code>Percent</code>, <code>PercentVolume</code>, <code>PercentVolumeOneLine</code>), <code>ZoomType</code> (<code>Absolute</code>, <code>Percentage</code>), <code>ZoomStepMode</code> (<code>Linear</code>, <code>Logarithmic</code>), <code>SizeType</code> (<code>Coin</code>, <code>Usd</code>).</p>
         <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Auto-centering: <code>AutoCenterThreshold</code> (whole number <code>0</code>&ndash;<code>10</code>; <code>0</code> = off, <code>N</code> = the book re-centres once the spread is more than (10&nbsp;&minus;&nbsp;N)/10 of the way from the centre to the window edge; outside the range or a fraction &rarr; <code>400</code>, nothing written). <code>Autoscroll</code> is kept for old clients: it reads <code>true</code> when <code>AutoCenterThreshold</code> &gt; 0; writing <code>false</code> sets <code>0</code>, writing <code>true</code> while it is <code>0</code> sets the default <code>2</code>; an <code>AutoCenterThreshold</code> in the same request wins when it differs from the stored value (an unchanged echo of it does not mask the old field).</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -1882,7 +1917,7 @@
       <div class="form-grid single">
         <div class="form-group">
           <label>Request body (JSON)</label>
-          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoscroll": true, "showExecutedOrders": false}</textarea>
+          <textarea id="f-obs-put-body" rows="5" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"largeAmountUsd": 50000, "rowHeight": 14, "autoCenterThreshold": 2, "showExecutedOrders": false}</textarea>
         </div>
       </div>
       <div class="actions-row">
@@ -4129,7 +4164,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>Signal levels</strong> &mdash; subscribe (globally, no data payload) to receive signal-level lifecycle events:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>signal_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving signal-level events</td><td>&mdash;</td></tr>
+          <tr><td><code>signal_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving signal-level events</td><td>optional <code>connectionId</code>, <code>ticker</code> &mdash; narrow the snapshot only (live events stay global)</td></tr>
           <tr><td><code>signal_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>signal_levels_snapshot</code> follows immediately)</td><td>&mdash;</td></tr>
           <tr><td><code>signal_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
@@ -4145,9 +4180,9 @@
         <p style="font-size:13px;color:var(--text-muted);margin:12px 0 8px;"><strong>User levels</strong> &mdash; subscribe (globally, no data payload) to receive user-level lifecycle events. <code>date</code> is a nullable ISO-8601 timestamp:</p>
         <table>
           <tr><th>Type</th><th>Direction</th><th>When</th><th>Data fields</th></tr>
-          <tr><td><code>user_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving user-level events</td><td>&mdash;</td></tr>
+          <tr><td><code>user_level_subscribe</code></td><td>client &rarr; server</td><td>Start receiving user-level events</td><td>optional <code>connectionId</code>, <code>ticker</code> &mdash; narrow the snapshot only (live events stay global)</td></tr>
           <tr><td><code>user_level_unsubscribe</code></td><td>client &rarr; server</td><td>Stop receiving them</td><td>&mdash;</td></tr>
-          <tr><td><code>user_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged</td><td>&mdash;</td></tr>
+          <tr><td><code>user_level_subscribed</code></td><td>server &rarr; client</td><td>Subscribe acknowledged (a <code>user_levels_snapshot</code> follows immediately)</td><td>&mdash;</td></tr>
           <tr><td><code>user_level_unsubscribed</code></td><td>server &rarr; client</td><td>Unsubscribe acknowledged</td><td>&mdash;</td></tr>
           <tr><td><code>user_levels_snapshot</code></td><td>server &rarr; client</td><td>Current levels on subscribe</td><td><code>userLevels[]</code> with <code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and (MC-421) <code>lineThickness</code>, <code>lineStyle</code>, <code>lineColor</code>, <code>textSize</code>, <code>textColor</code>, <code>textAlignment</code>, <code>textStyle</code> (null when unset). <code>note</code> is a real stored field, distinct from <code>name</code></td></tr>
           <tr><td><code>user_level_placed</code></td><td>server &rarr; client</td><td>A level was created</td><td><code>id</code>, <code>connectionId</code>, <code>ticker</code>, <code>price</code>, <code>name</code>, <code>note</code>, <code>date</code>, and the same MC-421 appearance fields</td></tr>
@@ -4463,7 +4498,7 @@
           <tr><td>9</td><td>Stock</td><td>Stock / equity markets</td></tr>
         </table>
         <div class="note">Unsure which market type to use? Use the <strong>ticker pattern</strong> approach instead &mdash; the <code>.p</code> suffix auto-resolves to the right futures type. For explicit fields, <code>2</code> (UsdtFutures) is the most common choice for perpetual futures.</div>
-        <div class="note" style="margin-top:8px;">When the requested market is not Spot and no exact match is found, MetaScalp falls back to any non-Spot connection on the same exchange.</div>
+        <div class="note" style="margin-top:8px;">When no connection of exactly the requested market type is open, MetaScalp takes the first connection (in the user's connection order) of the same market group on that exchange: <code>Futures</code> = any futures or perpetual type (<code>UsdtFutures</code>, <code>CoinFutures</code>, <code>InverseFutures</code>, <code>UsdtPerpetual</code>, <code>UsdcPerpetual</code>), <code>Spot</code> = Spot or Stock; every other market only itself. It never falls back to another market class (an Options connection never answers a Futures request). The exact ticker is matched first; on an Options connection a search hit with another name is not accepted.</div>
       </div>
     </div>
   </div>
@@ -4512,13 +4547,18 @@
       <tr><td><code>/api/combo</code></td><td>Unknown or inactive connection id</td><td>400</td><td><code>Combo not opened. Unknown or inactive connections: {ids}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Ticker not traded on a listed connection</td><td>400</td><td><code>Combo not opened. Not traded: {ticker} on {ids}; ...</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Both <code>connections</code> and <code>exchanges</code></td><td>400</td><td><code>Provide either 'connections' or 'exchanges', not both.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>exchanges</code> not an array of names / objects</td><td>400</td><td><code>Invalid request body. 'exchanges' must be an array of exchange names or { "exchange", "market" } objects.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Empty <code>exchanges</code></td><td>400</td><td><code>Invalid request body. 'exchanges' must not be empty.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>exchanges</code> item without a name</td><td>400</td><td><code>Invalid request body. Every 'exchanges' item needs an exchange name.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Duplicated exchange</td><td>400</td><td><code>Invalid request body. Duplicate exchanges: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Exchange with no active connection</td><td>400</td><td><code>Combo not opened. No active connection for exchanges: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Exchange with no active connection in <code>market</code></td><td>400</td><td><code>Combo not opened. No active {market} connection for exchanges: {names}.</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td>Two <code>exchanges</code> items pick the same connection</td><td>400</td><td><code>Combo not opened. These exchanges pick the same connections: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Unknown <code>market</code></td><td>400</td><td><code>Invalid request body. Unknown market '{market}'. Use one of: {names}.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td><code>market</code> without <code>exchanges</code></td><td>400</td><td><code>Invalid request body. 'market' is used only together with 'exchanges'.</code></td></tr>
       <tr><td><code>/api/combo</code></td><td>Ticker not traded on a listed exchange</td><td>400</td><td><code>Combo not opened. Not traded: {ticker} on {exchanges}; ...</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>legs</code>: a leg cannot open</td><td>400</td><td><code>{ "opened": false, "error": "Combo not opened. {leg}: {reason}; ...", "legs": [{ exchange, market, ticker, reason }] }</code></td></tr>
+      <tr><td><code>/api/combo</code></td><td><code>legs</code>: bad request</td><td>400</td><td><code>{ "opened": false, "error": "...", "reason": "bad_request" }</code></td></tr>
       <tr><td><code>/api/connections/{id}</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Invalid connection ID</td><td>400</td><td><code>Invalid connection ID</code></td></tr>
       <tr><td><code>/api/connections/{id}/...</code></td><td>Connection not found</td><td>404</td><td><code>Connection {id} not found</code></td></tr>
@@ -4552,7 +4592,7 @@
       <tr><td><code>POST /api/ui/windows</code></td><td>Unknown screener templateId</td><td>404</td><td><code>Screener template {templateId} not found</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Missing linkNumber</td><td>400</td><td><code>Request body must set 'linkNumber'.</code></td></tr>
-      <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Non-positive linkNumber</td><td>400</td><td><code>linkNumber must be a positive binding-group id (1-500, or 9999 to cancel).</code></td></tr>
+      <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>linkNumber outside 1-500 and not 9999 (9999 removes the document's link, as the link menu's cancel item does)</td><td>400</td><td><code>linkNumber must be a binding-group id 1-500, or 9999 to cancel the link.</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/link-number</code></td><td>Unknown document</td><td>404</td><td><code>Document {externalId} not found</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Non-GUID document id</td><td>400</td><td><code>Invalid document ID</code></td></tr>
       <tr><td><code>PUT /api/ui/documents/{externalId}/ticker</code></td><td>Missing ticker</td><td>400</td><td><code>Request body must set 'ticker'.</code></td></tr>
@@ -4874,9 +4914,18 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
     const body = { ticker };
     if (connectionsText) body.connections = connectionsText.split(',').map(s => Number(s.trim()));
     const exchangesText = document.getElementById('f-combo-exchanges').value.trim();
-    if (exchangesText) body.exchanges = exchangesText.split(',').map(s => s.trim()).filter(s => s);
+    if (exchangesText) body.exchanges = exchangesText.split(',').map(s => s.trim()).filter(s => s)
+      .map(s => s.includes(':') ? { exchange: s.split(':')[0].trim(), market: s.split(':')[1].trim() } : s);
     const marketText = document.getElementById('f-combo-market').value.trim();
     if (marketText) body.market = marketText;
+    const legsText = document.getElementById('f-combo-legs').value.trim();
+    if (legsText) {
+      for (const key of Object.keys(body)) delete body[key];
+      body.legs = legsText.split(';').map(s => s.trim()).filter(s => s).map(s => {
+        const [exchange, market, ticker] = s.split(':').map(p => p.trim());
+        return { exchange, market, ticker };
+      });
+    }
     try {
       const { status, data, ms } = await apiCall('POST', '/api/combo', body);
       showResponse('combo', status, statusClass(status), data, ms);

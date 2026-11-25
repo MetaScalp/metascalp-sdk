@@ -17,7 +17,7 @@ Use HTTP to discover connections, query data, and execute trades:
 |---|---|
 | `GET /ping` | Find the running MetaScalp instance and check its version |
 | `POST /api/change-ticker` | Switch the active ticker in the MetaScalp UI |
-| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order) |
+| `POST /api/combo` | Open a combo layout for a ticker (`Activate: false` opens it in the background; `Connections` or `Exchanges` (+ `Market`) picks the books and their order; `Legs` opens an arbitrage pair, one book per leg) |
 | `POST /api/close-last-tab` | Close the main window's last tab (test surface; refuses to close the only tab) |
 | `POST /api/ui/tabs/{tabId}/close` | Close ONE tab by id (ids from `GET /api/ui/state`; refuses a window's only tab) |
 | `POST /api/ui/tabs/{tabId}/activate` | Switch to ONE tab by id |
@@ -82,8 +82,8 @@ Connect via WebSocket to receive **real-time updates** for your exchange connect
 - **Connection-level subscriptions:** Send a `subscribe` message with a connection ID to receive order, position, balance, and finres updates
 - **Market data subscriptions:** Send `trade_subscribe`, `orderbook_subscribe`, `mark_price_subscribe`, `index_price_subscribe`, or `funding_subscribe` with a connection ID + ticker to receive trade, order book, mark price, index price, or funding updates for a specific symbol
 - **Notification subscriptions:** Send `notification_subscribe` to receive app-wide notification events (no connection ID required)
-- **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required)
-- **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required)
+- **Signal level subscriptions:** Send `signal_level_subscribe` to receive signal level events (no connection ID required; optional `connectionId` / `ticker` narrow the initial snapshot)
+- **User level subscriptions:** Send `user_level_subscribe` to receive user (plain) level lifecycle events (no connection ID required; optional `connectionId` / `ticker` narrow the initial snapshot)
 - **Chart annotation subscriptions:** Send `annotation_subscribe` with a connection ID + ticker to receive a one-shot `annotations_snapshot` of the current shapes
 - **UI change subscriptions:** Send `ui_subscribe` to receive a `ui_snapshot` of the open UI followed by `ui_update` events (no connection ID required)
 - **MetaBroker analytics subscriptions:** Send `density_map_subscribe`, `large_trades_subscribe`, or `liquidations_subscribe` to stream the MetaBroker density map / large trades / liquidations feeds — the same data the terminal's analytics windows show (no connection ID required; no MetaBroker login needed)
@@ -349,8 +349,8 @@ request flag:
 | `Tickers` | string[] | Opens **one combo layout per ticker, in the order given**. |
 | `Activate` | bool | Optional, default `true`. Whether the newly opened combo takes focus. Accepted on **both** shapes. |
 | `Connections` | integer[] | Optional. Connection ids from `GET /api/connections`. Present: the combo opens with the books of exactly these connections, in this order (for `Tickers`: in every combo). Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
-| `Exchanges` | string[] | Optional. Exchange names as `GET /api/connections` returns them in `exchange` (case-insensitive), e.g. `"Binance"`. Present: the terminal opens every active connection of these exchanges on which the ticker trades; the exchanges in this order, inside one exchange the connection list order (for `Tickers`: every combo with the set of its own ticker). Not together with `Connections`. Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
-| `Market` | string | Optional, only with `Exchanges`. Keeps only the connections of this market on every listed exchange. A market name, case-insensitive: `spot` (spot and stock), `futures` (every futures and perpetual type), or an exact type: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or `null`: every connected market of the exchange. |
+| `Exchanges` | (string \| object)[] | Optional. Each item is an exchange name as `GET /api/connections` returns it in `exchange` (case-insensitive), e.g. `"Binance"`, or an object `{"Exchange": "Binance", "Market": "futures"}` that gives this exchange its own market. Present: the terminal opens every active connection of these exchanges on which the ticker trades (in the item's market when it has one); the items in this order, inside one item the connection list order (for `Tickers`: every combo with the set of its own ticker). One exchange may be listed more than once with different markets, e.g. Binance futures and Binance spot. Not together with `Connections`. Absent or `null`: behaviour unchanged. Validated all-or-nothing before anything opens. Accepted on **both** shapes. |
+| `Market` | string | Optional, only with `Exchanges`. Keeps only the connections of this market on every listed exchange that has no market of its own (an item's own `Market` wins). The value is a market type **name** ([MarketType values](#markettype-values)), case-insensitive, the same names as an item's `Market` — not the `Market` display name (e.g. `"USDT Futures"`) and not the `MarketType` number that `GET /api/connections` returns. `spot` / `Spot` = Spot and Stock; `futures` / `Futures` = every futures and perpetual type; or one exact type: UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction. Absent or `null`: every connected market of the exchange. Inside an item, no `Market` or `"Market": null` means "use the request's `Market`"; so once the request's `Market` is set, an item cannot ask for every market of its exchange — leave the request's `Market` out and give each item its own. |
 
 The `Tickers` form is a write validated **all-or-nothing**: the whole list is validated first, and if
 *any* ticker resolves on no eligible connection, **nothing is opened** and the request returns `400`
@@ -381,7 +381,9 @@ order the combo uses without a list. As with `Connections`, the venue checkboxes
 applied and every other combo setting (the book cap and its split included) is. On the `Tickers` form every
 combo gets the set of its own ticker, so two combos of one request can differ. `Market` narrows each listed
 exchange to that market: `{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}` opens
-Binance USDT Futures and Gate Futures only.
+Binance USDT Futures and Gate Futures only. An object item sets the market of that exchange alone:
+`{"Ticker": "BTCUSDT", "Exchanges": [{"Exchange": "Binance", "Market": "futures"}, {"Exchange": "Bybit", "Market": "spot"}, "MEXC"]}`
+opens Binance futures, then Bybit spot, then every MEXC market.
 
 **Response**
 
@@ -415,14 +417,59 @@ With `Exchanges` the checks run in this order; the first failing one answers and
 |---|-----------|---------------|
 | 1 | Both `Ticker` and a non-empty `Tickers`; missing `Ticker`; malformed JSON; unknown field | unchanged (as above) |
 | 2 | Both `Connections` and `Exchanges` | `Provide either 'connections' or 'exchanges', not both.` |
-| 3 | `Market` is not a market name (a number or an empty string included) | `Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.` |
-| 4 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
-| 5 | The same exchange is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated name, in request order) |
-| 6 | A name has no active connection (unknown, or the exchange is not connected); with `Market`: none in that market | `Combo not opened. No active connection for exchanges: Foo.` / `Combo not opened. No active Futures connection for exchanges: Gate.` (every such name, in request order) |
-| 7 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
-| 8 | A ticker trades on none of the active connections (in `Market`, when given) of a listed exchange | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
+| 3 | `Exchanges` is not an array, or an item is neither a name nor an object (e.g. a nested array) | `Invalid request body. 'exchanges' must be an array of exchange names or { "exchange", "market" } objects.` |
+| 4 | `Market`, or an item's `Market`, is not a market name (a number or an empty string included) | `Invalid request body. Unknown market 'futurez'. Use one of: Spot, Futures, UsdtFutures, CoinFutures, InverseFutures, UsdtPerpetual, UsdcPerpetual, Margin, Options, Stock, Alpha, Bond, Currency, Prediction.` |
+| 5 | `Exchanges` is an empty array | `Invalid request body. 'exchanges' must not be empty.` |
+| 6 | An item has no exchange name (`null`, blank, or an object without `Exchange`) | `Invalid request body. Every 'exchanges' item needs an exchange name.` |
+| 7 | The same exchange with the same market is listed twice or more (in any letter case) | `Invalid request body. Duplicate exchanges: MEXC.` (every duplicated item, in request order; once any item has a market of its own, every item is named with its market: `Binance (Spot)`) |
+| 8 | A name has no active connection (unknown, or the exchange is not connected); with `Market`: none in that market | `Combo not opened. No active connection for exchanges: Foo.` / `Combo not opened. No active Futures connection for exchanges: Gate.` / with markets per item: `Combo not opened. No active connection for exchanges: Gate (Futures).` (every such item, in request order) |
+| 9 | Two items of one exchange pick the same connection (e.g. `"Binance"` and `{"Exchange": "Binance", "Market": "spot"}`, or `futures` and `UsdtFutures`) | `Combo not opened. These exchanges pick the same connections: Binance, Binance (Spot).` (every such item, in request order) |
+| 10 | A `Tickers` element is null or blank | unchanged: `Combo not opened. Rejected tickers: <names>.` |
+| 11 | A ticker trades on none of the active connections (in the item's `Market`, or the request's `Market`, when given) of a listed exchange; with markets per item the exchange is named with its market: `Binance (Futures)` | `Combo not opened. Not traded: CATUSDT on Binance; ETHUSDT on MEXC, Bybit.` (every failing pair) |
 
 `Market` without `Exchanges` (alone or with `Connections`) answers `400` `Invalid request body. 'market' is used only together with 'exchanges'.`; nothing is opened.
+
+**An arbitrage pair — `Legs`.** The Metabroker web arbitrage screener sends each leg of a pair as `exchange` +
+`market` + `ticker`; the terminal finds its own connection and instrument for each leg and opens **one combo
+with one book per leg**, in the legs' order: the first leg on the left (send the buy leg first, then the sell leg). `Legs` is a form of its own: not together with
+`Ticker`, `Tickers`, `Connections`, `Exchanges` or `Market`; `Activate` works as above.
+
+| Leg field | Type | Description |
+|-----------|------|-------------|
+| `exchange` | string | Required. The exchange as `GET /api/connections` names it in `exchange`; case, spaces and dots do not matter (`"gate"` = `"Gate"`, `"cryptocom"` = `"Crypto.com"`). |
+| `market` | string | Required. A market type name, as for `Exchanges`: `spot` (Spot and Stock), `futures` (every futures and perpetual type) or one exact type. |
+| `ticker` | string | Required. The instrument, e.g. `"ZKLUSDT"`. The terminal finds the venue's own symbol (OKX `ZKL-USDT-SWAP`, KuCoin futures `…USDTM`, `1000PEPE`-style contracts). The quote is kept: a USDT leg opens only a USDT instrument, a USDC leg only a USDC one, and a coin-margined USD contract (Binance COIN-M, Bybit Inverse) never stands in for either. |
+
+Each leg opens on the **first active connection** of its exchange and market (connection list order) where its
+ticker trades. Two legs may use one exchange in different markets (Bybit Spot + Bybit Futures). At least 2 legs.
+Charts, open mode, sizes and linking follow the Combo window settings. The **same pair again** brings its open combo to
+the front (restored if minimized) instead of opening a second one; a double click opens exactly one.
+
+`200`: `{"status": "ok", "opened": true, "existing": false}` (`existing: true` = the pair was already open and was
+brought to the front). A leg that cannot open: `400`, nothing opens, **every** failing leg listed with its reason;
+connection ids never appear:
+
+```json
+{ "opened": false,
+  "error": "Combo not opened. Bybit Futures ZKLUSDT: no connection.",
+  "legs": [ { "exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT", "reason": "no_connection" } ] }
+```
+
+| `reason` | When |
+|----------|------|
+| `no_connection` | No saved connection of this exchange and market. |
+| `connection_inactive` | A connection is saved but none is connected (disconnected, wrong or expired key, no futures permission, …). |
+| `connections_loading` | A connection of this exchange and market is still connecting, or MetaScalp has just started and has not finished connecting the auto-connect connections. Try again in a few seconds. |
+| `exchange_not_supported` | MetaScalp has no such exchange, or the exchange has no such market. |
+| `instrument_not_found` | The ticker is not an instrument of the active connections of this exchange and market (delisted, not listed, or only with another quote). |
+
+A bad request answers `400` `{"error": "...", "opened": false, "reason": "bad_request"}` (the first failing check, in
+this order): `Invalid request body. 'legs' cannot be combined with 'ticker', 'tickers', 'connections', 'exchanges' or 'market'.` ·
+`Invalid request body. 'legs' must have at least 2 legs.` · `Invalid request body. Every leg needs 'exchange', 'market' and 'ticker'.` ·
+`Invalid request body. Unknown market '<value>'. Use one of: …` ·
+`Invalid request body. Duplicate legs: Binance Spot ZKLUSDT.` (the same exchange, market and ticker twice). A body that
+does not parse (an unknown field in a leg included) answers its usual text with `"reason": "bad_request"` too. If the
+window cannot be created: `400` `{"error": "Failed to open combo layouts.", "opened": false, "reason": "open_failed"}`.
 
 **Example**
 
@@ -467,10 +514,20 @@ curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Tickers": ["BTCUSDT", "ETHUSDT"], "Exchanges": ["MEXC"]}'
 
+# An arbitrage pair: Binance spot (left), Bybit futures (right)
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"legs": [{"exchange": "Binance", "market": "Spot", "ticker": "ZKLUSDT"}, {"exchange": "Bybit", "market": "Futures", "ticker": "ZKLUSDT"}]}'
+
 # Futures only: Binance USDT Futures, then Gate Futures
 curl -X POST http://127.0.0.1:17845/api/combo \
   -H "Content-Type: application/json" \
   -d '{"Ticker": "BTCUSDT", "Exchanges": ["Binance", "Gate"], "Market": "futures"}'
+
+# A market per exchange: Binance futures, Bybit spot, then every MEXC market
+curl -X POST http://127.0.0.1:17845/api/combo \
+  -H "Content-Type: application/json" \
+  -d '{"Ticker": "BTCUSDT", "Exchanges": [{"Exchange": "Binance", "Market": "futures"}, {"Exchange": "Bybit", "Market": "spot"}, "MEXC"]}'
 ```
 
 ---
@@ -1761,7 +1818,7 @@ Persisted immediately via the binding bus (a DB-backed write — no UI thread is
 |-----------|-------------|---------------|
 | Non-GUID `externalId` | `400` | `Invalid document ID` |
 | Missing `linkNumber` | `400` | `Request body must set 'linkNumber'.` |
-| Non-positive `linkNumber` | `400` | `linkNumber must be a positive binding-group id (1-500, or 9999 to cancel).` |
+| `linkNumber` outside 1-500 and not 9999 (9999 removes the document's link, as the link menu's cancel item does) | `400` | `linkNumber must be a binding-group id 1-500, or 9999 to cancel the link.` |
 | Unknown document | `404` | `Document {externalId} not found` |
 
 #### Re-ticker a Panel
@@ -2037,6 +2094,7 @@ GET http://127.0.0.1:{port}/api/connections/{ConnectionId}/orderbook-settings?Ti
     "BasicLevelsFactor": 50.0,
     "NotificationSignalLevelTriggered": true,
     "Autoscroll": false,
+    "AutoCenterThreshold": 0,
     "FullDepth": true,
     "TicksLargeAmount": 0.0,
     "TicksLargeAmountUsd": 0.0,
@@ -2090,7 +2148,8 @@ Settings field reference:
 | `SlimLevelsFactor` | decimal | Factor for slim price levels |
 | `BasicLevelsFactor` | decimal | Factor for basic price levels |
 | `NotificationSignalLevelTriggered` | boolean | Notify when a signal level is triggered |
-| `Autoscroll` | boolean | Auto-scroll order book to current price |
+| `Autoscroll` | boolean | Legacy auto-centering flag, kept for old clients: reads `true` when `AutoCenterThreshold` > 0; writing `false` sets `AutoCenterThreshold` = 0, writing `true` while it is 0 sets the default |
+| `AutoCenterThreshold` | integer | Auto-centering threshold, whole `0`–`10`: `0` = off; `N` = the book re-centres once the spread is more than (10 − N)/10 of the way from the centre to the window edge. Outside the range or a fraction → `400`, nothing written |
 | `FullDepth` | boolean | Show full order book depth |
 | `SizeType` | string | Size display type: `"Coin"`, `"Usd"` |
 | `SoundNotification` | boolean | Enable sound notifications |
@@ -2528,14 +2587,14 @@ All messages (inbound and outbound) are JSON with this envelope:
 
 | Type | Data | Description |
 |---|---|---|
-| `signal_level_subscribe` | `{}` | Subscribe to signal level updates. Receives an initial snapshot of all signal levels, then live events. Idempotent. |
+| `signal_level_subscribe` | `{}` or `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to signal level updates. Every subscribe receives the ack, then an initial `signal_levels_snapshot` of all signal levels, then live events. Optional `connectionId` / `ticker` narrow the initial snapshot only (live events stay global); with no matching levels the snapshot is an empty list. Idempotent. |
 | `signal_level_unsubscribe` | `{}` | Stop receiving signal level updates. Idempotent. |
 
 **User level subscriptions** — subscribe globally (no data payload) to receive user (plain) level lifecycle events (placed, updated, removed):
 
 | Type | Data | Description |
 |---|---|---|
-| `user_level_subscribe` | `{}` | Subscribe to user level events. Receives an initial snapshot of all user levels, then live events. Idempotent. |
+| `user_level_subscribe` | `{}` or `{ "connectionId": 123, "ticker": "BTCUSDT" }` | Subscribe to user level events. Every subscribe receives the ack, then an initial `user_levels_snapshot` of all user levels, then live events. Optional `connectionId` / `ticker` narrow the initial snapshot only (live events stay global); with no matching levels the snapshot is an empty list. Idempotent. |
 | `user_level_unsubscribe` | `{}` | Stop receiving user level events. Idempotent. |
 
 **Chart annotation subscriptions** — subscribe per `(connectionId, ticker)` to receive the current shapes. This family delivers a subscribe/unsubscribe ack and a **one-shot snapshot only** — there is no `annotations_updated` push (the annotation service exposes no change-notification mechanism). A client that needs fresh state after an edit re-subscribes or re-issues `GET .../annotations`:
@@ -3465,7 +3524,7 @@ This means you can pass symbols in **any case** and with or without common separ
 
 **Which market type should I use?** If you are unsure, use the `TickerPattern` approach (Option A) instead — the `.p` suffix automatically resolves to the correct futures type for the given exchange. If you must use explicit fields, the most common choice for perpetual futures is `2` (UsdtFutures).
 
-> **Note:** When the requested market type is not Spot and no exact connection match is found, MetaScalp falls back to any non-Spot connection on the same exchange.
+> **Note:** When no connection of exactly the requested market type is open, MetaScalp takes the first connection (in the user's connection order) of the same market group on that exchange: `Futures` = any futures or perpetual type (`UsdtFutures`, `CoinFutures`, `InverseFutures`, `UsdtPerpetual`, `UsdcPerpetual`), `Spot` = Spot or Stock; every other market only itself. It never falls back to another market class (an Options connection never answers a Futures request). The exact ticker is matched first; on an Options connection a search hit with another name is not accepted.
 
 ## ClusterTimeFrame values
 

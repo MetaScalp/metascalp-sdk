@@ -283,12 +283,28 @@ export class MetaScalpSocket {
 
   // ---- Signal level subscriptions ----
 
-  subscribeSignalLevels(): void {
-    this.send('signal_level_subscribe', {});
+  /**
+   * Subscribe to signal level events. Every subscribe receives `signal_level_subscribed`, then a
+   * `signal_levels_snapshot`, then live events. `connectionId` / `ticker` narrow the snapshot only.
+   */
+  subscribeSignalLevels(filter?: { connectionId?: number; ticker?: string }): void {
+    this.send('signal_level_subscribe', { ...filter });
   }
 
   unsubscribeSignalLevels(): void {
     this.send('signal_level_unsubscribe', {});
+  }
+
+  /**
+   * Subscribe to user (plain) level events. Every subscribe receives `user_level_subscribed`, then a
+   * `user_levels_snapshot`, then live events. `connectionId` / `ticker` narrow the snapshot only.
+   */
+  subscribeUserLevels(filter?: { connectionId?: number; ticker?: string }): void {
+    this.send('user_level_subscribe', { ...filter });
+  }
+
+  unsubscribeUserLevels(): void {
+    this.send('user_level_unsubscribe', {});
   }
 
   // ---- MetaBroker analytics streams ----

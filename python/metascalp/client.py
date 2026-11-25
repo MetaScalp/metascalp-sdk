@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import aiohttp
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 HTTP_PORT_START = 17845
 HTTP_PORT_END = 17855
@@ -12,10 +12,11 @@ HTTP_PORT_END = 17855
 class MetaScalpApiError(Exception):
     """Raised when the MetaScalp API returns an error response."""
 
-    def __init__(self, status: int, error: str, path: str):
+    def __init__(self, status: int, error: str, path: str, body: Any = None):
         self.status = status
         self.error = error
         self.path = path
+        self.body = body  # the parsed error body, e.g. {"error", "opened", "legs"} from open_combo(legs=...)
         super().__init__(f"MetaScalp API error {status} on {path}: {error}")
 
 
@@ -65,7 +66,7 @@ class MetaScalpClient:
         async with session.get(f"{self.base_url}{path}") as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _post(self, path: str, body: Any) -> Any:
@@ -75,7 +76,7 @@ class MetaScalpClient:
         ) as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _put(self, path: str, body: dict) -> Any:
@@ -83,7 +84,7 @@ class MetaScalpClient:
         async with session.put(f"{self.base_url}{path}", json=body) as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     async def _delete(self, path: str) -> Any:
@@ -91,7 +92,7 @@ class MetaScalpClient:
         async with session.delete(f"{self.base_url}{path}") as resp:
             data = await resp.json()
             if resp.status >= 400:
-                raise MetaScalpApiError(resp.status, data.get("error", ""), path)
+                raise MetaScalpApiError(resp.status, data.get("error", ""), path, data)
             return data
 
     # ---- Discovery ----
@@ -205,8 +206,9 @@ class MetaScalpClient:
         tickers: Optional[List[str]] = None,
         activate: bool = True,
         connections: Optional[List[int]] = None,
-        exchanges: Optional[List[str]] = None,
+        exchanges: Optional[List[Union[str, Dict[str, Optional[str]]]]] = None,
         market: Optional[str] = None,
+        legs: Optional[List[Dict[str, str]]] = None,
     ) -> dict:
         """Open a combo layout.
 
@@ -216,8 +218,16 @@ class MetaScalpClient:
         ``get_connections``) opens exactly these books, in this order, in every combo.
         ``exchanges`` (names as ``get_connections`` returns them in ``exchange``) opens every
         active connection of those exchanges where the ticker trades, exchanges in this order;
-        not together with ``connections``. ``market`` (only with ``exchanges``) keeps one market
-        on every listed exchange: ``"spot"``, ``"futures"`` or an exact market type name.
+        not together with ``connections``. An item may be a dict
+        ``{"exchange": "Binance", "market": "futures"}`` giving that exchange its own market.
+        ``market`` (only with ``exchanges``) keeps one market on every listed exchange that has
+        no market of its own: ``"spot"``, ``"futures"`` or an exact market type name.
+        ``legs`` (alone, no ``ticker``) opens an arbitrage pair: one book per leg, e.g.
+        ``[{"exchange": "Binance", "market": "spot", "ticker": "ZKLUSDT"},
+        {"exchange": "Bybit", "market": "futures", "ticker": "ZKLUSDT"}]`` - in this order, the first
+        leg on the left. Answers ``{"status": "ok", "opened": True, "existing": ...}``;
+        a pair that cannot open raises ``MetaScalpApiError`` with the failing legs and their
+        ``reason`` in ``error.body["legs"]``.
         """
         body: dict = {}
         if not activate:
@@ -232,6 +242,8 @@ class MetaScalpClient:
             body["exchanges"] = exchanges  # only sent when set, like connections
         if market is not None:
             body["market"] = market  # only sent when set, like connections
+        if legs is not None:
+            body["legs"] = legs  # only sent when set, like connections
         return await self._post("/api/combo", body)
 
     async def close_last_tab(self) -> dict:
@@ -298,7 +310,9 @@ class MetaScalpClient:
         a row saved before the field existed reads back null and behaves as Linear).
 
         Any settings key is passed straight through, e.g.
-        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip).
+        ``ShowExecutedOrders=False`` hides the tape's executed-order overlay (fill chips + position-size chip);
+        ``AutoCenterThreshold=5`` sets auto-centering (whole 0..10, 0 = off; outside the range -> HTTP 400).
+        The legacy ``Autoscroll`` still works: False sets the threshold to 0, True while it is 0 sets the default.
         """
         return await self._put(
             f"/api/connections/{connection_id}/orderbook-settings?Ticker={ticker}",

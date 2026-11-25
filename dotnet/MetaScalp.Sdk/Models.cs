@@ -130,16 +130,144 @@ public class ComboRequest
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public List<long>? Connections { get; set; }
 
-    /// <summary>Exchange names as GET /api/connections returns them in «exchange» (case-insensitive): every active
-    /// connection of these exchanges where the ticker trades, exchanges in this order. Not together with
-    /// <see cref="Connections"/>. null = not sent.</summary>
+    /// <summary>Exchanges as GET /api/connections returns them in «exchange» (case-insensitive): every active
+    /// connection of these exchanges where the ticker trades, items in this order. A plain name converts to an
+    /// item without a market (<c>Exchanges = new() { "MEXC", new("Binance", "futures") }</c>), and a
+    /// <c>List&lt;string&gt;</c> or <c>string[]</c> of names converts to the whole list, as in earlier versions. Not
+    /// together with <see cref="Connections"/>. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public List<string>? Exchanges { get; set; }
+    public ComboExchangeList? Exchanges { get; set; }
 
-    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange - "spot",
-    /// "futures" (every futures/perpetual type) or an exact market type name, case-insensitive. null = not sent.</summary>
+    /// <summary>Only with <see cref="Exchanges"/>: keep only this market on every listed exchange without a market
+    /// of its own - "spot", "futures" (every futures/perpetual type) or an exact market type name,
+    /// case-insensitive. null = not sent.</summary>
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string? Market { get; set; }
+
+    /// <summary>An arbitrage pair: one book per leg, in this order (the first leg on the left). Alone - with no
+    /// other field but <see cref="Activate"/>; at least 2 legs. null = not sent.</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public List<ComboLeg>? Legs { get; set; }
+}
+
+/// <summary>One <see cref="ComboRequest.Legs"/> item.</summary>
+public class ComboLeg
+{
+    public ComboLeg(string exchange, string market, string ticker)
+    {
+        Exchange = exchange;
+        Market = market;
+        Ticker = ticker;
+    }
+
+    /// <summary>As GET /api/connections returns it in «exchange»; case, spaces and dots do not matter.</summary>
+    [JsonProperty("exchange")]
+    public string Exchange { get; set; }
+
+    /// <summary>"spot", "futures" or an exact market type name, case-insensitive.</summary>
+    [JsonProperty("market")]
+    public string Market { get; set; }
+
+    /// <summary>e.g. "ZKLUSDT"; the terminal finds the venue's own symbol and keeps the quote.</summary>
+    [JsonProperty("ticker")]
+    public string Ticker { get; set; }
+}
+
+/// <summary>POST /api/combo answer. Opened / Existing come with <see cref="ComboRequest.Legs"/> (Existing: the pair
+/// was already open and was brought to the front).</summary>
+public class ComboResponse : StatusResponse
+{
+    public bool? Opened { get; set; }
+
+    public bool? Existing { get; set; }
+}
+
+/// <summary>The <see cref="ComboRequest.Exchanges"/> list. Converts from a list or array of plain names, so code
+/// written for the earlier <c>List&lt;string&gt;</c> property still compiles.</summary>
+public class ComboExchangeList : List<ComboExchange>
+{
+    public ComboExchangeList()
+    {
+    }
+
+    public ComboExchangeList(IEnumerable<ComboExchange> items)
+        : base(items)
+    {
+    }
+
+    public static implicit operator ComboExchangeList(List<string> names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
+
+    public static implicit operator ComboExchangeList(string[] names)
+    {
+        return new ComboExchangeList(names.Select(n => new ComboExchange(n)));
+    }
+}
+
+/// <summary>One <see cref="ComboRequest.Exchanges"/> item: the exchange and, optionally, its own market. Sent as
+/// the plain name when <see cref="Market"/> is null, so older terminals still accept it.</summary>
+[JsonConverter(typeof(ComboExchangeConverter))]
+public class ComboExchange
+{
+    public ComboExchange(string exchange, string? market = null)
+    {
+        Exchange = exchange;
+        Market = market;
+    }
+
+    public string Exchange { get; set; }
+
+    /// <summary>"spot", "futures" or an exact market type name; null = the request's Market, or every market.</summary>
+    public string? Market { get; set; }
+
+    public static implicit operator ComboExchange(string exchange)
+    {
+        return new ComboExchange(exchange);
+    }
+}
+
+internal class ComboExchangeConverter : JsonConverter<ComboExchange>
+{
+    public override void WriteJson(JsonWriter writer, ComboExchange? value, JsonSerializer serializer)
+    {
+        if (value == null)
+        {
+            writer.WriteNull();
+            return;
+        }
+
+        if (value.Market == null)
+        {
+            writer.WriteValue(value.Exchange);
+            return;
+        }
+
+        writer.WriteStartObject();
+        writer.WritePropertyName("exchange");
+        writer.WriteValue(value.Exchange);
+        writer.WritePropertyName("market");
+        writer.WriteValue(value.Market);
+        writer.WriteEndObject();
+    }
+
+    public override ComboExchange? ReadJson(JsonReader reader, Type objectType, ComboExchange? existingValue,
+        bool hasExistingValue, JsonSerializer serializer)
+    {
+        if (reader.TokenType == JsonToken.Null)
+        {
+            return null;
+        }
+
+        if (reader.TokenType == JsonToken.String)
+        {
+            return new ComboExchange((string)reader.Value!);
+        }
+
+        var item = Newtonsoft.Json.Linq.JObject.Load(reader);
+        return new ComboExchange((string?)item["exchange"] ?? "", (string?)item["market"]);
+    }
 }
 
 public class StatusResponse
@@ -428,7 +556,10 @@ public class OrderBookSettingsDto
     public decimal? SlimLevelsFactor { get; set; }
     public decimal? BasicLevelsFactor { get; set; }
     public bool? NotificationSignalLevelTriggered { get; set; }
+    /// <summary>Legacy: true when AutoCenterThreshold &gt; 0; false sets it to 0, true while it is 0 sets the default.</summary>
     public bool? Autoscroll { get; set; }
+    /// <summary>Auto-centering threshold, whole 0..10 (0 = off; N = re-centre beyond (10 - N)/10 of the half window height).</summary>
+    public int? AutoCenterThreshold { get; set; }
     public bool? FullDepth { get; set; }
 
     // Ticks
@@ -654,6 +785,36 @@ public class SignalLevelTriggeredData
 public class SignalLevelRemovedData
 {
     public long Id { get; set; }
+}
+
+/// <summary>A user (plain) level as sent on the user_level_* WebSocket family.</summary>
+public class UserLevelDto
+{
+    public long Id { get; set; }
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public decimal Price { get; set; }
+    public string? Name { get; set; }
+    public DateTimeOffset? Date { get; set; }
+    public string? Note { get; set; }
+    public double? LineThickness { get; set; }
+    public string? LineStyle { get; set; }
+    public string? LineColor { get; set; }
+    public double? TextSize { get; set; }
+    public string? TextColor { get; set; }
+    public string? TextAlignment { get; set; }
+    public string? TextStyle { get; set; }
+}
+
+/// <summary>Sent after every user_level_subscribe (empty list when nothing matches the optional filter).</summary>
+public class UserLevelsSnapshotData
+{
+    public List<UserLevelDto> UserLevels { get; set; } = new();
+}
+
+public class UserLevelRemovedData
+{
+    public List<long> Ids { get; set; } = new();
 }
 
 // ============ MetaBroker Analytics Models ============

@@ -11,6 +11,7 @@ import type {
   CancelOrderRequest,
   ChangeTickerRequest,
   ComboRequest,
+  ComboResponse,
   CloseTabResponse,
   ActivateTabResponse,
   SignalLevelsResponse,
@@ -123,7 +124,8 @@ export class MetaScalpClient {
     return this.post('/api/change-ticker', request);
   }
 
-  async openCombo(request: ComboRequest): Promise<{ status: string }> {
+  /** A `legs` request that cannot open throws MetaScalpApiError with the failing legs in `body.legs` (each with its `reason`). */
+  async openCombo(request: ComboRequest): Promise<ComboResponse> {
     return this.post('/api/combo', request);
   }
 
@@ -331,7 +333,7 @@ export class MetaScalpClient {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new MetaScalpApiError(res.status, (data as any)?.error || res.statusText, path);
+      throw new MetaScalpApiError(res.status, (data as any)?.error || res.statusText, path, data);
     }
     return res.json() as Promise<T>;
   }
@@ -344,7 +346,7 @@ export class MetaScalpClient {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new MetaScalpApiError(res.status, (data as any)?.error || res.statusText, path);
+      throw new MetaScalpApiError(res.status, (data as any)?.error || res.statusText, path, data);
     }
     return res.json() as Promise<T>;
   }
@@ -355,6 +357,8 @@ export class MetaScalpApiError extends Error {
     public readonly status: number,
     public readonly error: string,
     public readonly path: string,
+    /** The parsed error body (e.g. `{ error, opened, reason }` or `{ error, opened, legs }` from POST /api/combo with `legs`). */
+    public readonly body?: unknown,
   ) {
     super(`MetaScalp API error ${status} on ${path}: ${error}`);
     this.name = 'MetaScalpApiError';

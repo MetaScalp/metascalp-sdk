@@ -71,6 +71,15 @@ public class MetaScalpSocket : IDisposable
     public event Action? OnSignalLevelsRemovedAll;
     public event Action? OnSignalLevelsRemovedTriggered;
 
+    // User (plain) level events — fired after calling SubscribeUserLevels().
+    // App-wide (not scoped to a connection). The snapshot follows every subscribe.
+
+    public event Action<UserLevelsSnapshotData>? OnUserLevelsSnapshot;
+    public event Action<UserLevelDto>? OnUserLevelPlaced;
+    public event Action<UserLevelDto>? OnUserLevelUpdated;
+    public event Action<UserLevelRemovedData>? OnUserLevelRemoved;
+    public event Action? OnUserLevelsRemovedAll;
+
     // MetaBroker analytics events — fired after calling SubscribeDensityMap(),
     // SubscribeLargeTrades() or SubscribeLiquidations(). App-wide (not scoped to a connection).
 
@@ -308,11 +317,37 @@ public class MetaScalpSocket : IDisposable
 
     // ---- Signal level subscriptions ----
 
-    public void SubscribeSignalLevels()
-        => Send("signal_level_subscribe", new { });
+    /// <summary>
+    /// Subscribe to signal level events. Every subscribe receives <c>signal_level_subscribed</c>, then a
+    /// <c>signal_levels_snapshot</c>, then live events. <paramref name="connectionId"/> /
+    /// <paramref name="ticker"/> narrow the snapshot only.
+    /// </summary>
+    public void SubscribeSignalLevels(long? connectionId = null, string? ticker = null)
+        => Send("signal_level_subscribe", LevelFilter(connectionId, ticker));
 
     public void UnsubscribeSignalLevels()
         => Send("signal_level_unsubscribe", new { });
+
+    /// <summary>
+    /// Subscribe to user (plain) level events. Every subscribe receives <c>user_level_subscribed</c>,
+    /// then a <c>user_levels_snapshot</c>, then live events. <paramref name="connectionId"/> /
+    /// <paramref name="ticker"/> narrow the snapshot only.
+    /// </summary>
+    public void SubscribeUserLevels(long? connectionId = null, string? ticker = null)
+        => Send("user_level_subscribe", LevelFilter(connectionId, ticker));
+
+    public void UnsubscribeUserLevels()
+        => Send("user_level_unsubscribe", new { });
+
+    private static Dictionary<string, object> LevelFilter(long? connectionId, string? ticker)
+    {
+        var data = new Dictionary<string, object>();
+        if (connectionId.HasValue)
+            data["connectionId"] = connectionId.Value;
+        if (!string.IsNullOrEmpty(ticker))
+            data["ticker"] = ticker;
+        return data;
+    }
 
     // ---- MetaBroker analytics streams ----
     // Density map / large trades / liquidations — app-wide feeds relayed from the MetaBroker
@@ -477,6 +512,21 @@ public class MetaScalpSocket : IDisposable
                     break;
                 case "signal_levels_removed_triggered":
                     OnSignalLevelsRemovedTriggered?.Invoke();
+                    break;
+                case "user_levels_snapshot":
+                    OnUserLevelsSnapshot?.Invoke(data.ToObject<UserLevelsSnapshotData>()!);
+                    break;
+                case "user_level_placed":
+                    OnUserLevelPlaced?.Invoke(data.ToObject<UserLevelDto>()!);
+                    break;
+                case "user_level_updated":
+                    OnUserLevelUpdated?.Invoke(data.ToObject<UserLevelDto>()!);
+                    break;
+                case "user_level_removed":
+                    OnUserLevelRemoved?.Invoke(data.ToObject<UserLevelRemovedData>()!);
+                    break;
+                case "user_levels_removed_all":
+                    OnUserLevelsRemovedAll?.Invoke();
                     break;
                 case "density_map_snapshot":
                     OnDensityMapSnapshot?.Invoke(data.ToObject<DensityMapSnapshotData>()!);
