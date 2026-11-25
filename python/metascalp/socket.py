@@ -285,6 +285,7 @@ class MetaScalpSocket:
         medium_lifetime_minutes: int | None = None,
         small_lifetime_minutes: int | None = None,
         included_quote_assets: list[str] | None = None,
+        asset_classes: list[str] | None = None,
     ) -> None:
         """Subscribe to the MetaBroker density map notifications stream.
 
@@ -297,6 +298,9 @@ class MetaScalpSocket:
         no-op. Those two fields belong to subscribe_large_trades(). All other arguments
         default to the terminal's Density Map window defaults (coefficients 3/2/1,
         lifetimes 5 min, quote assets ["USDT"]; valid assets: USDT, USDC, OTHER).
+        asset_classes is the window's «asset classes» filter: any of "crypto", "stablecoins",
+        "commodities", "stocks", "indices"; omitted, empty or all five = no filter, an unknown
+        name is refused with an error frame naming the field.
         Re-subscribing replaces the config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
 
         Events: 'density_map_snapshot' (after the ack; may be empty — it resolves the
@@ -317,6 +321,8 @@ class MetaScalpSocket:
             data["smallLifetimeMinutes"] = small_lifetime_minutes
         if included_quote_assets is not None:
             data["includedQuoteAssets"] = included_quote_assets
+        if asset_classes is not None:
+            data["assetClasses"] = asset_classes
         self._send("density_map_subscribe", data)
 
     def unsubscribe_density_map(self) -> None:
@@ -332,6 +338,7 @@ class MetaScalpSocket:
         medium_coefficient: float | None = None,
         small_coefficient: float | None = None,
         included_quote_assets: list[str] | None = None,
+        asset_classes: list[str] | None = None,
     ) -> None:
         """Subscribe to the MetaBroker large trades stream.
 
@@ -340,8 +347,10 @@ class MetaScalpSocket:
         subscribe_density_map(). aggregation_ms is 0-60000 (default 500; 0 = every raw
         print individually); quote assets default to ["USDT", "USDC", "OTHER"].
         min_amount_usd is a USD floor the terminal applies on top of the BDS threshold
-        (a row is sent only when it passes both; MET-1832). Re-subscribing replaces the
-        config.
+        (a row is sent only when it passes both; MET-1832). asset_classes is the window's
+        «asset classes» filter: any of "crypto", "stablecoins", "commodities", "stocks",
+        "indices"; omitted, empty or all five = no filter, an unknown name is refused with
+        an error frame naming the field. Re-subscribing replaces the config.
 
         Event: 'large_trades_update'
         """
@@ -358,6 +367,8 @@ class MetaScalpSocket:
             data["smallCoefficient"] = small_coefficient
         if included_quote_assets is not None:
             data["includedQuoteAssets"] = included_quote_assets
+        if asset_classes is not None:
+            data["assetClasses"] = asset_classes
         self._send("large_trades_subscribe", data)
 
     def unsubscribe_large_trades(self) -> None:

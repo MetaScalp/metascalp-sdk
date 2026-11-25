@@ -23,6 +23,8 @@ import type {
   ClusterSnapshotResponse,
   OpenInterestResponse,
   OpenInterestHistoryResponse,
+  OpenInterestCandlesResponse,
+  GetOpenInterestCandlesOptions,
   ClusterTimeFrame,
   GetClusterSnapshotOptions,
   AppearanceState,
@@ -32,6 +34,8 @@ import type {
   ThemeColorsResponse,
   ThemeTextStylesResponse,
   AppearanceTextStyleUpdate,
+  ChartSettings,
+  ChartSettingsResponse,
 } from './types';
 
 const HTTP_PORT_START = 17845;
@@ -220,6 +224,25 @@ export class MetaScalpClient {
     return this.get(`/api/connections/${connectionId}/open-interest/history?Ticker=${encodeURIComponent(ticker)}&TimeFrame=${timeFrame}`);
   }
 
+  /**
+   * Open interest by the second (MET-2380): open / high / low / close candles from MetaScalp's cluster service, not from
+   * the exchange. Base coin, oldest first; `time` is the candle's START. Timeframes S1, S5, S10, S15, S30 (any other
+   * answers 400). Without `options.from` / `options.to` the newest 1000 candles up to now; `from` alone = from that time
+   * up to now. The service keeps one day. When it has nothing for the request the answer is candlesAvailable = false
+   * with a reason and no candles; a service failure answers 502.
+   */
+  async getOpenInterestCandles(
+    connectionId: number,
+    ticker: string,
+    timeFrame: string,
+    options: GetOpenInterestCandlesOptions = {},
+  ): Promise<OpenInterestCandlesResponse> {
+    const qs: string[] = [`Ticker=${encodeURIComponent(ticker)}`, `TimeFrame=${timeFrame}`];
+    if (options.from !== undefined) qs.push(`From=${encodeURIComponent(String(options.from))}`);
+    if (options.to !== undefined) qs.push(`To=${encodeURIComponent(String(options.to))}`);
+    return this.get(`/api/connections/${connectionId}/open-interest/candles?${qs.join('&')}`);
+  }
+
   // ---- Signal Levels ----
 
   async getSignalLevels(connectionId: number, ticker: string): Promise<SignalLevelsResponse> {
@@ -303,6 +326,25 @@ export class MetaScalpClient {
   /** Writes «Fonts» rows: element -> `{ size (8-20), bold, italic, color }`; the two chip-background rows take color only. */
   async updateThemeTextStyles(themeId: number, textStyles: Record<string, AppearanceTextStyleUpdate>): Promise<ThemeTextStylesResponse> {
     return this.put(`/api/appearance/themes/${themeId}/text-styles`, { textStyles });
+  }
+
+  // ---- Chart settings (Settings -> Chart) ----
+
+  /**
+   * Every row of Settings -> Chart, the open-interest pane (`openInterestDisplayMode`) among them, plus `allowed`:
+   * the names and limits each choice row takes. Terminal-wide: one value for every chart.
+   */
+  async getChartSettings(): Promise<ChartSettingsResponse> {
+    return this.get('/api/chart-settings');
+  }
+
+  /**
+   * Changes only the given rows (omitted = unchanged; a row sent with its current value is not written). Choice rows
+   * take a name from `allowed`, in any letter case. Returns the rows after the change plus `changed` — the fields
+   * this request changed. 400 on an unknown field, an unknown name or a number out of range (nothing saved).
+   */
+  async updateChartSettings(update: Partial<ChartSettings>): Promise<ChartSettingsResponse> {
+    return this.put('/api/chart-settings', update);
   }
 
   // ---- HTTP helpers ----

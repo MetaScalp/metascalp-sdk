@@ -470,6 +470,32 @@ public class OpenInterestHistoryResponse
     public List<OpenInterestPoint> Points { get; set; } = new();
 }
 
+/// <summary>MET-2380: one open-interest candle by the second, from MetaScalp's cluster service (not from the exchange).</summary>
+public class OpenInterestCandle
+{
+    /// <summary>START of the candle (UTC, on the timeframe grid).</summary>
+    public DateTimeOffset Time { get; set; }
+    /// <summary>The previous candle's close.</summary>
+    public decimal Open { get; set; }
+    public decimal High { get; set; }
+    public decimal Low { get; set; }
+    public decimal Close { get; set; }
+}
+
+/// <summary>Response of <c>GetOpenInterestCandlesAsync</c>. <see cref="Candles"/> is oldest first.</summary>
+public class OpenInterestCandlesResponse
+{
+    public long ConnectionId { get; set; }
+    public string Ticker { get; set; } = "";
+    public string TimeFrame { get; set; } = "";
+    public string Unit { get; set; } = "base";
+    /// <summary>false when the service has nothing for the request (a contract it does not collect, a range with no
+    /// candles, a time older than one day): Candles is empty, see Reason.</summary>
+    public bool CandlesAvailable { get; set; }
+    public string? Reason { get; set; }
+    public List<OpenInterestCandle> Candles { get; set; } = new();
+}
+
 public class NotificationDto
 {
     public string Type { get; set; } = "";
@@ -543,6 +569,17 @@ public class OrderBookSettingsDto
     public decimal? AmountBarFilterUsd { get; set; }
     public bool? NotificationLargeAmountDetected { get; set; }
     public bool? NotificationLargeAmount2Detected { get; set; }
+    /// <summary>Large volume levels 3 and 4 (coins, USD, their alerts): the same rows as LargeAmount / LargeAmount2.</summary>
+    public decimal? LargeAmount3 { get; set; }
+    public decimal? LargeAmount4 { get; set; }
+    public decimal? LargeAmountUsd3 { get; set; }
+    public decimal? LargeAmountUsd4 { get; set; }
+    public bool? NotificationLargeAmount3Detected { get; set; }
+    public bool? NotificationLargeAmount4Detected { get; set; }
+    /// <summary>Show the expected PnL in $ under the stop-loss and take-profit labels.</summary>
+    public bool? ShowSlTpPnl { get; set; }
+    /// <summary>TradePrice | BestBidAsk — what triggers this instrument's signal levels. A row never changed reports TradePrice; any other value -> 400.</summary>
+    public string? SignalLevelTriggerSource { get; set; }
     public bool? UseLargeAmountDetectionArea { get; set; }
     public decimal? LargeAmountDetectionMinValue { get; set; }
     public decimal? LargeAmountDetectionMaxValue { get; set; }
@@ -758,6 +795,170 @@ public class ThemeTextStylesResponse
     public List<AppearanceTextStyle> TextStyles { get; set; } = new();
 }
 
+// ============ Chart settings (Settings -> Chart) ============
+
+/// <summary>The rows of Settings -> Chart (terminal-wide: one value for every chart, SciChart and TradingView),
+/// plus <see cref="Allowed"/> and, after an update, <see cref="Changed"/>.</summary>
+public class ChartSettings
+{
+    /// <summary>None, Histogram or Chart: the open-interest pane («Отображение открытого интереса»). The pane appears
+    /// only on markets with open interest.</summary>
+    public string OpenInterestDisplayMode { get; set; } = "";
+
+    /// <summary>Timeframe a new chart opens on (S1 ... D1).</summary>
+    public string DefaultTimeFrame { get; set; } = "";
+
+    /// <summary>Timeframes offered in a chart's timeframe list.</summary>
+    public List<string> TimeFrames { get; set; } = new();
+
+    /// <summary>Volume pane.</summary>
+    public bool ShowVolume { get; set; }
+
+    /// <summary>Volume pane height: 15 (small), 25 (medium) or 30 (large).</summary>
+    public double VolumeHeight { get; set; }
+
+    /// <summary>Time left until the candle closes.</summary>
+    public bool ShowTimeFrameCountdown { get; set; }
+
+    /// <summary>Candle parameters (open, high, low, close) on hover.</summary>
+    public bool ShowCandleParameters { get; set; }
+    public bool ShowUserLevels { get; set; }
+    public bool ShowSignalLevels { get; set; }
+
+    /// <summary>Own trades on every chart.</summary>
+    public bool ShowTradesOnAllCharts { get; set; }
+
+    /// <summary>Own orders on every chart.</summary>
+    public bool ShowOrdersOnAllCharts { get; set; }
+
+    /// <summary>Percent from the current price at the crosshair.</summary>
+    public bool ShowPercentFromCurrentPrice { get; set; }
+
+    /// <summary>Drawing magnet.</summary>
+    public bool MagnetEnabled { get; set; }
+
+    /// <summary>Weak, Medium or Strong.</summary>
+    public string MagnetMode { get; set; } = "";
+
+    /// <summary>SeparateWindow or Docked: where a chart opened from an order book goes.</summary>
+    public string OpenChartFromOrderBook { get; set; } = "";
+
+    /// <summary>Off or On: moving and cancelling orders and setting SL / TP by dragging on the chart.</summary>
+    public string ChartOrderManagement { get; set; } = "";
+
+    /// <summary>Whether each chart order action asks first.</summary>
+    public bool ConfirmChartOrderActions { get; set; }
+
+    /// <summary>Automatic levels: fractal width, 1-10.</summary>
+    public int AutoLevelFractalWidth { get; set; }
+
+    /// <summary>Automatic levels: candles scanned, 100-5000.</summary>
+    public int AutoLevelHistoryDepth { get; set; }
+
+    /// <summary>Automatic levels: levels drawn per side, 1-100.</summary>
+    public int AutoLevelRenderedCap { get; set; }
+
+    /// <summary>UpdateChartSettingsAsync only: the fields this request changed (a field sent with its current value is
+    /// not one of them); null on a read.</summary>
+    public List<string>? Changed { get; set; }
+
+    /// <summary>The names and limits each choice row takes.</summary>
+    public ChartSettingsAllowed Allowed { get; set; } = new();
+}
+
+public class ChartSettingsRange
+{
+    public int Min { get; set; }
+    public int Max { get; set; }
+}
+
+public class ChartSettingsAllowed
+{
+    public List<string> OpenInterestDisplayMode { get; set; } = new();
+    public List<string> TimeFrames { get; set; } = new();
+    public List<double> VolumeHeight { get; set; } = new();
+    public List<string> MagnetMode { get; set; } = new();
+    public List<string> OpenChartFromOrderBook { get; set; } = new();
+    public List<string> ChartOrderManagement { get; set; } = new();
+    public ChartSettingsRange AutoLevelFractalWidth { get; set; } = new();
+    public ChartSettingsRange AutoLevelHistoryDepth { get; set; } = new();
+    public ChartSettingsRange AutoLevelRenderedCap { get; set; } = new();
+}
+
+/// <summary>Every field is optional: null = not sent = unchanged.</summary>
+public class ChartSettingsUpdate
+{
+    /// <summary>None, Histogram or Chart.</summary>
+    [JsonProperty("openInterestDisplayMode", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OpenInterestDisplayMode { get; set; }
+
+    /// <summary>S1 ... D1.</summary>
+    [JsonProperty("defaultTimeFrame", NullValueHandling = NullValueHandling.Ignore)]
+    public string? DefaultTimeFrame { get; set; }
+
+    /// <summary>Replaces the whole list; needs at least one timeframe.</summary>
+    [JsonProperty("timeFrames", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? TimeFrames { get; set; }
+
+    [JsonProperty("showVolume", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowVolume { get; set; }
+
+    /// <summary>15, 25 or 30.</summary>
+    [JsonProperty("volumeHeight", NullValueHandling = NullValueHandling.Ignore)]
+    public double? VolumeHeight { get; set; }
+
+    [JsonProperty("showTimeFrameCountdown", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowTimeFrameCountdown { get; set; }
+
+    [JsonProperty("showCandleParameters", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowCandleParameters { get; set; }
+
+    [JsonProperty("showUserLevels", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowUserLevels { get; set; }
+
+    [JsonProperty("showSignalLevels", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowSignalLevels { get; set; }
+
+    [JsonProperty("showTradesOnAllCharts", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowTradesOnAllCharts { get; set; }
+
+    [JsonProperty("showOrdersOnAllCharts", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowOrdersOnAllCharts { get; set; }
+
+    [JsonProperty("showPercentFromCurrentPrice", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ShowPercentFromCurrentPrice { get; set; }
+
+    [JsonProperty("magnetEnabled", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? MagnetEnabled { get; set; }
+
+    /// <summary>Weak, Medium or Strong.</summary>
+    [JsonProperty("magnetMode", NullValueHandling = NullValueHandling.Ignore)]
+    public string? MagnetMode { get; set; }
+
+    /// <summary>SeparateWindow or Docked.</summary>
+    [JsonProperty("openChartFromOrderBook", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OpenChartFromOrderBook { get; set; }
+
+    /// <summary>Off or On.</summary>
+    [JsonProperty("chartOrderManagement", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ChartOrderManagement { get; set; }
+
+    [JsonProperty("confirmChartOrderActions", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? ConfirmChartOrderActions { get; set; }
+
+    /// <summary>1-10.</summary>
+    [JsonProperty("autoLevelFractalWidth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? AutoLevelFractalWidth { get; set; }
+
+    /// <summary>100-5000.</summary>
+    [JsonProperty("autoLevelHistoryDepth", NullValueHandling = NullValueHandling.Ignore)]
+    public int? AutoLevelHistoryDepth { get; set; }
+
+    /// <summary>1-100.</summary>
+    [JsonProperty("autoLevelRenderedCap", NullValueHandling = NullValueHandling.Ignore)]
+    public int? AutoLevelRenderedCap { get; set; }
+}
+
 // ============ Signal Level Socket Models ============
 
 public class SignalLevelsSnapshotData
@@ -858,6 +1059,9 @@ public class DensityMapSubscribeOptions
     public int? SmallLifetimeMinutes { get; set; }
     /// <summary>"USDT" | "USDC" | "OTHER". Default: ["USDT"].</summary>
     public List<string>? IncludedQuoteAssets { get; set; }
+    /// <summary>The window's «asset classes» filter: any of "crypto" | "stablecoins" | "commodities" | "stocks" |
+    /// "indices". null, empty or all five = no filter; an unknown name is refused with an error frame naming the field.</summary>
+    public List<string>? AssetClasses { get; set; }
 }
 
 public class LargeTradesSubscribeOptions
@@ -875,6 +1079,9 @@ public class LargeTradesSubscribeOptions
     public decimal? SmallCoefficient { get; set; }
     /// <summary>"USDT" | "USDC" | "OTHER". Default: ["USDT", "USDC", "OTHER"].</summary>
     public List<string>? IncludedQuoteAssets { get; set; }
+    /// <summary>The window's «asset classes» filter: any of "crypto" | "stablecoins" | "commodities" | "stocks" |
+    /// "indices". null, empty or all five = no filter; an unknown name is refused with an error frame naming the field.</summary>
+    public List<string>? AssetClasses { get; set; }
 }
 
 public class LiquidationsSubscribeOptions

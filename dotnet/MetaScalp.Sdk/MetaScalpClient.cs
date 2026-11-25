@@ -158,6 +158,25 @@ public class MetaScalpClient : IDisposable
     public Task<OpenInterestHistoryResponse> GetOpenInterestHistoryAsync(long connectionId, string ticker, string timeFrame, CancellationToken ct = default)
         => GetAsync<OpenInterestHistoryResponse>($"/api/connections/{connectionId}/open-interest/history?Ticker={Uri.EscapeDataString(ticker)}&TimeFrame={timeFrame}", ct);
 
+    /// <summary>
+    /// Open interest by the second (MET-2380): open / high / low / close candles from MetaScalp's cluster service, not
+    /// from the exchange. Base coin, oldest first; a candle's Time is its START. Without <paramref name="from"/> /
+    /// <paramref name="to"/> the newest 1000 candles up to now; <paramref name="from"/> alone = from that time up to now.
+    /// The service keeps one day. When it has nothing for the request the answer is CandlesAvailable = false with a
+    /// Reason and no candles; a service failure answers 502.
+    /// </summary>
+    /// <param name="timeFrame">One of <c>S1</c>, <c>S5</c>, <c>S10</c>, <c>S15</c>, <c>S30</c>; any other answers 400.</param>
+    /// <param name="from">Start of the range (sent as Unix milliseconds). <c>null</c> = not sent.</param>
+    /// <param name="to">End of the range, not earlier than <paramref name="from"/> (sent as Unix milliseconds). <c>null</c> = now.</param>
+    public Task<OpenInterestCandlesResponse> GetOpenInterestCandlesAsync(long connectionId, string ticker, string timeFrame,
+        DateTimeOffset? from = null, DateTimeOffset? to = null, CancellationToken ct = default)
+    {
+        var qs = new List<string> { $"Ticker={Uri.EscapeDataString(ticker)}", $"TimeFrame={timeFrame}" };
+        if (from is not null) qs.Add($"From={from.Value.ToUnixTimeMilliseconds()}");
+        if (to is not null) qs.Add($"To={to.Value.ToUnixTimeMilliseconds()}");
+        return GetAsync<OpenInterestCandlesResponse>($"/api/connections/{connectionId}/open-interest/candles?{string.Join("&", qs)}", ct);
+    }
+
     // ---- Signal Levels ----
 
     public Task<SignalLevelsResponse> GetSignalLevelsAsync(long connectionId, string ticker, CancellationToken ct = default)
@@ -227,6 +246,25 @@ public class MetaScalpClient : IDisposable
     public Task<ThemeTextStylesResponse> UpdateThemeTextStylesAsync(long themeId, IDictionary<string, AppearanceTextStyleUpdate> textStyles,
         CancellationToken ct = default)
         => PutAsync<ThemeTextStylesResponse>($"/api/appearance/themes/{themeId}/text-styles", new { textStyles }, ct);
+
+    // ---- Chart settings (Settings -> Chart) ----
+
+    /// <summary>
+    /// Every row of Settings -> Chart, the open-interest pane (<see cref="ChartSettings.OpenInterestDisplayMode"/>) among
+    /// them, plus <see cref="ChartSettings.Allowed"/>: the names and limits each choice row takes. Terminal-wide: one
+    /// value for every chart.
+    /// </summary>
+    public Task<ChartSettings> GetChartSettingsAsync(CancellationToken ct = default)
+        => GetAsync<ChartSettings>("/api/chart-settings", ct);
+
+    /// <summary>
+    /// Changes only the non-null rows (a row sent with its current value is not written). Choice rows take a name from
+    /// <see cref="ChartSettings.Allowed"/>, in any letter case. Returns the rows after the change plus
+    /// <see cref="ChartSettings.Changed"/> - the fields this request changed. 400 on an unknown name or a number out of
+    /// range (nothing saved).
+    /// </summary>
+    public Task<ChartSettings> UpdateChartSettingsAsync(ChartSettingsUpdate update, CancellationToken ct = default)
+        => PutAsync<ChartSettings>("/api/chart-settings", update, ct);
 
     // ---- HTTP Helpers ----
 

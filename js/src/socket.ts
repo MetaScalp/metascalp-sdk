@@ -318,6 +318,8 @@ export class MetaScalpSocket {
    * be non-empty; everything else defaults to the terminal's Density Map window defaults
    * (coefficients 3/2/1, lifetimes 5 min, quote assets USDT). Re-subscribing replaces the
    * config and re-sends a `density_map_snapshot` of the new filter's walls, without replaying already-notified walls.
+   * `assetClasses` (optional) is the window's «asset classes» filter: crypto, stablecoins, commodities, stocks,
+   * indices; omitted, empty or all five = no filter.
    *
    * Events: `density_map_snapshot` (after the ack; may be empty — it resolves the loading
    * state), then `density_map_update` (continuous).
@@ -337,7 +339,8 @@ export class MetaScalpSocket {
    * Subscribe to the MetaBroker large trades stream — aggregated trade prints, final and
    * append-only (no snapshot; history starts at subscribe time). `exchangeMarkets` is
    * required and must be non-empty; `aggregationMs` defaults to 500 (0 = every raw print).
-   * Re-subscribing replaces the config.
+   * `assetClasses` (optional) is the window's «asset classes» filter: crypto, stablecoins, commodities, stocks,
+   * indices; omitted, empty or all five = no filter. Re-subscribing replaces the config.
    *
    * Event: `large_trades_update`
    */
