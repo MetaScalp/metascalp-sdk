@@ -612,6 +612,8 @@ public class AppearanceGeneral
     public string SlTpChipPosition { get; set; } = "";
     public string PriceMarkerPosition { get; set; } = "";
     public string ClusterColorBlendMode { get; set; } = "";
+    /// <summary>«Новогоднее настроение»; the festive look shows only from 15 December to 14 January.</summary>
+    public bool NewYearMood { get; set; }
 }
 
 /// <summary>Every field is optional: null = not sent = unchanged.</summary>
@@ -667,6 +669,10 @@ public class AppearanceGeneralUpdate
     /// <summary>Classic or Soft: cluster colour blending.</summary>
     [JsonProperty("clusterColorBlendMode", NullValueHandling = NullValueHandling.Ignore)]
     public string? ClusterColorBlendMode { get; set; }
+
+    /// <summary>«Новогоднее настроение» on / off.</summary>
+    [JsonProperty("newYearMood", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? NewYearMood { get; set; }
 }
 
 public class AppearanceState

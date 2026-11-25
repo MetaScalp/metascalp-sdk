@@ -335,7 +335,8 @@ class MetaScalpClient:
         Keys: language (ru, en, zh-Hans, hy-AM, uk-UA), font, orderBookFontSize (8-20),
         highlightPricesOnBaseLevelsFactor, actionBarWidth (0-40), clusterColumnWidth (0-200),
         limitOrderButtonPosition (Left / Right), errorDisplayDuration (1-7), designType (Standard / Simplified),
-        orderSizeChipPosition, slTpChipPosition, priceMarkerPosition (Left / Right), clusterColorBlendMode (Classic / Soft).
+        orderSizeChipPosition, slTpChipPosition, priceMarkerPosition (Left / Right), clusterColorBlendMode (Classic / Soft),
+        newYearMood (true / false: «Новогоднее настроение»).
         A bad value or range -> 400 and nothing is saved.
         """
         return await self._put("/api/appearance/general", options)
