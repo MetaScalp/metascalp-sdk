@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MetaScalp.Sdk;
 
@@ -284,6 +285,44 @@ public class MetaScalpClient : IDisposable
     /// </summary>
     public Task<ChartSettings> UpdateChartSettingsAsync(ChartSettingsUpdate update, CancellationToken ct = default)
         => PutAsync<ChartSettings>("/api/chart-settings", update, ct);
+
+    // ---- Settings pages (MC-1132): General, Combo, Recording, Sound notifications, Hotkeys ----
+
+    /// <summary>Settings -&gt; General («Общие»): the order book FPS, magnetic windows, the close confirmations, the warning before closing with active orders or positions, the clock on every window, order drag and drop, zoom presets, fill edges, tab / position panel placement, centering, saving clusters locally; allowShortOnSpotMarket is read only. Rows as the page shows them plus "allowed".</summary>
+    public Task<JObject> GetGeneralSettingsAsync(CancellationToken ct = default)
+        => GetAsync<JObject>("/api/settings/general", ct);
+
+    /// <summary>Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus "changed".</summary>
+    public Task<JObject> UpdateGeneralSettingsAsync(object update, CancellationToken ct = default)
+        => PutAsync<JObject>("/api/settings/general", update, ct);
+
+    /// <summary>Settings -&gt; General -&gt; Combo: where a combo opens, its chart, sizes, order books per combo window, headers, linking, venue selection and the exchange list (exchanges: [{ marketId, included }]). Rows as the page shows them plus "allowed".</summary>
+    public Task<JObject> GetComboSettingsAsync(CancellationToken ct = default)
+        => GetAsync<JObject>("/api/settings/combo", ct);
+
+    /// <summary>Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus "changed".</summary>
+    public Task<JObject> UpdateComboSettingsAsync(object update, CancellationToken ct = default)
+        => PutAsync<JObject>("/api/settings/combo", update, ct);
+
+    /// <summary>Settings -&gt; General -&gt; Recording: frames per second, quality, the instant-replay buffer; the output folder and the microphone are read only. Rows as the page shows them plus "allowed".</summary>
+    public Task<JObject> GetRecordingSettingsAsync(CancellationToken ct = default)
+        => GetAsync<JObject>("/api/settings/recording", ct);
+
+    /// <summary>Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus "changed".</summary>
+    public Task<JObject> UpdateRecordingSettingsAsync(object update, CancellationToken ct = default)
+        => PutAsync<JObject>("/api/settings/recording", update, ct);
+
+    /// <summary>Settings -&gt; Sound notifications: per event (Trade, SignalLevel, LargeAmount1, LargeAmount2, LargeAmountTicks) allowRepeat, duration (1-60 s) and a built-in sound name. Rows as the page shows them plus "allowed".</summary>
+    public Task<JObject> GetSoundSettingsAsync(CancellationToken ct = default)
+        => GetAsync<JObject>("/api/settings/sounds", ct);
+
+    /// <summary>Changes only the given rows (all checked first; 400 and nothing saved on a wrong one). Returns the rows plus "changed".</summary>
+    public Task<JObject> UpdateSoundSettingsAsync(object update, CancellationToken ct = default)
+        => PutAsync<JObject>("/api/settings/sounds", update, ct);
+
+    /// <summary>Every hotkey action of the common, order book and chart pages with its key, or bound = false. Read only.</summary>
+    public Task<JObject> GetHotkeysAsync(CancellationToken ct = default)
+        => GetAsync<JObject>("/api/settings/hotkeys", ct);
 
     // ---- HTTP Helpers ----
 

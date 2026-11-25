@@ -464,6 +464,68 @@ class MetaScalpClient:
         """
         return await self._put("/api/chart-settings", settings)
 
+    # ---- Settings pages (MC-1132): General, Combo, Recording, Sound notifications, Hotkeys ----
+
+    async def get_general_settings(self) -> dict:
+        """Settings -> General («Общие»): the order book FPS, magnetic windows, the close confirmations, the warning before closing with active orders or positions, the clock on every window, order drag and drop, zoom presets, fill edges, tab / position panel placement, centering, saving clusters locally; allowShortOnSpotMarket is read only.
+
+        Rows as the page shows them plus "allowed".
+        """
+        return await self._get("/api/settings/general")
+
+    async def update_general_settings(self, **rows) -> dict:
+        """Change only the given rows (all checked first; 400 and nothing saved on a wrong one).
+
+        Returns the rows plus "changed".
+        """
+        return await self._put("/api/settings/general", rows)
+
+    async def get_combo_settings(self) -> dict:
+        """Settings -> General -> Combo: where a combo opens, its chart, sizes, order books per combo window, headers, linking, venue selection and the exchange list (exchanges: [{ marketId, included }]).
+
+        Rows as the page shows them plus "allowed".
+        """
+        return await self._get("/api/settings/combo")
+
+    async def update_combo_settings(self, **rows) -> dict:
+        """Change only the given rows (all checked first; 400 and nothing saved on a wrong one).
+
+        Returns the rows plus "changed".
+        """
+        return await self._put("/api/settings/combo", rows)
+
+    async def get_recording_settings(self) -> dict:
+        """Settings -> General -> Recording: frames per second, quality, the instant-replay buffer; the output folder and the microphone are read only.
+
+        Rows as the page shows them plus "allowed".
+        """
+        return await self._get("/api/settings/recording")
+
+    async def update_recording_settings(self, **rows) -> dict:
+        """Change only the given rows (all checked first; 400 and nothing saved on a wrong one).
+
+        Returns the rows plus "changed".
+        """
+        return await self._put("/api/settings/recording", rows)
+
+    async def get_sound_settings(self) -> dict:
+        """Settings -> Sound notifications: per event (Trade, SignalLevel, LargeAmount1, LargeAmount2, LargeAmountTicks) allowRepeat, duration (1-60 s) and a built-in sound name.
+
+        Rows as the page shows them plus "allowed".
+        """
+        return await self._get("/api/settings/sounds")
+
+    async def update_sound_settings(self, **rows) -> dict:
+        """Change only the given rows (all checked first; 400 and nothing saved on a wrong one).
+
+        Returns the rows plus "changed".
+        """
+        return await self._put("/api/settings/sounds", rows)
+
+    async def get_hotkeys(self) -> dict:
+        """Every hotkey action of the common, order book and chart pages with its key, or bound=False. Read only."""
+        return await self._get("/api/settings/hotkeys")
+
     # ---- Order Book Snapshot (one-shot fresh REST fetch) ----
 
     async def get_order_book_snapshot(

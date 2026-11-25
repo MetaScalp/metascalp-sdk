@@ -1926,6 +1926,7 @@
         <p style="font-size:13px;color:var(--text-muted);">Ticks section: <code>ShowExecutedOrders</code> (boolean, default <code>true</code>; absent behaves as <code>true</code>) paints the terminal's own executed-order overlay (fill chips + position-size chip) on the tape &mdash; set <code>false</code> to hide it.</p>
         <p style="font-size:13px;color:var(--text-muted);">Auto-centering: <code>AutoCenterThreshold</code> (whole number <code>0</code>&ndash;<code>10</code>; <code>0</code> = off, <code>N</code> = the book re-centres once the spread is more than (10&nbsp;&minus;&nbsp;N)/10 of the way from the centre to the window edge; outside the range or a fraction &rarr; <code>400</code>, nothing written). <code>Autoscroll</code> is kept for old clients: it reads <code>true</code> when <code>AutoCenterThreshold</code> &gt; 0; writing <code>false</code> sets <code>0</code>, writing <code>true</code> while it is <code>0</code> sets the default <code>2</code>; an <code>AutoCenterThreshold</code> in the same request wins when it differs from the stored value (an unchanged echo of it does not mask the old field).</p>
         <p style="font-size:13px;color:var(--text-muted);">Large volume levels 3 and 4: <code>LargeAmount3</code>, <code>LargeAmount4</code> (coins), <code>LargeAmountUsd3</code>, <code>LargeAmountUsd4</code> (USD) and their alerts <code>NotificationLargeAmount3Detected</code>, <code>NotificationLargeAmount4Detected</code> &mdash; the same rows as <code>LargeAmount</code> / <code>LargeAmount2</code>. SL / TP labels: <code>ShowSlTpPnl</code> (boolean) shows the expected PnL in $ under the stop-loss and take-profit labels. Signal levels: <code>SignalLevelTriggerSource</code> (<code>TradePrice</code> &mdash; the default, a row never changed reports it &mdash; or <code>BestBidAsk</code>) is what triggers this instrument's signal levels; any other value &rarr; <code>400</code>, nothing written.</p>
+        <p style="font-size:13px;color:var(--text-muted);">Display fields (MC-1132): <code>AmountBarFillMode</code> and <code>ClusterBarFillMode</code> (<code>Manual</code> / <code>Automatic</code>), <code>AutomaticFillLargeOrdersCount</code> (&ge; 1), <code>AutomaticFillMultiplicationFactor</code> and <code>ClusterAutomaticFillMultiplicationFactor</code> (&ge; 0), <code>TicksDisplayMode</code> (<code>Standard</code> / <code>Smooth</code>), <code>SmoothTicksUpdateSpeed</code> (2&ndash;20), <code>HighlightTicksLargeAmount</code>, <code>ShowLiquidations</code>, <code>LiquidationsMinAmount</code> / <code>LiquidationsMinAmountUsd</code> (&ge; 0), <code>ClusterDataDisplayMode</code> (<code>Sum</code> / <code>Delta</code> / <code>BuyXSell</code>), <code>StretchLevelsAcrossClusters</code>, <code>StretchHoverToClusters</code>, <code>ClusterVisibleColumns</code> (1&ndash;100), <code>CustomClusterTimeFrames</code> (up to 10 strings such as <code>"15s"</code>, <code>"2m"</code>, <code>"2h"</code>; not a standard timeframe, not twice), <code>MaxDigitsInPriceScale</code> (1&ndash;15, <code>0</code> = the dash, nothing cut), <code>ShowIndexPrice</code>, <code>ShowLiquidationPrice</code>, <code>Show24hPriceChangePercent</code>, <code>ShowMarketDataPing</code>, <code>ShowMaxPositionSize</code>. Info panel: <code>InfoPanel</code> = <code>{ Enabled, PanelWidth (28&ndash;220), RowHighlightEnabled, RowHighlightColor ("#AARRGGBB"), Buttons: [{ Kind, Enabled, Order }], Metrics: [{ Kind, Enabled, Order, TimeFrame, Threshold, ThresholdColor }] }</code>. GET lists every button and metric kind in the panel&#39;s order; on a PUT only the kinds named change (for example <code>{"InfoPanel": {"Metrics": [{"Kind": "OpenInterestChangePercent", "Enabled": true}], "Buttons": [{"Kind": "Linking", "Order": 0}]}}</code>). An open order book shows the change at once. A wrong value &rarr; <code>400</code> naming the field and the allowed values, nothing written. Not on the route (they change how the terminal trades): trailing stop, isolated leverage, smart leverage, multi-orders, cancel-orders-on-close, and the alert channels.</p>
       </div>
       <div class="form-grid">
         <div class="form-group">
@@ -3310,6 +3311,262 @@
           <span class="response-time" id="resp-chart-settings-put-time"></span>
         </div>
         <div class="response-body" id="resp-chart-settings-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings pages (MC-1132): General, Combo, Recording, Sound notifications, Hotkeys -->
+  <div class="section-label">Settings pages</div>
+
+  <div class="docs" style="margin:8px 0 16px;">
+    <p>The pages <strong>Settings &rarr; General</strong> (&laquo;Общие&raquo;, Combo, Recording), <strong>Sound notifications</strong> and the <strong>hotkeys</strong> (read only). They are terminal-wide. A change is saved the way the page saves it, row by row, so open windows react exactly as to a change made on the page. A page that is already open shows the new values after it is reopened. Every field of a PUT is optional, every field is checked before the first one is saved, and the answer lists <code>changed</code> and the values each row allows (<code>allowed</code>). Names are accepted in any letter case.</p>
+  </div>
+
+  <!-- /api/settings/general (GET) -->
+  <div class="endpoint" id="ep-settings-general-get">
+    <div class="endpoint-header" onclick="toggle('ep-settings-general-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/settings/general</span>
+      <span class="endpoint-desc">Settings &rarr; General (&laquo;Общие&raquo;) rows and their allowed values</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns every row of <strong>Settings &rarr; General &rarr; &laquo;Общие&raquo;</strong> as the page shows it, plus <code>allowed</code> and <code>readOnly</code>: <code>orderBookFps</code> (1&ndash;240), <code>magneticWindowEnabled</code>, <code>showPopupWhenClosingTerminal</code>, <code>showPopupWhenClosingWindowsAndTabs</code>, <code>showWarningWhenClosingWithActiveOrders</code> (MC-408: warn before closing with active orders or positions), <code>showTimeOnAllWindows</code>, <code>enableOrdersDragDrop</code>, <code>zoomPercentagePresets</code> / <code>zoomAbsolutePresets</code> (five numbers each, &ge; 0 / &ge; 1), <code>amountBarFillEdge</code> / <code>clusterBarFillEdge</code> (<code>Left</code> / <code>Right</code>), <code>showClusterChangePercent</code>, <code>tabStripPosition</code> / <code>openPositionPanelPosition</code> (<code>Top</code> / <code>Bottom</code>), <code>centeringMode</code> (<code>AllOrderBooks</code> / <code>ActiveWindowOnly</code>), <code>saveClusterDataLocally</code> and <code>allowShortOnSpotMarket</code> (read only). The version / update block and the API-key import and export are not part of the API.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsGeneralGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-general-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-general-get-status"></span>
+          <span class="response-time" id="resp-settings-general-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-general-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/general (PUT) -->
+  <div class="endpoint" id="ep-settings-general-put">
+    <div class="endpoint-header" onclick="toggle('ep-settings-general-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/settings/general</span>
+      <span class="endpoint-desc">Change Settings &rarr; General rows (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: any field of the GET above. Omitted fields keep their value; a field sent with its current value is not written. Every field is checked before anything is saved; each changed row is saved as the page saves it and open windows follow at once (the clock on every window, the close warning, the fill edges, the tab strip &hellip;). Returns the rows plus <code>changed</code>.</p><p><strong>Errors:</strong> unknown field, unknown name or a number out of range &rarr; <code>400</code> naming the field and the allowed values; <code>allowShortOnSpotMarket</code> in the body &rarr; <code>400</code> (read only: it changes which orders the terminal sends); nothing is written.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-settings-general-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"showWarningWhenClosingWithActiveOrders": true}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsGeneralPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-general-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-general-put-status"></span>
+          <span class="response-time" id="resp-settings-general-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-general-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/combo (GET) -->
+  <div class="endpoint" id="ep-settings-combo-get">
+    <div class="endpoint-header" onclick="toggle('ep-settings-combo-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/settings/combo</span>
+      <span class="endpoint-desc">Settings &rarr; General &rarr; Combo rows, the exchange list and the allowed values</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>openIn</code> (<code>Window</code> / <code>WindowWithoutDock</code> / <code>Tab</code>), <code>defaultChart</code> (<code>TradingView</code> / <code>Regular</code>), <code>chartPosition</code> (<code>Bottom</code> / <code>Top</code> / <code>None</code>), <code>chartHeightPercent</code> (10&ndash;80), <code>windowHeight</code>, <code>orderBookWidth</code> (&ge; 0), <code>maxOrderBooksPerComboWindow</code> (3&ndash;100), <code>showComboChartHeader</code>, <code>showComboOrderBookHeader</code>, <code>linking</code> (<code>Separately</code> / <code>AllTogether</code>), <code>venueSelection</code> (<code>AllChecked</code> / <code>TopByTradesCount</code> / <code>TopByTurnover</code>), <code>venueMetricTimeFrame</code>, <code>topVenuesCount</code> (1&ndash;100) and <code>exchanges</code> &mdash; the page&#39;s exchange list in its order: <code>marketId</code>, <code>exchange</code>, <code>marketType</code>, <code>included</code>.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsComboGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-combo-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-combo-get-status"></span>
+          <span class="response-time" id="resp-settings-combo-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-combo-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/combo (PUT) -->
+  <div class="endpoint" id="ep-settings-combo-put">
+    <div class="endpoint-header" onclick="toggle('ep-settings-combo-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/settings/combo</span>
+      <span class="endpoint-desc">Change Settings &rarr; Combo rows (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: any field of the GET above. <code>exchanges</code> is a list of <code>{ "marketId": 3, "included": false }</code>; only the exchanges named change. The next combo window uses the new values. Returns the rows plus <code>changed</code>.</p><p><strong>Errors:</strong> unknown field, name, marketId or a number out of range &rarr; <code>400</code>, nothing written.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-settings-combo-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"maxOrderBooksPerComboWindow": 6}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsComboPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-combo-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-combo-put-status"></span>
+          <span class="response-time" id="resp-settings-combo-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-combo-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/recording (GET) -->
+  <div class="endpoint" id="ep-settings-recording-get">
+    <div class="endpoint-header" onclick="toggle('ep-settings-recording-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/settings/recording</span>
+      <span class="endpoint-desc">Settings &rarr; General &rarr; Recording rows</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>recordingAvailable</code>, <code>framesPerSecond</code> (10&ndash;60), <code>quality</code> (<code>Low</code> / <code>Medium</code> / <code>High</code> / <code>Ultra</code>), <code>instantReplayBufferMinutes</code> (1&ndash;20), and read only: <code>outputFolder</code>, <code>recordMicrophone</code>, <code>microphone</code> (device id, <code>null</code> = the default microphone).</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsRecordingGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-recording-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-recording-get-status"></span>
+          <span class="response-time" id="resp-settings-recording-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-recording-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/recording (PUT) -->
+  <div class="endpoint" id="ep-settings-recording-put">
+    <div class="endpoint-header" onclick="toggle('ep-settings-recording-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/settings/recording</span>
+      <span class="endpoint-desc">Change Settings &rarr; Recording rows (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: <code>framesPerSecond</code>, <code>quality</code>, <code>instantReplayBufferMinutes</code>. It does not start or stop a recording. Returns the rows plus <code>changed</code>.</p><p><strong>Errors:</strong> <code>outputFolder</code>, <code>recordMicrophone</code> or <code>microphone</code> in the body &rarr; <code>400</code> (an API client never chooses where files go and never turns the microphone on); a value out of range &rarr; <code>400</code>; nothing is written.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-settings-recording-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"framesPerSecond": 25}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsRecordingPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-recording-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-recording-put-status"></span>
+          <span class="response-time" id="resp-settings-recording-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-recording-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/sounds (GET) -->
+  <div class="endpoint" id="ep-settings-sounds-get">
+    <div class="endpoint-header" onclick="toggle('ep-settings-sounds-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/settings/sounds</span>
+      <span class="endpoint-desc">Settings &rarr; Sound notifications, per event</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>events</code>: one entry per event of the page (<code>Trade</code>, <code>SignalLevel</code>, <code>LargeAmount1</code>, <code>LargeAmount2</code>, <code>LargeAmountTicks</code>) with <code>allowRepeat</code>, <code>duration</code> (seconds, 1&ndash;60), <code>sound</code> (file name) and <code>custom</code> (a file the user picked on the page); <code>allowed.sound</code> lists the built-in sounds.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsSoundsGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-sounds-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-sounds-get-status"></span>
+          <span class="response-time" id="resp-settings-sounds-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-sounds-get-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/sounds (PUT) -->
+  <div class="endpoint" id="ep-settings-sounds-put">
+    <div class="endpoint-header" onclick="toggle('ep-settings-sounds-put')">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/api/settings/sounds</span>
+      <span class="endpoint-desc">Change sound notifications (partial)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Body: <code>{ "events": [ { "event": "Trade", "allowRepeat": false }, { "event": "SignalLevel", "duration": 5, "sound": "ding.wav" } ] }</code>. Only the events and fields named change; the event&#39;s sound is replaced at once. Returns the events plus <code>changed</code> (the event names).</p><p><strong>Errors:</strong> unknown event, a duration out of range, or a sound that is not built in (a custom file is chosen on the page only) &rarr; <code>400</code>, nothing written.</p>
+      </div>
+      <div class="form-grid single">
+        <div class="form-group">
+          <label>Request body (JSON)</label>
+          <textarea id="f-settings-sounds-put-body" rows="4" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'SF Mono','Fira Code','Consolas',monospace;resize:vertical;">{"events": [{"event": "Trade", "allowRepeat": false}, {"event": "SignalLevel", "duration": 5}]}</textarea>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsSoundsPut()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-sounds-put">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-sounds-put-status"></span>
+          <span class="response-time" id="resp-settings-sounds-put-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-sounds-put-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /api/settings/hotkeys (GET) -->
+  <div class="endpoint" id="ep-settings-hotkeys-get">
+    <div class="endpoint-header" onclick="toggle('ep-settings-hotkeys-get')">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/settings/hotkeys</span>
+      <span class="endpoint-desc">The hotkeys of the three pages (read only)</span>
+      <span class="chevron">&#9656;</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="docs">
+        <p>Returns <code>common</code>, <code>orderBook</code> and <code>chart</code>: every action of the page, in its order, as <code>{ "action": "CancelAllOrders", "binding": "Ctrl+X" | null, "bound": true | false }</code>, and <code>writable: false</code>. No route writes a hotkey: a wrong binding is an unintended trading action. The user sets them on Settings &rarr; Hotkeys.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="sendSettingsHotkeysGet()">Send Request</button>
+      </div>
+      <div class="response-panel" id="resp-settings-hotkeys-get">
+        <div class="response-bar">
+          <span class="status-badge" id="resp-settings-hotkeys-get-status"></span>
+          <span class="response-time" id="resp-settings-hotkeys-get-time"></span>
+        </div>
+        <div class="response-body" id="resp-settings-hotkeys-get-body"></div>
       </div>
     </div>
   </div>
@@ -4772,6 +5029,8 @@
         <tr><td><code>GET/POST/PUT/DELETE /api/connections/{id}/user-levels</code></td><td>Read, create, modify (in place) and delete user (plain) levels for a ticker</td></tr>
         <tr><td><code>GET/PUT/POST/DELETE /api/connections/{id}/annotations</code></td><td>Read all three chart-annotation lists, replace a list (PUT), append one (POST) or delete by index / clear all &mdash; addressed by zero-based list index</td></tr>
         <tr><td><code>GET/PUT /api/chart-settings</code></td><td>Read, and partially update, the rows of Settings &rarr; Chart &mdash; the open-interest pane (<code>openInterestDisplayMode</code>), timeframes, volume, levels, trades and orders on charts, magnet, automatic levels</td></tr>
+        <tr><td><code>GET/PUT /api/settings/general</code>, <code>GET/PUT /api/settings/combo</code>, <code>GET/PUT /api/settings/recording</code>, <code>GET/PUT /api/settings/sounds</code></td><td>Read, and partially update, the Settings pages General (&laquo;Общие&raquo;, the close warning with active orders among them), Combo, Recording and Sound notifications &mdash; saved and applied as on the page; <code>allowShortOnSpotMarket</code>, the recording folder and the microphone are read only</td></tr>
+        <tr><td><code>GET /api/settings/hotkeys</code></td><td>Every hotkey action of the common, order book and chart pages with its key or <code>bound: false</code> (read only: no route writes a hotkey)</td></tr>
         <tr><td><code>POST /api/notifications</code></td><td>Inject a custom row into the notification feed (all fields optional, arbitrary event type)</td></tr>
         <tr><td><code>GET /api/ui/state</code></td><td>Full read-only inventory of the open UI: windows, tabs, order-book/chart documents and standalone charts (rebuilt from the saved layout)</td></tr>
         <tr><td><code>GET /api/ui/windows/{windowId}</code></td><td>The same inventory object for one window; unknown id &rarr; 404</td></tr>
@@ -5628,6 +5887,96 @@ ws.send('{"Type":"unsubscribe","Data":{"connectionId":1}}')
       showResponse('chart-settings-put', status, statusClass(status), data, ms);
     } catch (e) {
       showResponse('chart-settings-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  // --- Settings pages (MC-1132) ---
+  async function sendSettingsGeneralGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/settings/general');
+      showResponse('settings-general-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-general-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsGeneralPut() {
+    const bodyText = document.getElementById('f-settings-general-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/settings/general', body);
+      showResponse('settings-general-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-general-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsComboGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/settings/combo');
+      showResponse('settings-combo-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-combo-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsComboPut() {
+    const bodyText = document.getElementById('f-settings-combo-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/settings/combo', body);
+      showResponse('settings-combo-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-combo-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsRecordingGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/settings/recording');
+      showResponse('settings-recording-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-recording-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsRecordingPut() {
+    const bodyText = document.getElementById('f-settings-recording-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/settings/recording', body);
+      showResponse('settings-recording-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-recording-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsSoundsGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/settings/sounds');
+      showResponse('settings-sounds-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-sounds-get', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsSoundsPut() {
+    const bodyText = document.getElementById('f-settings-sounds-put-body').value.trim();
+    try {
+      const body = JSON.parse(bodyText);
+      const { status, data, ms } = await apiCall('PUT', '/api/settings/sounds', body);
+      showResponse('settings-sounds-put', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-sounds-put', 'ERR', 'status-net', e.message, 0);
+    }
+  }
+
+  async function sendSettingsHotkeysGet() {
+    try {
+      const { status, data, ms } = await apiCall('GET', '/api/settings/hotkeys');
+      showResponse('settings-hotkeys-get', status, statusClass(status), data, ms);
+    } catch (e) {
+      showResponse('settings-hotkeys-get', 'ERR', 'status-net', e.message, 0);
     }
   }
 

@@ -1011,3 +1011,23 @@ export interface SocketEventMap {
   connected: void;
   disconnected: void;
 }
+
+/** MC-1132: one Settings page (/api/settings/general|combo|recording|sounds): its rows, `changed` (PUT only), `allowed`. */
+export type SettingsPageResponse = Record<string, unknown> & {
+  changed?: string[];
+  allowed: Record<string, unknown>;
+  readOnly?: string[];
+};
+
+export interface HotkeyBinding {
+  action: string;
+  binding: string | null;
+  bound: boolean;
+}
+
+export interface HotkeysResponse {
+  common: HotkeyBinding[];
+  orderBook: HotkeyBinding[];
+  chart: HotkeyBinding[];
+  writable: false;
+}
