@@ -285,6 +285,25 @@ public class MetaScalpClient : IDisposable
     public Task<ChartSettings> UpdateChartSettingsAsync(ChartSettingsUpdate update, CancellationToken ct = default)
         => PutAsync<ChartSettings>("/api/chart-settings", update, ct);
 
+    // ---- Aggregated order book ----
+
+    /// <summary>
+    /// Adds an aggregated order book (one ladder that merges the books of one coin from several connections) to a
+    /// workspace tab, as the "+" menu item does. With ConnectionId + Ticker it opens on that coin and trades on that
+    /// connection; SourceConnectionIds are the merged connections in the order the book shows them. No order is placed.
+    /// 404 on an unknown tab; 400 (nothing added) on a source the book does not offer for the coin.
+    /// </summary>
+    public Task<AggregatedOrderBookResponse> OpenAggregatedOrderBookAsync(OpenAggregatedOrderBookRequest request, CancellationToken ct = default)
+        => PostAsync<AggregatedOrderBookResponse>("/api/ui/aggregated-order-books", request, ct);
+
+    /// <summary>
+    /// Sets the merged connections (set and order) and/or the main connection of an open aggregated order book; the
+    /// book applies it at once and keeps it after a restart. 400 (nothing changed) on a connection it does not offer.
+    /// </summary>
+    public Task<AggregatedOrderBookResponse> SetAggregatedOrderBookSourcesAsync(string externalId, AggregatedOrderBookSourcesRequest request,
+        CancellationToken ct = default)
+        => PutAsync<AggregatedOrderBookResponse>($"/api/ui/aggregated-order-books/{Uri.EscapeDataString(externalId)}/sources", request, ct);
+
     // ---- HTTP Helpers ----
 
     private async Task<T> GetAsync<T>(string path, CancellationToken ct)

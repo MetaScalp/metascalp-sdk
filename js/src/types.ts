@@ -1011,3 +1011,36 @@ export interface SocketEventMap {
   connected: void;
   disconnected: void;
 }
+
+// ---- Aggregated order book (MC-1128) ----
+
+export interface OpenAggregatedOrderBookRequest {
+  /** A workspace or light-workspace tab id from GET /api/ui/state. */
+  tabId: number;
+  /** With ticker: the connection the book trades on (the main exchange). */
+  connectionId?: number;
+  /** With connectionId: the coin on that connection. */
+  ticker?: string;
+  /** The merged connections in the order the book shows them; needs the coin. Omitted = the default set. */
+  sourceConnectionIds?: number[];
+}
+
+export interface AggregatedOrderBookSourcesRequest {
+  /** The merged connections in the order to show them; the main connection is always merged. Omitted = keep. */
+  sourceConnectionIds?: number[];
+  /** The connection to trade on; one of sourceConnectionIds when both are given. Omitted = keep. */
+  mainConnectionId?: number;
+}
+
+export interface AggregatedOrderBookResponse {
+  status: string;
+  externalId: string;
+  id: number | null;
+  kind: 'aggregatedOrderBook';
+  tabId?: number;
+  connectionId: number | null;
+  ticker: string | null;
+  sourceConnectionIds: number[];
+  /** Set when the book was added but a later step did not land in time. */
+  warning?: string;
+}
